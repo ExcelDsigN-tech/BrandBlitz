@@ -24,12 +24,16 @@ router.post("/", optionalAuth, waitlistLimiter, async (req, res) => {
   const email = parsed.data.email.toLowerCase().trim();
   const userId = req.user?.sub ?? null;
 
-  await query(
+  // RETURNING yields a row only for a new signup. The id is the caller's
+  // capability for GET /:id/position, so a duplicate email never gets it back.
+  const inserted = await query<{ id: string }>(
     `INSERT INTO waitlist (email, referral_code)
      VALUES ($1, $2)
-     ON CONFLICT (email) DO NOTHING`,
+     ON CONFLICT (email) DO NOTHING
+     RETURNING id`,
     [email, parsed.data.referral_code ?? null]
   );
+  const entry = inserted.rows[0] ? { id: inserted.rows[0].id } : {};
 
   let reminderScheduled = false;
   let scheduledFor: Date | null = null;
@@ -70,6 +74,7 @@ router.post("/", optionalAuth, waitlistLimiter, async (req, res) => {
 
     return res.status(201).json({
       message: "You're on the list!",
+      ...entry,
       reminderScheduled: true,
       scheduledFor,
     });
@@ -77,21 +82,54 @@ router.post("/", optionalAuth, waitlistLimiter, async (req, res) => {
 
   res.status(201).json({
     message: "You're on the list!",
+    ...entry,
   });
 });
 
-router.get("/position/:email", apiLimiter, async (req, res) => {
-  const email = z.string().email().parse(req.params.email);
-  const result = await query<{ position: number }>(
-    "SELECT position FROM waitlist_signups WHERE email = $1",
-    [email.toLowerCase().trim()]
-  );
+/** Window used to measure how fast entries are being let in. */
+export const THROUGHPUT_WINDOW_DAYS = 7;
 
-  if (result.rows.length === 0) {
-    throw createError("Email not found on waitlist", 404);
+/**
+ * Live queue position for one entry (#1046). The entry id returned by
+ * POST /waitlist is an unguessable UUID and acts as the access token, so
+ * nobody can look up someone else's place by email.
+ */
+router.get("/:id/position", apiLimiter, async (req, res) => {
+  const id = z.string().uuid().safeParse(req.params.id);
+  if (!id.success) {
+    throw createError("Waitlist entry not found", 404);
   }
 
-  res.json({ position: result.rows[0].position });
+  const result = await query<{ activated: boolean; ahead: number; recent_activations: number }>(
+    `SELECT w.activated_at IS NOT NULL AS activated,
+            (SELECT COUNT(*) FROM waitlist p
+              WHERE p.activated_at IS NULL
+                AND (p.created_at, p.id) < (w.created_at, w.id))::int AS ahead,
+            (SELECT COUNT(*) FROM waitlist a
+              WHERE a.activated_at >= NOW() - make_interval(days => $2))::int AS recent_activations
+       FROM waitlist w
+      WHERE w.id = $1`,
+    [id.data, THROUGHPUT_WINDOW_DAYS]
+  );
+
+  const row = result.rows[0];
+  if (!row) {
+    throw createError("Waitlist entry not found", 404);
+  }
+
+  const throughputPerDay = row.recent_activations / THROUGHPUT_WINDOW_DAYS;
+
+  if (row.activated) {
+    return res.json({ activated: true, position: null, estimatedWaitSeconds: 0, throughputPerDay });
+  }
+
+  const position = row.ahead + 1;
+  // No activations in the window means no basis for an estimate; say so
+  // instead of inventing one.
+  const estimatedWaitSeconds =
+    throughputPerDay > 0 ? Math.ceil((position / throughputPerDay) * 86_400) : null;
+
+  res.json({ activated: false, position, estimatedWaitSeconds, throughputPerDay });
 });
 
 export default router;

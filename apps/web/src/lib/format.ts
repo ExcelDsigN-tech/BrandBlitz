@@ -26,3 +26,11 @@ export function safeDivide(numerator: number, denominator: number, fallback = 0)
   const result = numerator / denominator;
   return isFinite(result) ? result : fallback;
 }
+
+/** Human wait time for the waitlist: "less than an hour", "about 5 hours", "about 3 days". */
+export function formatWait(seconds: number): string {
+  const hours = Math.round(seconds / 3600);
+  if (hours < 1) return "less than an hour";
+  if (hours < 48) return `about ${hours} hour${hours === 1 ? "" : "s"}`;
+  return `about ${Math.round(hours / 24)} days`;
+}

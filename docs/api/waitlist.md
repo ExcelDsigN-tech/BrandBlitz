@@ -1,6 +1,6 @@
 # Waitlist API
 
-The waitlist API lets users join the BrandBlitz waitlist and look up their position in line.
+The waitlist API lets users join the BrandBlitz waitlist and track their live position in line.
 
 ## POST /waitlist
 
@@ -12,10 +12,10 @@ Protected by `waitlistLimiter`: **5 requests per hour per IP**. Exceeding this r
 
 ### Request Body
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `email` | string (max 254) | Yes | Valid email address. Normalised to lowercase and trimmed before storage. |
-| `referral_code` | string (max 64) | No | Referral code from another user's invite link |
+| Field           | Type             | Required | Description                                                              |
+| --------------- | ---------------- | -------- | ------------------------------------------------------------------------ |
+| `email`         | string (max 254) | Yes      | Valid email address. Normalised to lowercase and trimmed before storage. |
+| `referral_code` | string (max 64)  | No       | Referral code from another user's invite link                            |
 
 ### Example Request
 
@@ -30,10 +30,13 @@ curl -X POST https://api.brandblitz.io/waitlist \
 **201 Created** — first signup
 
 ```json
-{ "message": "You're on the list!" }
+{ "message": "You're on the list!", "id": "6f1c2c1e-2f5b-4d1a-9b7e-0d3c2b1a0f9e" }
 ```
 
-**201 Created** — duplicate email (idempotent, no error)
+`id` is the entry's private token for `GET /waitlist/:id/position`. Store it
+client-side; it is returned only once.
+
+**201 Created** — duplicate email (idempotent, no error, no `id`)
 
 ```json
 { "message": "You're on the list!" }
@@ -41,31 +44,30 @@ curl -X POST https://api.brandblitz.io/waitlist \
 
 ### Error Responses
 
-| Status | Body | Trigger |
-|---|---|---|
-| `422` | `{ "error": "Invalid email address", "code": "INVALID_EMAIL" }` | Malformed email (fails Zod validation) |
-| `429` | `{ "error": "Too many signup attempts, please try again later" }` | Rate limit exceeded (5 req/hr/IP) |
+| Status | Body                                                              | Trigger                                |
+| ------ | ----------------------------------------------------------------- | -------------------------------------- |
+| `422`  | `{ "error": "Invalid email address", "code": "INVALID_EMAIL" }`   | Malformed email (fails Zod validation) |
+| `429`  | `{ "error": "Too many signup attempts, please try again later" }` | Rate limit exceeded (5 req/hr/IP)      |
 
 ---
 
-## GET /waitlist/position/:email
+## GET /waitlist/:id/position
 
-Look up your position in the waitlist.
+Live queue position and estimated wait for one entry (#1046). The web page
+polls this every 30 seconds.
+
+There's no login on the waitlist, so the unguessable entry `id` from
+`POST /waitlist` is the access check. The old `GET /waitlist/position/:email`
+was removed because anyone could look up anyone's position by email.
 
 ### Rate Limiting
 
 Protected by `apiLimiter`: dynamic rate limit per user/IP over a 15-minute window.
 
-### Path Parameters
-
-| Param | Type | Description |
-|---|---|---|
-| `email` | string | The email used to sign up |
-
 ### Example Request
 
 ```bash
-curl https://api.brandblitz.io/waitlist/position/alex@example.com
+curl https://api.brandblitz.io/waitlist/6f1c2c1e-2f5b-4d1a-9b7e-0d3c2b1a0f9e/position
 ```
 
 ### Response
@@ -73,20 +75,27 @@ curl https://api.brandblitz.io/waitlist/position/alex@example.com
 **200 OK**
 
 ```json
-{ "position": 42 }
+{ "activated": false, "position": 42, "estimatedWaitSeconds": 1814400, "throughputPerDay": 2 }
 ```
+
+| Field                  | Description                                                                                                                                            |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `activated`            | `true` once the entry has been let in (`waitlist.activated_at` set).                                                                                   |
+| `position`             | 1-based place among entries not yet activated, in join order. `null` once activated.                                                                   |
+| `estimatedWaitSeconds` | `position / throughputPerDay`, in seconds. `null` when nobody was activated in the window, since there's no basis for an estimate. `0` once activated. |
+| `throughputPerDay`     | Activations over the last 7 days divided by 7.                                                                                                         |
 
 ### Error Responses
 
-| Status | Body | Trigger |
-|---|---|---|
-| `404` | `{ "error": "Email not found on waitlist" }` | Email not in database |
-| `429` | `{ "error": "Too many requests, please try again later" }` | Rate limit exceeded |
+| Status | Body                                                       | Trigger                 |
+| ------ | ---------------------------------------------------------- | ----------------------- |
+| `404`  | `{ "error": "Waitlist entry not found" }`                  | Unknown or malformed id |
+| `429`  | `{ "error": "Too many requests, please try again later" }` | Rate limit exceeded     |
 
 ---
 
 ## Notes
 
 - The waitlist signup page is at [`apps/web/src/app/waitlist/page.tsx`](../../apps/web/src/app/waitlist/page.tsx).
-- Emails are stored in the `waitlist` table. Position is derived from the `waitlist_signups` view.
-- Both endpoints are public — no authentication required.
+- Entries live in the `waitlist` table. Position and throughput come from `created_at` and `activated_at` (migration `00035-waitlist-activation.sql`). Setting `activated_at` is how an entry is let in.
+- Both endpoints are public. The position endpoint is scoped to its entry by the private `id`.
