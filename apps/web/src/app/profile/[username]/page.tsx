@@ -244,7 +244,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <ProfileActions userId={publicProfile.userId} />
           )}
           {user.isOwner && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <ProfileActions userId={user.userId || publicProfile?.userId || ""} isOwner={true} />
               <Link href={`/profile/${user.username}/earnings`}>
                 <Button variant="outline" size="sm">
                   Earnings
@@ -253,11 +254,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               <Link href="/profile/api-keys">
                 <Button variant="outline" size="sm">
                   API Keys
-                </Button>
-              </Link>
-              <Link href="/settings/profile">
-                <Button variant="outline" size="sm">
-                  Edit Profile
                 </Button>
               </Link>
             </div>

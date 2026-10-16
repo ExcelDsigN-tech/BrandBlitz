@@ -46,6 +46,7 @@ export function registerRoutes(app: Express): void {
   app.use("/sessions", sessionsRoutes);
   app.use("/upload", uploadRoutes);
   app.use("/users", usersRoutes);
+  app.use("/api/users", usersRoutes);
   app.use("/leaderboard", leaderboardRoutes);
   app.use("/webhooks", webhooksRoutes);
   app.use("/leagues", leaguesRoutes);
