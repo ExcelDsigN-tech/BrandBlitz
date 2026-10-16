@@ -66,6 +66,9 @@ services:
 
   deposit-monitor:
     restart: unless-stopped
+    # Re-state the grace period explicitly so the prod override doesn't silently
+    # drop it. Must be >= the base compose value (35s) to protect the SIGTERM handler.
+    stop_grace_period: 35s
     environment:
       NODE_ENV: production
     deploy:

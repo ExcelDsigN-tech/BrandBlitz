@@ -1,0 +1,94 @@
+# Prometheus alerting rules for apps/deposit-monitor (issue #959, ADR 002).
+#
+# SLO: deposit_monitor_indexer_lag_seconds <= 60 for 99% of 5-minute windows,
+# measured over a rolling 28 days. See docs/operations/deposit-monitor-slo.md.
+# Runbook: docs/runbooks/deposit-monitor-lag.md
+#
+# Scrape target: the deposit-monitor container on METRICS_PORT (default 9464),
+# path /metrics, job name "deposit-monitor".
+#
+# Validate locally with:
+#   promtool check rules infra/prometheus/alerts/deposit-monitor.rules.yml
+#   promtool test rules infra/prometheus/alerts/deposit-monitor.rules.test.yml
+
+groups:
+  - name: deposit-monitor-slo
+    interval: 30s
+    rules:
+      # 1 when any sample in the trailing 5-minute window breached the lag
+      # objective, else 0. Averaging this over 28d gives the bad-window ratio.
+      - record: deposit_monitor:lag_window_bad:5m
+        expr: |
+          max_over_time(deposit_monitor_indexer_lag_seconds[5m])
+            > bool on(instance, job) max_over_time(deposit_monitor_indexer_lag_slo_seconds[5m])
+
+      - record: deposit_monitor:lag_window_bad:ratio_1h
+        expr: avg_over_time(deposit_monitor:lag_window_bad:5m[1h])
+
+      - record: deposit_monitor:lag_window_bad:ratio_6h
+        expr: avg_over_time(deposit_monitor:lag_window_bad:5m[6h])
+
+  - name: deposit-monitor-alerts
+    rules:
+      # Page: the indexer is stalled right now. Every challenge launch is
+      # blocked while this fires.
+      - alert: DepositMonitorIndexerLagHigh
+        expr: |
+          deposit_monitor_indexer_lag_seconds
+            > on(instance, job) deposit_monitor_indexer_lag_slo_seconds
+        for: 5m
+        labels:
+          severity: page
+          service: deposit-monitor
+        annotations:
+          summary: "deposit-monitor indexer lag above SLO for 5m"
+          description: >-
+            Indexer lag is {{ $value | humanizeDuration }} on {{ $labels.instance }}
+            (SLO 60s). New deposits are not being detected, so challenges cannot launch.
+          runbook_url: docs/runbooks/deposit-monitor-lag.md
+
+      # Page: no metrics at all. The process is down or unreachable.
+      - alert: DepositMonitorDown
+        expr: up{job="deposit-monitor"} == 0
+        for: 2m
+        labels:
+          severity: page
+          service: deposit-monitor
+        annotations:
+          summary: "deposit-monitor is not being scraped"
+          description: >-
+            Prometheus cannot scrape {{ $labels.instance }}. Indexer lag cannot be
+            measured and deposits are likely not being processed.
+          runbook_url: docs/runbooks/deposit-monitor-lag.md
+
+      # Ticket: error-budget burn. 1% of windows may be bad over 28 days;
+      # burning at 6x that rate (6% of windows bad over 6h, confirmed by 1h)
+      # exhausts the budget in under 5 days.
+      - alert: DepositMonitorLagErrorBudgetBurn
+        expr: |
+          deposit_monitor:lag_window_bad:ratio_6h > 0.06
+            and deposit_monitor:lag_window_bad:ratio_1h > 0.06
+        for: 15m
+        labels:
+          severity: ticket
+          service: deposit-monitor
+        annotations:
+          summary: "deposit-monitor is burning its indexer-lag error budget"
+          description: >-
+            {{ $value | humanizePercentage }} of 5-minute windows breached the lag
+            SLO over the last 6h (budget: 1% over 28d).
+          runbook_url: docs/runbooks/deposit-monitor-lag.md
+
+      # Ticket: RPC or webhook errors that have not yet caused an SLO breach.
+      - alert: DepositMonitorPollErrors
+        expr: sum by (instance, job, reason) (increase(deposit_monitor_poll_errors_total[10m])) > 5
+        for: 10m
+        labels:
+          severity: ticket
+          service: deposit-monitor
+        annotations:
+          summary: "deposit-monitor poll errors ({{ $labels.reason }})"
+          description: >-
+            {{ $value }} {{ $labels.reason }} poll errors in the last 10m on
+            {{ $labels.instance }}.
+          runbook_url: docs/runbooks/deposit-monitor-lag.md

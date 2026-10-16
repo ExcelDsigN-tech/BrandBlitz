@@ -49,6 +49,22 @@ updates:
       day: monday
       time: "06:00"
 
+  # ── Docker (deposit-monitor image) ───────────────────────────────────────
+  - package-ecosystem: docker
+    directory: "/apps/deposit-monitor"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+
+  # ── Docker (nginx image) ─────────────────────────────────────────────────
+  - package-ecosystem: docker
+    directory: "/nginx"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+
   # ── GitHub Actions ───────────────────────────────────────────────────────
   - package-ecosystem: github-actions
     directory: "/"

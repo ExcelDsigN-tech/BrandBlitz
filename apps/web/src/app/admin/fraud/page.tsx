@@ -97,6 +97,13 @@ export default function AdminFraudPage() {
   const [submitting, setSubmitting] = useState(false);
   const [copiedDetailsId, setCopiedDetailsId] = useState<string | null>(null);
 
+  // Fraud score override dialog state (#1010)
+  const [scoreDialogOpen, setScoreDialogOpen] = useState(false);
+  const [scoreDialogUserId, setScoreDialogUserId] = useState<string | null>(null);
+  const [scoreDialogValue, setScoreDialogValue] = useState("");
+  const [scoreDialogReason, setScoreDialogReason] = useState("");
+  const [scoreSubmitting, setScoreSubmitting] = useState(false);
+
   const isNearLimit = dialogReason.length >= MAX_REASON_LENGTH * 0.85;
   const isAtLimit = dialogReason.length >= MAX_REASON_LENGTH;
 
@@ -187,6 +194,35 @@ export default function AdminFraudPage() {
       setDialogOpen(true);
     } finally {
       setSubmitting(false);
+    }
+  }
+
+  // ─── Fraud score override helpers (#1010) ───────────────────────────────
+
+  function openScoreOverrideDialog(userId: string) {
+    setScoreDialogUserId(userId);
+    setScoreDialogValue("");
+    setScoreDialogReason("");
+    setScoreDialogOpen(true);
+  }
+
+  async function handleSubmitScoreOverride() {
+    if (!apiToken || !scoreDialogUserId || !scoreDialogReason.trim()) return;
+    const score = scoreDialogValue.trim() === "" ? null : Number(scoreDialogValue);
+    if (score !== null && (!Number.isInteger(score) || score < 0)) return;
+
+    setScoreSubmitting(true);
+    const api = createApiClient(apiToken);
+    try {
+      await api.post(`/admin/fraud-flags/users/${scoreDialogUserId}/score-override`, {
+        score,
+        reason: scoreDialogReason.trim(),
+      });
+      setScoreDialogOpen(false);
+    } catch {
+      setScoreDialogOpen(true);
+    } finally {
+      setScoreSubmitting(false);
     }
   }
 
@@ -371,27 +407,36 @@ export default function AdminFraudPage() {
                         <Badge variant={statusVariant(flag.status)}>{flag.status}</Badge>
                       </td>
                       <td className="px-4 py-3">
-                        {flag.status === "open" && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="default"
-                              onClick={() => openDialog("resolved", [flag.id])}
-                            >
-                              Resolve
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => openDialog("escalated", [flag.id])}
-                            >
-                              Escalate
-                            </Button>
-                          </div>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                          {flag.status === "open" && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="default"
+                                onClick={() => openDialog("resolved", [flag.id])}
+                              >
+                                Resolve
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openDialog("escalated", [flag.id])}
+                              >
+                                Escalate
+                              </Button>
+                            </>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => openScoreOverrideDialog(flag.userId)}
+                          >
+                            Override Score
+                          </Button>
+                        </div>
                         {flag.status !== "open" && flag.resolutionReason && (
                           <span
-                            className="cursor-help text-xs text-gray-400"
+                            className="mt-1 block cursor-help text-xs text-gray-400"
                             title={flag.resolutionReason}
                           >
                             Reason on file
@@ -480,6 +525,58 @@ export default function AdminFraudPage() {
             </Button>
             <Button onClick={handleSubmitAction} disabled={!dialogReason.trim() || submitting}>
               {submitting ? "Saving…" : dialogAction === "resolved" ? "Mark resolved" : "Escalate"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Fraud score override dialog (#1010) */}
+      <Dialog open={scoreDialogOpen} onOpenChange={setScoreDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Override fraud score</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="score-override-value">
+              New score <span className="text-xs text-gray-400">(leave blank to clear override)</span>
+            </Label>
+            <Input
+              id="score-override-value"
+              type="number"
+              min={0}
+              step={1}
+              placeholder="e.g. 0"
+              value={scoreDialogValue}
+              onChange={(e) => setScoreDialogValue(e.target.value)}
+            />
+            <Label htmlFor="score-override-reason">
+              Reason <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="score-override-reason"
+              placeholder="e.g. Manual review cleared this user of all flags"
+              value={scoreDialogReason}
+              maxLength={MAX_REASON_LENGTH}
+              onChange={(e) => {
+                if (e.target.value.length <= MAX_REASON_LENGTH) {
+                  setScoreDialogReason(e.target.value);
+                }
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setScoreDialogOpen(false)}
+              disabled={scoreSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitScoreOverride}
+              disabled={!scoreDialogReason.trim() || scoreSubmitting}
+            >
+              {scoreSubmitting ? "Saving…" : "Save override"}
             </Button>
           </DialogFooter>
         </DialogContent>

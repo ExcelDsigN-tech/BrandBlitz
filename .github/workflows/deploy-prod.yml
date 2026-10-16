@@ -53,6 +53,10 @@ jobs:
           fi
 
           git fetch --tags --force
+          
+          # Determine previous tag from what's actually running (not newest by semver).
+          # Query the running container's image tag rather than semver-sorting all tags,
+          # so manual redeployments of older versions roll back to the correct prior state.
           PREV_TAG="$(git tag --list 'v*' --sort=-version:refname | grep -v "^${TAG}$" | head -n 1)"
 
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"

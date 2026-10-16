@@ -4,6 +4,7 @@ import Script from "next/script";
 import { AuthBoundary } from "@/components/auth/auth-boundary";
 import { Providers } from "@/components/providers";
 import { MaintenanceBanner } from "@/components/layout/maintenance-banner";
+import { ImpersonationBanner } from "@/components/layout/impersonation-banner";
 import { getCspNonce } from "@/lib/csp";
 import { FingerprintProvider } from "@/components/providers/fingerprint-provider";
 import { GlobalErrorHandler } from "@/components/error/global-error-handler";
@@ -96,6 +97,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Providers>
               <GlobalErrorHandler />
               <MaintenanceBanner />
+              <ImpersonationBanner />
               {children}
             </Providers>
           </AuthBoundary>

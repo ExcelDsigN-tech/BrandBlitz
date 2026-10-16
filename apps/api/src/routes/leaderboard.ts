@@ -7,13 +7,16 @@ import {
   getTopSessionsPerChallenge,
   getGlobalLeaderboardFromView,
   LEADERBOARD_SORTS,
+  LEADERBOARD_WINDOWS,
   type LeaderboardSort,
+  type LeaderboardWindow,
 } from "../db/queries/sessions";
 import { getReferralNetworkUserIds } from "../db/queries/referrals";
 import { withCoalescing } from "../lib/cache";
 import { CursorQuerySchema } from "../db/pagination";
 import { createError } from "../middleware/error";
 import { optionalAuth } from "../middleware/authenticate";
+import { getChallengeTeamLeaderboard } from "../db/queries/challenge-teams";
 
 const router = Router();
 
@@ -22,6 +25,25 @@ const LEADERBOARD_CACHE_TTL_SEC = 30;
 // Keep leaderboard ORDER BY clauses static or selected from this allowlist only.
 // User query params must never be concatenated directly into SQL strings.
 const LeaderboardSortSchema = z.enum(LEADERBOARD_SORTS).default("score");
+
+// Time-window filter for a challenge's leaderboard (#1006).
+const LeaderboardWindowSchema = z.enum(LEADERBOARD_WINDOWS).default("all-time");
+
+function parseLeaderboardWindow(query: unknown): LeaderboardWindow {
+  const raw =
+    typeof query === "object" && query !== null
+      ? (query as Record<string, unknown>).window
+      : undefined;
+  const parsed = LeaderboardWindowSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw createError(
+      `Invalid leaderboard window. Allowed values: ${LEADERBOARD_WINDOWS.join(", ")}`,
+      400,
+      "INVALID_WINDOW"
+    );
+  }
+  return parsed.data;
+}
 
 function parseLeaderboardSort(query: unknown): LeaderboardSort {
   const raw =
@@ -229,11 +251,28 @@ router.get("/:challengeId/export.csv", optionalAuth, async (req, res, next) => {
  *
  * Query params:
  *  - scope: "global" (default) | "friends" — filter to referral network
+ *  - window: "daily" | "weekly" | "all-time" (default) — filter to sessions
+ *    completed within that window (#1006)
  */
 router.get("/:challengeId", optionalAuth, async (req, res) => {
   const sortBy = parseLeaderboardSort(req.query);
+  const window = parseLeaderboardWindow(req.query);
   const { limit, cursor, offset } = CursorQuerySchema.parse(req.query);
   const scopeRaw = typeof req.query.scope === "string" ? req.query.scope : undefined;
+  const viewRaw = typeof req.query.view === "string" ? req.query.view : undefined;
+
+  if (scopeRaw === "team" || scopeRaw === "teams" || viewRaw === "team" || viewRaw === "teams") {
+    const teams = await getChallengeTeamLeaderboard(req.params.challengeId, limit);
+    res.json({
+      teams,
+      leaderboard: teams,
+      data: teams,
+      scope: "teams",
+      window,
+    });
+    return;
+  }
+
   const scope = scopeRaw === "friends" ? "friends" : "global";
   const userId = req.user?.sub;
 
@@ -252,7 +291,7 @@ router.get("/:challengeId", optionalAuth, async (req, res) => {
   }
 
   const scopeKey = scope === "friends" ? `friends:${userId ?? "anon"}` : "global";
-  const cacheKey = `leaderboard:${sortBy}:${req.params.challengeId}:${limit}:${cursor ?? ""}:${scopeKey}`;
+  const cacheKey = `leaderboard:${sortBy}:${window}:${req.params.challengeId}:${limit}:${cursor ?? ""}:${scopeKey}`;
 
   const responseBody = await withCoalescing(cacheKey, LEADERBOARD_CACHE_TTL_SEC, async () => {
     const scopeFriendIds = scope === "friends" ? friendUserIds : undefined;
@@ -261,7 +300,8 @@ router.get("/:challengeId", optionalAuth, async (req, res) => {
       limit,
       cursor,
       sortBy,
-      scopeFriendIds
+      scopeFriendIds,
+      window
     );
 
     const mappedSessions = result.sessions.map((s, i) => ({
@@ -280,10 +320,25 @@ router.get("/:challengeId", optionalAuth, async (req, res) => {
       data: mappedSessions,
       nextCursor: result.nextCursor,
       scope,
+      window,
     };
   });
 
   res.json(responseBody);
+});
+
+/**
+ * GET /leaderboard/:challengeId/teams
+ * Explicit endpoint for challenge team leaderboard standings (#1002).
+ */
+router.get("/:challengeId/teams", optionalAuth, async (req, res) => {
+  const { limit } = CursorQuerySchema.parse(req.query);
+  const teams = await getChallengeTeamLeaderboard(req.params.challengeId, limit);
+  res.json({
+    teams,
+    leaderboard: teams,
+    data: teams,
+  });
 });
 
 export default router;

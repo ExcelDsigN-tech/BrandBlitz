@@ -22,6 +22,7 @@ import { verifySessionHmac } from "../lib/integrity";
 import { queueReferralBonusForPayout } from "./referrals";
 import { query } from "../db";
 import { getLicensePayoutTerms } from "../db/queries/challenge-licenses";
+import { getChallengeTeamLeaderboard, splitTeamPayout } from "../db/queries/challenge-teams";
 
 // Sentinel included in the PG trigger exception message (migration 018).
 export const FRAUD_BLOCK_SENTINEL = "FRAUD_BLOCKED_PAYOUT";
@@ -125,6 +126,18 @@ export async function processPayout(challengeId: string): Promise<void> {
   });
 
   const totalPoints = eligibleWinners.reduce((acc, s) => acc + s.totalScore, 0);
+  const tierResult = await query<{ id: string; prize_pool_stroops: string }>(
+    "SELECT id, prize_pool_stroops FROM challenge_tiers WHERE challenge_id = $1",
+    [challengeId]
+  );
+  const tierPools = new Map(
+    tierResult.rows.map((tier) => [tier.id, BigInt(tier.prize_pool_stroops)])
+  );
+  const tierPoints = new Map<string, number>();
+  for (const winner of eligibleWinners) {
+    if (winner.tier_id)
+      tierPoints.set(winner.tier_id, (tierPoints.get(winner.tier_id) ?? 0) + winner.totalScore);
+  }
   const licenseTerms = await getLicensePayoutTerms(challengeId);
   const grossPoolStroops = BigInt(challenge.pool_amount_stroops);
   const licenseFeeStroops =
@@ -146,10 +159,16 @@ export async function processPayout(challengeId: string): Promise<void> {
   >();
 
   for (const winner of eligibleWinners) {
+    const tierPool = winner.tier_id ? tierPools.get(winner.tier_id) : undefined;
+    const scopedGrossPool = tierPool ?? grossPoolStroops;
+    const scopedPlayerPool = tierPool
+      ? (scopedGrossPool * playerPoolStroops) / grossPoolStroops
+      : playerPoolStroops;
+    const scopedTotalPoints = winner.tier_id ? (tierPoints.get(winner.tier_id) ?? 0) : totalPoints;
     const amountStroops = calculatePayoutShareStroops(
       winner.totalScore,
-      totalPoints,
-      playerPoolStroops
+      scopedTotalPoints,
+      scopedPlayerPool
     );
 
     if (amountStroops < 1n) {
@@ -358,4 +377,64 @@ export async function processPayout(challengeId: string): Promise<void> {
       txHashes,
     });
   }
+}
+
+/**
+ * Calculate team payout allocations for challenges operating in team mode (#1002).
+ * Distributes prize pool according to team ranks, then splits team winnings among its members.
+ */
+export async function calculateTeamPayoutAllocations(
+  challengeId: string,
+  playerPoolStroops: bigint
+): Promise<Array<{ userId: string; address: string; amountStroops: bigint; teamId: string }>> {
+  const teamEntries = await getChallengeTeamLeaderboard(challengeId, 100);
+  if (teamEntries.length === 0 || playerPoolStroops <= 0n) return [];
+
+  const totalPoints = teamEntries.reduce((sum, t) => sum + t.totalScore, 0);
+  if (totalPoints <= 0) return [];
+
+  // Query stellar addresses for all team members
+  const memberAddressRows = await query<{ user_id: string; stellar_address: string | null }>(
+    `SELECT u.id AS user_id, u.stellar_address
+     FROM team_members tm
+     JOIN users u ON u.id = tm.user_id
+     WHERE tm.challenge_id = $1`,
+    [challengeId]
+  );
+  const addressMap = new Map(
+    memberAddressRows.rows.map((r) => [r.user_id, r.stellar_address ?? ""])
+  );
+
+  const allAllocations: Array<{
+    userId: string;
+    address: string;
+    amountStroops: bigint;
+    teamId: string;
+  }> = [];
+
+  for (const team of teamEntries) {
+    if (team.totalScore <= 0) continue;
+    const teamStroops = calculatePayoutShareStroops(
+      team.totalScore,
+      totalPoints,
+      playerPoolStroops
+    );
+    if (teamStroops <= 0n) continue;
+
+    const teamMembersWithAddress = team.members.map((m) => ({
+      userId: m.userId,
+      address: addressMap.get(m.userId) ?? "",
+      score: m.score,
+    }));
+
+    const memberSplits = splitTeamPayout(teamStroops, teamMembersWithAddress);
+    for (const split of memberSplits) {
+      allAllocations.push({
+        ...split,
+        teamId: team.teamId,
+      });
+    }
+  }
+
+  return allAllocations;
 }

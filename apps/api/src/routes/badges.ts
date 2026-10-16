@@ -5,7 +5,7 @@ import { authenticateOptional } from "../middleware/authenticate";
 import { authenticate } from "../middleware/authenticate";
 import { requireAdmin } from "../middleware/require-admin";
 import { createError } from "../middleware/error";
-import { getUserBadges } from "../db/queries/badges";
+import { getUserBadges, updatePinnedBadges } from "../db/queries/badges";
 
 const router = Router();
 
@@ -144,5 +144,56 @@ router.post("/flush", authenticate, requireAdmin, async (_req, res) => {
   await redis.unlink(BADGES_CACHE_KEY);
   res.status(204).send();
 });
+
+const PinnedBadgesSchema = z.object({
+  badgeIds: z.array(z.string().trim().min(1)).max(3, "You can pin at most 3 badges").optional(),
+  pinned_badges: z
+    .array(z.string().trim().min(1))
+    .max(3, "You can pin at most 3 badges")
+    .optional(),
+  badge_ids: z.array(z.string().trim().min(1)).max(3, "You can pin at most 3 badges").optional(),
+});
+
+export async function handleUpdatePinnedBadges(req: any, res: any) {
+  const body = PinnedBadgesSchema.parse(req.body);
+  const badgeIds = body.badgeIds ?? body.pinned_badges ?? body.badge_ids ?? [];
+
+  // Reject duplicates
+  const unique = new Set(badgeIds);
+  if (unique.size !== badgeIds.length) {
+    throw createError("Duplicate badge IDs are not allowed", 400, "DUPLICATE_BADGE_IDS");
+  }
+
+  // Reject invalid badge IDs
+  const validSlugs = new Set(BADGE_CATALOG.map((b) => b.id));
+  for (const id of badgeIds) {
+    if (!validSlugs.has(id)) {
+      throw createError(`Invalid badge ID: ${id}`, 400, "INVALID_BADGE_ID");
+    }
+  }
+
+  // Verify user has actually earned each badge
+  const earned = await getUserBadges(req.user!.sub);
+  const earnedSlugs = new Set(earned.map((b) => b.badge_slug));
+  for (const id of badgeIds) {
+    if (!earnedSlugs.has(id)) {
+      throw createError(`You have not earned badge: ${id}`, 400, "UNEARNED_BADGE");
+    }
+  }
+
+  const pinnedBadges = await updatePinnedBadges(req.user!.sub, badgeIds);
+  res.status(200).json({
+    success: true,
+    pinnedBadges,
+    pinned_badges: pinnedBadges,
+  });
+}
+
+/**
+ * PATCH /api/badges/pinned & PATCH /api/badges/me/pinned-badges
+ * Pin up to 3 earned badges to public profile (#1001).
+ */
+router.patch("/pinned", authenticate, handleUpdatePinnedBadges);
+router.patch("/me/pinned-badges", authenticate, handleUpdatePinnedBadges);
 
 export default router;

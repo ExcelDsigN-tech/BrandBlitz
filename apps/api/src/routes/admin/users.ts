@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
-import { authenticate } from "../../middleware/authenticate";
+import jwt from "jsonwebtoken";
+import { authenticate, tokenRevocationKey, tokenTtlSeconds } from "../../middleware/authenticate";
 import { requireAdmin } from "../../middleware/require-admin";
 import { createError } from "../../middleware/error";
 import { findUserById, restoreUser, suspendUser, unsuspendUser } from "../../db/queries/users";
@@ -15,11 +16,111 @@ import {
   COHORT_MAX_LIMIT,
   type CohortFilter,
 } from "../../db/queries/cohort";
+import { config } from "../../lib/config";
+import { redis } from "../../lib/redis";
 
 const router = Router();
 
 router.use(authenticate);
+
+/**
+ * POST /admin/users/impersonate-exit
+ * Exit an impersonated session, revoking the token and logging to audit_log.
+ * Mounted before requireAdmin so the impersonated session can call it.
+ */
+router.post("/impersonate-exit", async (req, res) => {
+  const user = req.user;
+  if (!user) throw createError("Unauthorized", 401);
+
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  if (token) {
+    const ttl = tokenTtlSeconds(user);
+    await redis.set(tokenRevocationKey(token), "1", "EX", ttl).catch(() => null);
+  }
+
+  const adminId = user.impersonatedBy ?? user.sub;
+  const targetUserId = user.sub;
+
+  await query(
+    `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+     VALUES ($1, 'impersonation_end', 'user', $2, $3)`,
+    [
+      adminId,
+      targetUserId,
+      JSON.stringify({
+        adminId,
+        targetUserId,
+        endedAt: new Date().toISOString(),
+      }),
+    ]
+  );
+
+  res.json({
+    success: true,
+    message: "Impersonation session ended.",
+  });
+});
+
 router.use(requireAdmin);
+
+/**
+ * POST /admin/users/:userId/impersonate-token
+ * Issue a scoped, read-only session token to impersonate a target user.
+ * Logged to audit_log. Closes #1024.
+ */
+router.post("/:userId/impersonate-token", async (req, res) => {
+  const { userId } = z.object({ userId: z.string().uuid() }).parse(req.params);
+
+  const target = await findUserById(userId);
+  if (!target) throw createError("User not found", 404);
+  if (target.role === "admin") {
+    throw createError("Cannot impersonate an admin user", 403, "FORBIDDEN");
+  }
+
+  const expiresInSeconds = 900; // 15-minute fixed window
+  const token = jwt.sign(
+    {
+      sub: target.id,
+      email: target.email,
+      role: target.role,
+      isImpersonated: true,
+      impersonatedBy: req.user!.sub,
+      iss: config.JWT_ISSUER,
+      aud: config.JWT_AUDIENCE,
+    },
+    config.JWT_SECRET,
+    { expiresIn: expiresInSeconds }
+  );
+
+  await query(
+    `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+     VALUES ($1, 'impersonation_start', 'user', $2, $3)`,
+    [
+      req.user!.sub,
+      target.id,
+      JSON.stringify({
+        adminId: req.user!.sub,
+        targetUserId: target.id,
+        targetEmail: target.email,
+        expiresInSeconds,
+        startedAt: new Date().toISOString(),
+      }),
+    ]
+  );
+
+  res.json({
+    token,
+    expiresIn: expiresInSeconds,
+    user: {
+      id: target.id,
+      email: target.email,
+      username: target.username,
+      displayName: target.display_name,
+      role: target.role,
+    },
+  });
+});
 
 // ── Schemas ──────────────────────────────────────────────────────────────────
 

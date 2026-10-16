@@ -12,6 +12,8 @@ interface ResultScreenProps {
   rank?: number;
   estimatedUsdc?: string;
   challengeId: string;
+  /** Completed session id (#1011) — enables a shareable result card link. */
+  sessionId?: string;
   primaryColor?: string;
   secondaryColor?: string;
 }
@@ -126,6 +128,7 @@ export function ResultScreen({
   rank,
   estimatedUsdc,
   challengeId,
+  sessionId,
   primaryColor,
   secondaryColor,
 }: ResultScreenProps) {
@@ -135,11 +138,19 @@ export function ResultScreen({
   useConfetti(isRankOne, primaryColor, secondaryColor);
 
   const shareText = `I just scored ${formatScore(totalScore)} in a BrandBlitz challenge${estimatedUsdc ? ` and earned ~${formatUsdc(estimatedUsdc)}` : ""}! 🏆`;
+  // A completed, shareable session renders a public result card with an OG
+  // image; otherwise fall back to sharing the current page (#1011).
+  const shareUrl =
+    sessionId && typeof window !== "undefined"
+      ? `${window.location.origin}/share/result/${sessionId}`
+      : typeof window !== "undefined"
+        ? window.location.href
+        : undefined;
 
   async function handleShare(): Promise<void> {
     if (navigator.share) {
       try {
-        await navigator.share({ text: shareText, url: window.location.href });
+        await navigator.share({ text: shareText, url: shareUrl });
         setShareToast("Result shared successfully.");
       } catch {
         // The native share sheet was dismissed or failed — show no confirmation.
@@ -147,7 +158,7 @@ export function ResultScreen({
       return;
     }
 
-    await navigator.clipboard.writeText(shareText);
+    await navigator.clipboard.writeText(shareUrl ? `${shareText} ${shareUrl}` : shareText);
     setShareToast("Result copied to clipboard.");
   }
 

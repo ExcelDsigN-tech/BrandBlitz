@@ -1,9 +1,7 @@
 import { z } from "zod";
 
 const configSchema = z.object({
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   REDIS_URL: z.string().url(),
   STELLAR_NETWORK: z.enum(["testnet", "public"]).default("testnet"),
   STELLAR_RPC_URL: z.string().url().optional(),
@@ -11,9 +9,11 @@ const configSchema = z.object({
   WEBHOOK_SECRET: z.string().min(1),
   API_URL: z.string().url(),
   DEPOSIT_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
-  LOG_LEVEL: z
-    .enum(["error", "warn", "info", "http", "verbose", "debug", "silly"])
-    .default("info"),
+  // Port for GET /metrics (Prometheus) and GET /health. 0 disables the server.
+  METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
+  // Indexer-lag SLO threshold (docs/operations/deposit-monitor-slo.md).
+  INDEXER_LAG_SLO_SECONDS: z.coerce.number().int().positive().default(60),
+  LOG_LEVEL: z.enum(["error", "warn", "info", "http", "verbose", "debug", "silly"]).default("info"),
 });
 
 type Config = z.infer<typeof configSchema>;
@@ -21,7 +21,7 @@ type Config = z.infer<typeof configSchema>;
 function loadConfig(): Readonly<Config> {
   try {
     const parsed = configSchema.parse(process.env);
-    
+
     // Log non-secret config values at startup
     const redacted: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(parsed)) {
@@ -40,7 +40,7 @@ function loadConfig(): Readonly<Config> {
         .join("\n");
       console.error(
         `❌ Invalid or missing environment variables:\n${details}\n` +
-          `Check your .env file for the expected format.`,
+          `Check your .env file for the expected format.`
       );
       process.exit(1);
     }

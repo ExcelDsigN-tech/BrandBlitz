@@ -5,6 +5,7 @@
 | [`bundle-baseline.txt`](./bundle-baseline.txt)                                   | Committed web bundle baseline used by the budget check (see below). |
 | [`api-scale-investigation-plan.md`](./api-scale-investigation-plan.md)           | API scaling investigation plan.                                     |
 | [`high-volume-investigation-plan.md`](./high-volume-investigation-plan.md)       | High-volume load investigation plan.                                |
+| [`load-testing.md`](./load-testing.md)                                           | k6 challenge-play load test: how to run it and read results.        |
 | [`metrics-overhead.md`](./metrics-overhead.md)                                   | Cost of Prometheus metrics collection.                              |
 | [`question-regeneration-concurrency.md`](./question-regeneration-concurrency.md) | Concurrency notes for question regeneration.                        |
 | [`session-start-burst-investigation.md`](./session-start-burst-investigation.md) | Synchronized 5k session-start burst load test at challenge open.    |

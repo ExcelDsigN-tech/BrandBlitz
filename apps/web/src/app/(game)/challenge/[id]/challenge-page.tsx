@@ -20,7 +20,7 @@ import { scoresForResume, shouldShowRecoveryModal } from "@/components/game/sess
 import { BrandKitPreview } from "@/components/brand/brand-kit-preview";
 import { ReportModal } from "@/components/game/report-modal";
 import { FirstRunTutorial } from "@/components/game/first-run-tutorial";
-import { ChallengeRatingPrompt } from "@/components/game/challenge-rating-prompt";
+import { ChallengeTeamsPanel } from "@/components/challenge/challenge-teams-panel";
 
 const WarmupPhase = dynamic(
   () => import("@/components/game/warmup-phase").then((m) => m.WarmupPhase),
@@ -129,6 +129,7 @@ export function ChallengePage({ params }: Props) {
   const [currentRound, setCurrentRound] = React.useState<1 | 2 | 3>(1);
   const [scores, setScores] = React.useState<number[]>([]);
   const [finalRank, setFinalRank] = React.useState<number | null>(null);
+  const [finalSessionId, setFinalSessionId] = React.useState<string | null>(null);
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [answerError, setAnswerError] = React.useState<string | null>(null);
   const [answerState, setAnswerState] = React.useState<ChallengeAnswerState | null>(null);
@@ -354,7 +355,7 @@ export function ChallengePage({ params }: Props) {
     option: AnswerOptionKey | null,
     reactionTimeMs: number,
     signal: AbortSignal
-  ): Promise<{ score: number; correct: boolean }> => {
+  ): Promise<{ score: number; correct: boolean; sessionId?: string }> => {
     if (!apiToken) throw new Error("Missing API token");
     const api = createApiClient(apiToken);
     let lastError: unknown;
@@ -367,7 +368,11 @@ export function ChallengePage({ params }: Props) {
           { selectedOption: option, reactionTimeMs },
           { signal, skipErrorToast: true }
         );
-        return { score: res.data.score as number, correct: Boolean(res.data.correct) };
+        return {
+          score: res.data.score as number,
+          correct: Boolean(res.data.correct),
+          sessionId: res.data.sessionId as string | undefined,
+        };
       } catch (err: any) {
         if (err.name === "CanceledError" || err.message === "Aborted") throw err;
         lastError = err;
@@ -401,6 +406,7 @@ export function ChallengePage({ params }: Props) {
 
       setAnswerState({ selectedOption: option, status: "settled", correct: result.correct });
       setScores((prev) => [...prev, result.score]);
+      if (result.sessionId) setFinalSessionId(result.sessionId);
       await sleep(ANSWER_SETTLED_DELAY_MS);
       if (!mountedRef.current || abortController.signal.aborted) return;
 
@@ -511,7 +517,7 @@ export function ChallengePage({ params }: Props) {
 
   if (phase === "preview" && challenge) {
     return (
-      <>
+      <div className="min-h-screen space-y-6 pb-12">
         <BrandKitPreview
           logoUrl={challenge.logo_url ?? null}
           primaryColor={challenge.primary_color ?? null}
@@ -521,8 +527,15 @@ export function ChallengePage({ params }: Props) {
           onStart={handlePreviewStart}
           onSkip={handlePreviewSkip}
         />
+        <div className="mx-auto max-w-xl px-4">
+          <ChallengeTeamsPanel
+            challengeId={challenge.id}
+            apiToken={apiToken}
+            isLoggedIn={Boolean(session?.user)}
+          />
+        </div>
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
-      </>
+      </div>
     );
   }
 
@@ -654,6 +667,7 @@ export function ChallengePage({ params }: Props) {
         <ResultScreen
           totalScore={scores.reduce((a, b) => a + b, 0)}
           challengeId={challengeId}
+          sessionId={finalSessionId ?? undefined}
           rank={finalRank ?? undefined}
           primaryColor={challenge?.primary_color ?? undefined}
           secondaryColor={challenge?.secondary_color ?? undefined}

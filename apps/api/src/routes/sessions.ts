@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getChallengeById, getChallengeQuestions } from "../db/queries/challenges";
 import {
   getSession,
+  getSessionShareCard,
   markWarmupStarted,
   markWarmupCompleted,
   markChallengeStarted,
@@ -89,6 +90,37 @@ function remainingTimeMs(session: { challenge_started_at?: string | Date | null 
   if (!Number.isFinite(startedAt)) return 45_000;
   return Math.max(0, 45_000 - (Date.now() - startedAt));
 }
+
+/**
+ * GET /sessions/:id/share-card
+ * Public, shareable result-card data for a completed session (#1011).
+ * Deliberately unauthenticated -- this is what a share link resolves to --
+ * so the query behind it excludes practice runs, flagged sessions, and any
+ * PII beyond display name/avatar.
+ */
+router.get("/:id/share-card", async (req, res) => {
+  const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+  const card = await getSessionShareCard(id);
+  if (!card) throw createError("Result not found or not shareable", 404, "NOT_FOUND");
+
+  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+  res.json({
+    sessionId: card.session_id,
+    challengeId: card.challenge_id,
+    brandName: card.brand_name,
+    logoUrl: card.logo_url,
+    primaryColor: card.primary_color,
+    secondaryColor: card.secondary_color,
+    totalScore: card.total_score,
+    rank: card.rank,
+    completedAt: card.completed_at,
+    player: {
+      displayName: card.display_name,
+      username: card.username,
+      avatarUrl: card.avatar_url,
+    },
+  });
+});
 
 /**
  * GET /sessions/:challengeId
@@ -310,9 +342,14 @@ router.post(
 
     await recordRoundScore(session.id, round, score, body.selectedOption, body.reactionTimeMs);
 
+    // Set when round 3 finishes the session, so the client can build a
+    // shareable result-card link (#1011) without a separate round trip.
+    let sessionIdForShareCard: string | undefined;
+
     if (round === 3) {
       const completed = await finishSession(session.id);
       if (completed) {
+        sessionIdForShareCard = completed.is_practice ? undefined : completed.id;
         assertValidTotalScore(completed.total_score);
         const hmac = computeSessionHmac(completed.id, completed.total_score, completed.completed_at!);
         if (hmac) {
@@ -355,6 +392,7 @@ router.post(
       correct: validateAnswer(question, body.selectedOption),
       score,
       round,
+      sessionId: sessionIdForShareCard,
     });
   }
 );

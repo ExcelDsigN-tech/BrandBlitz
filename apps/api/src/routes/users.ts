@@ -21,11 +21,11 @@ import {
   normalizePhoneNumber,
   verifyOtpWithBruteForceProtection,
 } from "../services/phone";
-import { authenticate } from "../middleware/authenticate";
+import { authenticate, optionalAuth } from "../middleware/authenticate";
 import { requireActiveUser } from "../middleware/require-active-user";
 import { createError } from "../middleware/error";
 import { redis } from "../lib/redis";
-import { apiLimiter, phoneRateLimit } from "../middleware/rate-limit";
+import { apiLimiter, phoneRateLimit, reportLimiter } from "../middleware/rate-limit";
 import { getBadgesForUser } from "../services/badges";
 import { config } from "../lib/config";
 import { getSessionHistory, type HistoryStatusFilter } from "../db/queries/sessions";
@@ -33,8 +33,40 @@ import { CursorQuerySchema } from "../db/pagination";
 import { signAccessToken } from "../lib/tokens";
 import { tokenRevocationKey, tokenTtlSeconds } from "../middleware/authenticate";
 import { logger } from "../lib/logger";
+import { handleUpdatePinnedBadges } from "./badges";
 
 const router: Router = Router();
+
+const UserReportSchema = z
+  .object({
+    reason: z.enum(["harassment", "spam", "impersonation", "other"]),
+    details: z.string().trim().max(1000).optional(),
+  })
+  .strict();
+
+router.post("/:id/report", authenticate, reportLimiter, async (req, res) => {
+  const body = UserReportSchema.parse(req.body);
+  if (req.params.id === req.user!.sub) throw createError("You cannot report yourself", 400);
+  const reported = await findUserById(req.params.id);
+  if (!reported) throw createError("User not found", 404);
+  await query(
+    `INSERT INTO user_reports (reporter_id, reported_id, reason, details)
+     VALUES ($1, $2, $3, $4)`,
+    [req.user!.sub, req.params.id, body.reason, body.details ?? null]
+  );
+  res.status(201).json({ reported: true });
+});
+
+router.post("/:id/block", authenticate, async (req, res) => {
+  if (req.params.id === req.user!.sub) throw createError("You cannot block yourself", 400);
+  const reported = await findUserById(req.params.id);
+  if (!reported) throw createError("User not found", 404);
+  await query(
+    `INSERT INTO user_blocks (blocker_id, blocked_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+    [req.user!.sub, req.params.id]
+  );
+  res.status(201).json({ blocked: true });
+});
 
 /**
  * GET /users/me
@@ -61,11 +93,148 @@ router.get("/me", authenticate, async (req, res) => {
     streak_repairs_this_month: user.streak_repairs_this_month,
     streak_repair_available: user.streak_repair_available,
     onboarding_completed: user.onboarding_completed,
+    pinned_badges: (user as any).pinned_badges ?? [],
+    pinnedBadges: (user as any).pinned_badges ?? [],
     created_at: user.created_at,
     updated_at: user.updated_at,
   };
 
   res.json({ user: safeUser });
+});
+
+/**
+ * PATCH /users/me/pinned-badges
+ * Pin up to 3 earned badges to public profile (#1001).
+ */
+router.patch("/me/pinned-badges", authenticate, handleUpdatePinnedBadges);
+
+/**
+ * GET /users/me/api-keys
+ * List personal API keys for the authenticated user. Never exposes secret key hash.
+ * Closes #1027
+ */
+router.get("/me/api-keys", authenticate, async (req, res) => {
+  const result = await query<{
+    id: string;
+    name: string;
+    key_prefix: string;
+    scopes: string[];
+    created_at: string;
+    last_used_at: string | null;
+    revoked_at: string | null;
+  }>(
+    `SELECT id, name, key_prefix, scopes, created_at, last_used_at, revoked_at
+     FROM api_keys
+     WHERE user_id = $1
+     ORDER BY created_at DESC`,
+    [req.user!.sub]
+  );
+
+  res.json({
+    keys: result.rows.map((k) => ({
+      id: k.id,
+      name: k.name,
+      keyPrefix: k.key_prefix,
+      scopes: k.scopes,
+      createdAt: k.created_at,
+      lastUsedAt: k.last_used_at,
+      revokedAt: k.revoked_at,
+      isActive: k.revoked_at === null,
+    })),
+  });
+});
+
+const CreateApiKeySchema = z.object({
+  name: z.string().trim().min(1, "Key name is required").max(100),
+});
+
+/**
+ * POST /users/me/api-keys
+ * Generate a new personal API key. Returned once in full plaintext.
+ * Closes #1027
+ */
+router.post("/me/api-keys", authenticate, async (req, res) => {
+  const { name } = CreateApiKeySchema.parse(req.body);
+  const randomHex = crypto.randomBytes(24).toString("hex");
+  const fullKey = `bb_live_${randomHex}`;
+  const keyPrefix = fullKey.slice(0, 14);
+  const keyHash = crypto.createHash("sha256").update(fullKey).digest("hex");
+
+  const result = await query<{
+    id: string;
+    name: string;
+    key_prefix: string;
+    scopes: string[];
+    created_at: string;
+  }>(
+    `INSERT INTO api_keys (user_id, name, key_prefix, key_hash, scopes)
+     VALUES ($1, $2, $3, $4, ARRAY['read:stats']::TEXT[])
+     RETURNING id, name, key_prefix, scopes, created_at`,
+    [req.user!.sub, name, keyPrefix, keyHash]
+  );
+
+  const row = result.rows[0];
+
+  res.status(201).json({
+    id: row.id,
+    name: row.name,
+    key: fullKey,
+    keyPrefix: row.key_prefix,
+    scopes: row.scopes,
+    createdAt: row.created_at,
+  });
+});
+
+/**
+ * DELETE /users/me/api-keys/:id
+ * Revoke a personal API key.
+ * Closes #1027
+ */
+router.delete("/me/api-keys/:id", authenticate, async (req, res) => {
+  const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+
+  const result = await query<{ key_hash: string }>(
+    `UPDATE api_keys
+     SET revoked_at = NOW()
+     WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL
+     RETURNING key_hash`,
+    [id, req.user!.sub]
+  );
+
+  if (result.rows.length === 0) {
+    throw createError("API key not found or already revoked", 404);
+  }
+
+  const hash = result.rows[0].key_hash;
+  await redis.del(`apikey:hash:${hash}`).catch(() => null);
+
+  res.json({ success: true, message: "API key revoked" });
+});
+
+/**
+ * PATCH /users/me/reminder-preferences
+ * Update challenge reminder lead-time preferences.
+ * Closes #1025
+ */
+router.patch("/me/reminder-preferences", authenticate, async (req, res) => {
+  const schema = z.object({
+    defaultLeadTimeMinutes: z.number().int().min(1).max(10080),
+  });
+  const { defaultLeadTimeMinutes } = schema.parse(req.body);
+
+  await redis
+    .set(
+      `user:pref:reminder_lead_time:${req.user!.sub}`,
+      defaultLeadTimeMinutes.toString(),
+      "EX",
+      365 * 86400
+    )
+    .catch(() => null);
+
+  res.json({
+    success: true,
+    defaultLeadTimeMinutes,
+  });
 });
 
 /**
@@ -260,7 +429,7 @@ router.post("/streaks/repair", authenticate, async (req, res) => {
  * Public profile — display name, stats. No auth required.
  * Returns a redirect field if the username has been renamed.
  */
-router.get("/profile/:username", apiLimiter, async (req, res) => {
+router.get("/profile/:username", optionalAuth, apiLimiter, async (req, res) => {
   const { username } = z.object({ username: z.string() }).parse(req.params);
 
   // Check for username redirect first
@@ -272,6 +441,14 @@ router.get("/profile/:username", apiLimiter, async (req, res) => {
 
   const user = await getUserPublicProfileByUsername(username);
   if (!user) throw createError("User not found", 404);
+
+  if (req.user?.sub) {
+    const blocked = await query(
+      "SELECT 1 FROM user_blocks WHERE blocker_id = $1 AND blocked_id = $2",
+      [req.user.sub, user.id]
+    );
+    if (blocked.rows.length > 0) throw createError("User not found", 404);
+  }
 
   const isOwner = req.user?.sub === user.id;
 
@@ -310,8 +487,9 @@ router.get("/:username/public", apiLimiter, async (req, res) => {
     league: "bronze" | "silver" | "gold" | null;
     status: string;
     deleted_at: string | null;
+    pinned_badges?: string[] | null;
   }>(
-    `SELECT id, username, display_name, avatar_url, created_at, league, status, deleted_at
+    `SELECT id, username, display_name, avatar_url, created_at, league, status, deleted_at, pinned_badges
      FROM users
      WHERE username = $1
      LIMIT 1`,
@@ -406,7 +584,18 @@ router.get("/:username/public", apiLimiter, async (req, res) => {
     };
   });
 
+  const pinnedBadgeDetails = (user.pinned_badges ?? []).map((slug) => {
+    const def = defMap.get(slug);
+    return {
+      slug,
+      name: def?.name ?? slug,
+      description: def?.description ?? "",
+      iconUrl: def?.iconUrl ?? null,
+    };
+  });
+
   res.json({
+    userId: user.id,
     username: user.username,
     displayName: user.display_name,
     avatarUrl: user.avatar_url,
@@ -416,6 +605,9 @@ router.get("/:username/public", apiLimiter, async (req, res) => {
     accuracyPct,
     league,
     badges,
+    pinnedBadges: user.pinned_badges ?? [],
+    pinned_badges: user.pinned_badges ?? [],
+    pinnedBadgeDetails,
   });
 });
 

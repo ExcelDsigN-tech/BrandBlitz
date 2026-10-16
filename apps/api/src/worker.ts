@@ -3,10 +3,7 @@ void initSentry();
 import { connectDb, closeDb } from "./db";
 import { connectRedis, redis, startRedisEvictionMonitor } from "./lib/redis";
 import { createPayoutWorker } from "./queues/processors/payout.processor";
-import {
-  createArchiveWorker,
-  scheduleArchiveJob,
-} from "./queues/archive.queue";
+import { createArchiveWorker, scheduleArchiveJob } from "./queues/archive.queue";
 import { createLeagueWorker } from "./queues/processors/league.processor";
 import { createGdprErasureWorker } from "./queues/processors/gdpr-erasure.processor";
 import { createReferralBonusWorker } from "./queues/processors/referral-bonus.processor";
@@ -17,13 +14,12 @@ import {
   leaderboardRefreshQueue,
 } from "./queues/leaderboard-refresh.queue";
 import { createRecurringChallengesWorker } from "./queues/processors/recurring-challenges.processor";
+import { createChallengeReminderWorker } from "./queues/processors/challenge-reminder.processor";
 import { ensureRecurringChallengesRepeatableJobs } from "./queues/recurring-challenges.queue";
 import { referralBonusQueue } from "./queues/referral-bonus.queue";
 import { recurringChallengesQueue } from "./queues/recurring-challenges.queue";
-import {
-  ensureSessionTimeoutSweepJob,
-  sessionTimeoutQueue,
-} from "./queues/session-timeout.queue";
+import { challengeReminderQueue } from "./queues/challenge-reminder.queue";
+import { ensureSessionTimeoutSweepJob, sessionTimeoutQueue } from "./queues/session-timeout.queue";
 import {
   createDlqWorkers,
   payoutDlqQueue,
@@ -45,6 +41,7 @@ async function startWorker(): Promise<void> {
   const referralBonusWorker = createReferralBonusWorker();
   const sessionTimeoutWorker = createSessionTimeoutWorker();
   const recurringChallengesWorker = createRecurringChallengesWorker();
+  const challengeReminderWorker = createChallengeReminderWorker();
   const dlqWorkers = createDlqWorkers();
   await scheduleArchiveJob();
   await ensureLeagueRepeatableJobs();
@@ -52,7 +49,7 @@ async function startWorker(): Promise<void> {
   await ensureRecurringChallengesRepeatableJobs();
   const evictionMonitor = startRedisEvictionMonitor();
   logger.info(
-    "BullMQ worker started — processing payout + archive + league + gdpr-erasure + referral-bonus + session-timeout + recurring-challenges jobs + dead-letter queues",
+    "BullMQ worker started — processing payout + archive + league + gdpr-erasure + referral-bonus + session-timeout + recurring-challenges + challenge-reminders jobs + dead-letter queues"
   );
 
   const shutdown = async (signal: string) => {
@@ -65,10 +62,12 @@ async function startWorker(): Promise<void> {
     await referralBonusWorker.close();
     await sessionTimeoutWorker.close();
     await recurringChallengesWorker.close();
+    await challengeReminderWorker.close();
     await Promise.all(dlqWorkers.map((w) => w.close()));
     await referralBonusQueue.close();
     await sessionTimeoutQueue.close();
     await recurringChallengesQueue.close();
+    await challengeReminderQueue.close();
     await payoutDlqQueue.close();
     await referralBonusDlqQueue.close();
     await leagueDlqQueue.close();

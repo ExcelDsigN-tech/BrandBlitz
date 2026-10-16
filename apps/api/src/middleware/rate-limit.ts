@@ -207,6 +207,21 @@ export const challengeStartLimiter = rateLimit({
   },
 });
 
+/** User reports are deliberately much tighter than normal API traffic. */
+export const reportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: userAwareKey,
+  passOnStoreError: true,
+  store: redisStore,
+  handler: (req, res) => {
+    record429("reportLimiter", userAwareKey(req));
+    res.status(429).json({ error: "Too many reports, please try again later" });
+  },
+});
+
 /**
  * Upload presign: 20 req / hour per user/IP.
  */
@@ -321,56 +336,23 @@ export const questionPreviewLimiter = rateLimit({
 });
 
 /**
- * Challenge difficulty rating (issue #999): 10 req / 15 min per user.
+ * Personal API key rate limit: 120 req / minute per API key.
+ * Independent of user session rate limits (#1027).
  */
-export const challengeRatingLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  keyGenerator: userAwareKey,
-  passOnStoreError: true,
-  store: redisStore,
-  handler: (req, res) => {
-    record429("challengeRatingLimiter", userAwareKey(req));
-    res.status(429).json({ error: "Too many rating submissions, please try again later" });
-  },
-});
-
-/**
- * Bulk admin actions (issue #998): 20 req / 15 min per admin.
- * Prevents abuse of endpoints that mutate many users in a single request.
- */
-export const bulkActionLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: "draft-7",
-  legacyHeaders: false,
-  keyGenerator: userAwareKey,
-  passOnStoreError: true,
-  store: redisStore,
-  handler: (req, res) => {
-    record429("bulkActionLimiter", userAwareKey(req));
-    res.status(429).json({ error: "Too many bulk actions, please try again later" });
-  },
-});
-
-/**
- * Challenge report: 5 req / 15 min per authenticated user.
- * Prevents report-spam across multiple challenges.
- */
-export const reportLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+export const personalApiKeyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
   standardHeaders: "draft-7",
   legacyHeaders: false,
   keyGenerator: (req) =>
-    req.user?.sub ? `user:${req.user.sub}` : `ip:${normalizeClientIp(req.ip)}`,
+    req.user?.apiKeyId ? `apikey:${req.user.apiKeyId}` : `apikey:${ipKey(req)}`,
   passOnStoreError: true,
   store: redisStore,
   handler: (req, res) => {
-    const key = req.user?.sub ? `user:${req.user.sub}` : `ip:${normalizeClientIp(req.ip)}`;
-    record429("reportLimiter", key);
-    res.status(429).json({ error: "Too many report requests, please try again later" });
+    const key = req.user?.apiKeyId
+      ? `apikey:${req.user.apiKeyId}`
+      : `apikey:${normalizeClientIp(req.ip)}`;
+    record429("personalApiKeyLimiter", key);
+    res.status(429).json({ error: "API key rate limit exceeded", code: "RATE_LIMIT_EXCEEDED" });
   },
 });

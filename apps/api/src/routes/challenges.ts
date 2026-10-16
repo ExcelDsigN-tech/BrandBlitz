@@ -37,6 +37,13 @@ import { config } from "../lib/config";
 import { CursorQuerySchema } from "../db/pagination";
 import { query, pool } from "../db/index";
 import { getAllTags } from "../db/queries/challenge-tags";
+import {
+  createChallengeTeam,
+  joinChallengeTeam,
+  leaveChallengeTeam,
+  getChallengeTeams,
+  getUserChallengeTeam,
+} from "../db/queries/challenge-teams";
 
 const router = Router();
 const CHALLENGE_DETAIL_CACHE_TTL_SECONDS = 60;
@@ -304,7 +311,40 @@ router.get("/:id/stats", authenticate, async (req, res) => {
     [challenge.id]
   );
 
-  res.json({ stats: result.rows[0] });
+  const variantStats = await query(
+    `SELECT cv.id, cv.name,
+            COUNT(gs.id)::int AS total_sessions,
+            COUNT(gs.id) FILTER (WHERE gs.status = 'completed')::int AS completed_sessions,
+            COALESCE(ROUND(AVG(srs.score)::numeric, 2), 0)::float8 AS avg_score,
+            COALESCE(ROUND(AVG(CASE WHEN srs.answer = cq.correct_option THEN 100.0 ELSE 0 END)::numeric, 2), 0)::float8 AS avg_accuracy_pct
+     FROM challenge_variants cv
+     LEFT JOIN game_sessions gs ON gs.variant_id = cv.id
+     LEFT JOIN session_round_scores srs ON srs.session_id = gs.id
+     LEFT JOIN challenge_questions cq ON cq.challenge_id = gs.challenge_id AND cq.round = srs.round
+     WHERE cv.challenge_id = $1
+     GROUP BY cv.id, cv.name ORDER BY cv.name`,
+    [challenge.id]
+  );
+
+  res.json({ stats: result.rows[0], variantStats: variantStats.rows });
+});
+
+router.post("/:id/variants/:variantId/promote", authenticate, async (req, res) => {
+  const challenge = await getChallengeByIdAny(req.params.id);
+  if (!challenge) throw createError("Challenge not found", 404);
+  const brand = await getBrandById(challenge.brand_id);
+  if (!brand || brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const result = await query(
+    `UPDATE challenge_variants
+     SET status = CASE WHEN id = $2 THEN 'promoted' ELSE 'ended' END
+     WHERE challenge_id = $1
+     RETURNING id, name, status`,
+    [challenge.id, req.params.variantId]
+  );
+  if (!result.rows.some((variant) => variant.id === req.params.variantId)) {
+    throw createError("Variant not found", 404);
+  }
+  res.json({ promotedVariantId: req.params.variantId, variants: result.rows });
 });
 
 const ChallengeIdParamSchema = z.object({
@@ -342,15 +382,25 @@ router.get("/:id/session", authenticate, async (req, res) => {
  * GET /challenges/:id/leaderboard
  * Paginated leaderboard for a challenge. Supports keyset cursor pagination.
  */
-router.get("/:id/leaderboard", async (req, res) => {
+router.get("/:id/leaderboard", optionalAuth, async (req, res) => {
   const challenge = await getChallengeByIdAny(req.params.id);
   if (!challenge) throw createError("Challenge not found", 404);
 
   const sortBy = parseLeaderboardSort(req.query);
   const { limit, cursor } = CursorQuerySchema.parse(req.query);
+  const tierId = typeof req.query.tier_id === "string" ? req.query.tier_id : undefined;
   const result = challenge.archived
     ? await getArchivedLeaderboard(challenge.id, limit, cursor)
-    : await getLeaderboard(challenge.id, limit, cursor, sortBy);
+    : await getLeaderboard(
+        challenge.id,
+        limit,
+        cursor,
+        sortBy,
+        undefined,
+        "all-time",
+        tierId,
+        req.user?.sub
+      );
 
   res.json({
     challengeId: challenge.id,
@@ -573,6 +623,73 @@ router.delete("/:id/template-opt-in", authenticate, async (req, res) => {
   if (!updated) throw createError("Challenge not found", 404);
 
   res.json({ challenge: updated });
+});
+
+const TeamActionSchema = z.object({
+  action: z.enum(["create", "join"]).optional(),
+  name: z.string().trim().min(1).max(50).optional(),
+  teamId: z.string().uuid().optional(),
+});
+
+/**
+ * GET /challenges/:id/teams
+ * List all teams for a challenge with member count and current user's membership.
+ */
+router.get("/:id/teams", optionalAuth, async (req, res) => {
+  const { id: challengeId } = z.object({ id: z.string().uuid() }).parse(req.params);
+  const currentUserId = req.user?.sub;
+
+  const challenge = await getChallengeByIdAny(challengeId);
+  if (!challenge) throw createError("Challenge not found", 404);
+
+  const teams = await getChallengeTeams(challengeId, currentUserId);
+  const userTeam = currentUserId ? await getUserChallengeTeam(challengeId, currentUserId) : null;
+
+  res.json({
+    teams,
+    userTeamId: userTeam?.id ?? null,
+    userTeam,
+  });
+});
+
+/**
+ * POST /challenges/:id/teams
+ * Create or join a team for a challenge (#1002).
+ */
+router.post("/:id/teams", authenticate, async (req, res) => {
+  const { id: challengeId } = z.object({ id: z.string().uuid() }).parse(req.params);
+  const body = TeamActionSchema.parse(req.body);
+
+  const challenge = await getChallengeByIdAny(challengeId);
+  if (!challenge) throw createError("Challenge not found", 404);
+
+  // If action is join or teamId is provided, join the team
+  if (body.action === "join" || (body.teamId && !body.name)) {
+    if (!body.teamId) {
+      throw createError("teamId is required to join a team", 400, "MISSING_TEAM_ID");
+    }
+    const result = await joinChallengeTeam(challengeId, body.teamId, req.user!.sub);
+    res.status(200).json({ success: true, team: result.team, membership: result.membership });
+    return;
+  }
+
+  // Otherwise, create team
+  if (!body.name) {
+    throw createError("Team name is required to create a team", 400, "MISSING_TEAM_NAME");
+  }
+
+  const team = await createChallengeTeam(challengeId, body.name, req.user!.sub);
+  res.status(201).json({ success: true, team });
+});
+
+/**
+ * DELETE /challenges/:id/teams/me
+ * Leave the current team for a challenge.
+ */
+router.delete("/:id/teams/me", authenticate, async (req, res) => {
+  const { id: challengeId } = z.object({ id: z.string().uuid() }).parse(req.params);
+  const left = await leaveChallengeTeam(challengeId, req.user!.sub);
+  res.json({ success: true, left });
 });
 
 export default router;

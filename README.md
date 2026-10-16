@@ -720,7 +720,7 @@ In the [Google Cloud Console](https://console.cloud.google.com/):
 
 ### 4. Configure Nginx for your domain
 
-Edit `nginx/nginx.prod.conf` and replace `${DOMAIN}` with your domain, or set it as a shell variable before starting:
+Edit `nginx/templates/nginx.prod.conf.template` and set the deployment variables for your domain, or export `DOMAIN` before starting:
 
 ```bash
 export DOMAIN=yourdomain.com
