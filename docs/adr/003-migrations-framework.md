@@ -91,7 +91,7 @@ Both directories already contain numeric prefixes shared by more than one
 file, compared as integers:
 
 - `apps/api/migrations/`: 12 (`00012-*`, `0012-*`), 27 (two `00027-*`, two
-  `0027-*`), 30 (`00030-*`, `0030-*`).
+  `0027-*`), 30 (`00030-*`, two `0030-*`).
 - `migrations/`: 007, 011, 012, 014, 015, 018, 019.
 
 Applied migrations can't be renamed without rewriting `schema_migrations`

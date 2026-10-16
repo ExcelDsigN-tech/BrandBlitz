@@ -48,7 +48,14 @@ export const GRANDFATHERED_API_DUPLICATES: ReadonlyMap<number, readonly string[]
       "0027-drop-correct-answer.sql",
     ],
   ],
-  [30, ["00030-fraud-score-override.sql", "0030-brand-digest-preferences.sql"]],
+  [
+    30,
+    [
+      "00030-fraud-score-override.sql",
+      "0030-brand-digest-preferences.sql",
+      "0030-challenge-ratings.sql",
+    ],
+  ],
 ]);
 
 /**

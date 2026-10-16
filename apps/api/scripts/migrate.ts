@@ -246,6 +246,8 @@ const LEGACY_EXEMPT_FILES = new Set([
   "0029-scheduled-config-changes.sql",
   "0030-brand-digest-preferences.down.sql",
   "0030-brand-digest-preferences.sql",
+  "0030-challenge-ratings.down.sql",
+  "0030-challenge-ratings.sql",
 ]);
 
 async function runLint(): Promise<void> {
