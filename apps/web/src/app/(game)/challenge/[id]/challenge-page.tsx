@@ -672,6 +672,9 @@ export function ChallengePage({ params }: Props) {
           primaryColor={challenge?.primary_color ?? undefined}
           secondaryColor={challenge?.secondary_color ?? undefined}
         />
+        <div className="px-6 pb-10">
+          <ChallengeRatingPrompt challengeId={challengeId} apiToken={apiToken} />
+        </div>
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
       </>
     );
