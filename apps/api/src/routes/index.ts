@@ -21,6 +21,7 @@ import adminQueueStatsRoutes from "./admin/queue-stats";
 import adminWaitlistRoutes from "./admin/waitlist";
 import adminRoutes from "./admin";
 import deleteAccountRoutes from "./me/delete-account";
+import exportDataRoutes from "./me/export-data";
 import docsRoutes from "./docs";
 import cspReportRoutes from "./csp-report";
 import legalRoutes from "./legal";
@@ -67,5 +68,6 @@ export function registerRoutes(app: Express): void {
   // (/admin/dlq, /admin/archive/...) do not overlap with them.
   app.use("/admin", adminRoutes);
   app.use("/me/delete-account", deleteAccountRoutes);
+  app.use("/me/export", exportDataRoutes);
   app.use("/waitlist", waitlistRoutes);
 }

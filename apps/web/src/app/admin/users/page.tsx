@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { createApiClient } from "@/lib/api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,23 @@ interface AdminUser {
   totalPayouts: number;
 }
 
+interface BulkActionResult {
+  userId: string;
+  success: boolean;
+  status?: string;
+  error?: string;
+  code?: string;
+}
+
+interface BulkActionResponse {
+  action: "suspend" | "unsuspend";
+  succeeded: number;
+  failed: number;
+  results: BulkActionResult[];
+}
+
 type OrderBy = "createdAt" | "fraudScore";
+type BulkAction = "suspend" | "unsuspend";
 
 export default function AdminUsersPage() {
   const { data: session, status } = useSession();
@@ -35,6 +52,10 @@ export default function AdminUsersPage() {
   const [currentCursor, setCurrentCursor] = useState<string | null>(null);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [cursorHistory, setCursorHistory] = useState<Array<string | null>>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkReason, setBulkReason] = useState("");
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<BulkActionResponse | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -97,6 +118,70 @@ export default function AdminUsersPage() {
     void loadUsers(previous);
   }
 
+  function toggleSelected(id: string) {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const allOnPageSelected = users.length > 0 && users.every((user) => selectedIds.has(user.id));
+
+  function toggleSelectAll() {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (allOnPageSelected) {
+        for (const user of users) next.delete(user.id);
+      } else {
+        for (const user of users) next.add(user.id);
+      }
+      return next;
+    });
+  }
+
+  async function runBulkAction(action: BulkAction) {
+    if (!apiToken || selectedIds.size === 0) return;
+    if (action === "suspend" && bulkReason.trim().length === 0) {
+      toast.error("A suspension reason is required.");
+      return;
+    }
+
+    setBulkLoading(true);
+    setBulkResult(null);
+    try {
+      const api = createApiClient(apiToken);
+      const response = await api.post<BulkActionResponse>("/admin/users/bulk-suspend", {
+        userIds: Array.from(selectedIds),
+        action,
+        ...(action === "suspend" ? { reason: bulkReason.trim() } : {}),
+      });
+      setBulkResult(response.data);
+      if (response.data.failed === 0) {
+        toast.success(
+          `${response.data.succeeded} user${response.data.succeeded === 1 ? "" : "s"} ${
+            action === "suspend" ? "suspended" : "unsuspended"
+          }.`
+        );
+      } else {
+        toast.warning(
+          `${response.data.succeeded} succeeded, ${response.data.failed} failed. See details below.`
+        );
+      }
+      setSelectedIds(new Set());
+      setBulkReason("");
+      await loadUsers(currentCursor);
+    } catch {
+      // createApiClient surfaces API errors via toast.
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   if (status === "loading" || (status === "authenticated" && userRole !== "admin")) {
     return null;
   }
@@ -151,6 +236,74 @@ export default function AdminUsersPage() {
         </CardContent>
       </Card>
 
+      {selectedIds.size > 0 && (
+        <Card className="mb-6 border-indigo-200 bg-indigo-50">
+          <CardContent className="flex flex-wrap items-end gap-4 pt-6">
+            <div className="text-sm font-medium">
+              {selectedIds.size} user{selectedIds.size === 1 ? "" : "s"} selected
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="bulk-reason">Suspension reason</Label>
+              <Input
+                id="bulk-reason"
+                value={bulkReason}
+                onChange={(event) => setBulkReason(event.target.value)}
+                placeholder="Reason (required to suspend)"
+                className="w-64"
+                maxLength={500}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={bulkLoading}
+                onClick={() => void runBulkAction("suspend")}
+              >
+                {bulkLoading ? "Working…" : "Suspend selected"}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={bulkLoading}
+                onClick={() => void runBulkAction("unsuspend")}
+              >
+                Unsuspend selected
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={bulkLoading}
+                onClick={() => setSelectedIds(new Set())}
+              >
+                Clear
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {bulkResult && bulkResult.failed > 0 && (
+        <Card className="mb-6">
+          <CardHeader>
+            <CardTitle className="text-base">
+              {bulkResult.succeeded} succeeded · {bulkResult.failed} failed
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-1 text-sm">
+              {bulkResult.results
+                .filter((result) => !result.success)
+                .map((result) => (
+                  <li key={result.userId} className="text-red-600">
+                    <span className="font-mono">{result.userId}</span> — {result.error}
+                  </li>
+                ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Users</CardTitle>
@@ -167,6 +320,14 @@ export default function AdminUsersPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50 text-left text-xs font-medium text-gray-500">
+                    <th className="px-4 py-3">
+                      <input
+                        type="checkbox"
+                        aria-label="Select all users on this page"
+                        checked={allOnPageSelected}
+                        onChange={toggleSelectAll}
+                      />
+                    </th>
                     <th className="px-4 py-3">User</th>
                     <th className="px-4 py-3">Username</th>
                     <th className="px-4 py-3 text-right">Fraud score</th>
@@ -178,6 +339,14 @@ export default function AdminUsersPage() {
                 <tbody>
                   {users.map((user) => (
                     <tr key={user.id} className="border-b last:border-0 hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${user.email}`}
+                          checked={selectedIds.has(user.id)}
+                          onChange={() => toggleSelected(user.id)}
+                        />
+                      </td>
                       <td className="px-4 py-3 font-medium">{user.email}</td>
                       <td className="px-4 py-3">{user.username ?? "—"}</td>
                       <td className="px-4 py-3 text-right font-mono">{user.fraudScore}</td>

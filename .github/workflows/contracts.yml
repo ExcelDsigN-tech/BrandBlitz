@@ -22,12 +22,15 @@ jobs:
   build-test:
     name: Build & test escrow contract
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Install Rust ${{ env.RUST_VERSION }}
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8
         with:
           toolchain: ${{ env.RUST_VERSION }}
           targets: wasm32v1-none
@@ -58,7 +61,7 @@ jobs:
         run: cargo test
 
       - name: Upload WASM artefact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: escrow-wasm-${{ github.sha }}
           path: contracts/target/wasm32v1-none/release/*.wasm

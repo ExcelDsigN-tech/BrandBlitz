@@ -690,6 +690,8 @@ export function ChallengePage({ params }: Props) {
             challengeStatus={challenge?.status ?? "active"}
             isLoggedIn={Boolean(session?.user)}
           />
+        <div className="px-6 pb-10">
+          <ChallengeRatingPrompt challengeId={challengeId} apiToken={apiToken} />
         </div>
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
       </div>

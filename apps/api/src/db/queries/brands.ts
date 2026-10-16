@@ -129,6 +129,79 @@ export async function getPublicBrands(limit = 50): Promise<PublicBrand[]> {
   return result.rows;
 }
 
+export interface PublicBrandChallenge {
+  id: string;
+  status: string;
+  pool_amount_usdc: string;
+  participant_count: number;
+  starts_at: string;
+  ends_at: string | null;
+}
+
+export interface PublicBrandStats {
+  total_challenges: number;
+  total_payout_usdc: number;
+  avg_rating: number | null;
+  rating_count: number;
+}
+
+/** Public challenge history for a brand's profile page. Excludes unpublished states. */
+export async function getPublicBrandChallenges(brandId: string): Promise<PublicBrandChallenge[]> {
+  const result = await query<PublicBrandChallenge>(
+    `SELECT id,
+            status,
+            (pool_amount_stroops / 10000000.0)::numeric(20,7)::text AS pool_amount_usdc,
+            participant_count,
+            starts_at,
+            ends_at
+     FROM challenges
+     WHERE brand_id = $1
+       AND deleted_at IS NULL
+       AND status IN ('active', 'ended', 'settled', 'payout_failed')
+     ORDER BY created_at DESC`,
+    [brandId]
+  );
+  return result.rows;
+}
+
+/**
+ * Aggregate public stats for a brand profile. Total payout counts only
+ * completed payouts; average rating excludes fraud-flagged raters.
+ */
+export async function getPublicBrandStats(brandId: string): Promise<PublicBrandStats> {
+  const result = await query<PublicBrandStats>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM challenges c
+         WHERE c.brand_id = $1 AND c.deleted_at IS NULL) AS total_challenges,
+       (SELECT COALESCE(SUM(p.amount_stroops)::numeric / 10000000, 0)::float8
+          FROM payouts p
+          JOIN challenges c ON c.id = p.challenge_id
+         WHERE c.brand_id = $1
+           AND p.status = 'completed') AS total_payout_usdc,
+       (SELECT ROUND(AVG(cr.difficulty)::numeric, 2)::float8
+          FROM challenge_ratings cr
+          JOIN challenges c ON c.id = cr.challenge_id
+         WHERE c.brand_id = $1
+           AND NOT EXISTS (SELECT 1 FROM fraud_flags ff WHERE ff.user_id = cr.user_id))
+         AS avg_rating,
+       (SELECT COUNT(*)::int
+          FROM challenge_ratings cr
+          JOIN challenges c ON c.id = cr.challenge_id
+         WHERE c.brand_id = $1
+           AND NOT EXISTS (SELECT 1 FROM fraud_flags ff WHERE ff.user_id = cr.user_id))
+         AS rating_count`,
+    [brandId]
+  );
+  return (
+    result.rows[0] ?? {
+      total_challenges: 0,
+      total_payout_usdc: 0,
+      avg_rating: null,
+      rating_count: 0,
+    }
+  );
+}
+
 export async function getBrandMetaById(
   id: string
 ): Promise<Pick<Brand, "id" | "owner_user_id" | "deleted_at"> | null> {

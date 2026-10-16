@@ -11,6 +11,7 @@ import Image from "next/image";
 import type { UserProfile } from "@/lib/api";
 import { BadgeGrid, type Badge as UserBadge } from "@/components/gamification/badge-grid";
 import { OfflineBanner } from "@/components/layout/offline-banner";
+import { DataExportButton } from "@/components/profile/data-export-button";
 import type { Metadata } from "next";
 import { ProfileActions } from "./profile-actions";
 import {

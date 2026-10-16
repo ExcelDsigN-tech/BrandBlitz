@@ -24,7 +24,13 @@ import {
 import { optionalAuth, authenticate } from "../middleware/authenticate";
 import { requireActiveUser } from "../middleware/require-active-user";
 import { createError } from "../middleware/error";
-import { reportLimiter } from "../middleware/rate-limit";
+import { reportLimiter, challengeRatingLimiter } from "../middleware/rate-limit";
+import {
+  upsertChallengeRating,
+  hasCompletedChallenge,
+  isUserFraudFlagged,
+  getChallengeRatingStats,
+} from "../db/queries/challenge-ratings";
 import { withCoalescing } from "../lib/cache";
 import { redis } from "../lib/redis";
 import { config } from "../lib/config";
@@ -509,6 +515,63 @@ router.post("/:id/report", authenticate, requireActiveUser, reportLimiter, async
     client.release();
   }
 });
+
+const RateChallengeSchema = z
+  .object({
+    difficulty: z.number().int().min(1).max(5),
+  })
+  .strict();
+
+/**
+ * POST /challenges/:id/rate
+ * Submit (or replace) the authenticated user's difficulty rating for a
+ * completed challenge. One rating per user per challenge.
+ * Ratings from accounts flagged for fraud are rejected.
+ * Closes #999
+ */
+router.post(
+  "/:id/rate",
+  authenticate,
+  requireActiveUser,
+  challengeRatingLimiter,
+  async (req, res) => {
+    const paramsResult = ChallengeIdParamSchema.safeParse(req.params);
+    if (!paramsResult.success) {
+      throw createError("Invalid challenge id", 400, "INVALID_CHALLENGE_ID");
+    }
+
+    const body = RateChallengeSchema.parse(req.body);
+    const userId = req.user!.sub;
+
+    const challenge = await getChallengeByIdAny(paramsResult.data.id);
+    if (!challenge) throw createError("Challenge not found", 404);
+
+    if (await isUserFraudFlagged(userId)) {
+      throw createError("Accounts flagged for fraud cannot submit ratings", 403, "FRAUD_FLAGGED");
+    }
+
+    if (!(await hasCompletedChallenge(userId, challenge.id))) {
+      throw createError(
+        "You can only rate a challenge you have completed",
+        409,
+        "CHALLENGE_NOT_COMPLETED"
+      );
+    }
+
+    const rating = await upsertChallengeRating({
+      challengeId: challenge.id,
+      userId,
+      difficulty: body.difficulty,
+    });
+
+    res.status(201).json({
+      rating: {
+        challengeId: rating.challenge_id,
+        difficulty: rating.difficulty,
+      },
+    });
+  }
+);
 
 /**
  * POST /challenges/:id/template-opt-in
