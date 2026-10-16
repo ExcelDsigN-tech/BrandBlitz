@@ -22,6 +22,7 @@ import { leaderboardRefreshQueue } from "./queues/leaderboard-refresh.queue";
 import { logger } from "./lib/logger";
 import { config } from "./lib/config";
 import { PERMISSIONS_POLICY_HEADER } from "@brandblitz/config";
+import { handleChatUpgrade, resetChatRooms } from "./routes/challenges.chat";
 
 const app = express();
 const PORT = config.PORT;
@@ -200,6 +201,15 @@ async function start(): Promise<void> {
     logger.info(`API running on port ${PORT}`, { env: config.NODE_ENV });
   });
 
+  server.on("upgrade", (req, socket, head) => {
+    void handleChatUpgrade(req, socket, head).catch((err) => {
+      logger.error("Error during WebSocket upgrade", { err });
+      if (socket.writable) {
+        socket.destroy();
+      }
+    });
+  });
+
   // ── Graceful shutdown ──────────────────────────────────────────────────
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received — starting graceful shutdown`);
@@ -210,6 +220,7 @@ async function start(): Promise<void> {
         await payoutQueue.close();
         await leagueQueue.close();
         await leaderboardRefreshQueue.close();
+        resetChatRooms();
         await closeDb();
         await redis.disconnect();
         logger.info("Shutdown complete");
