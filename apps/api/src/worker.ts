@@ -27,6 +27,7 @@ import {
   leagueDlqQueue,
   recurringChallengesDlqQueue,
 } from "./queues/dlq";
+import { ensureBatchPayoutRepeatableJob } from "./queues/payout.queue";
 import { drainSharedAgent } from "@brandblitz/stellar";
 import { logger } from "./lib/logger";
 
@@ -47,6 +48,7 @@ async function startWorker(): Promise<void> {
   await ensureLeagueRepeatableJobs();
   await ensureSessionTimeoutSweepJob();
   await ensureRecurringChallengesRepeatableJobs();
+  await ensureBatchPayoutRepeatableJob();
   const evictionMonitor = startRedisEvictionMonitor();
   logger.info(
     "BullMQ worker started — processing payout + archive + league + gdpr-erasure + referral-bonus + session-timeout + recurring-challenges + challenge-reminders jobs + dead-letter queues"

@@ -17,6 +17,7 @@ import { toast } from "@/lib/toast";
 import { BenchmarkPanel } from "./benchmark-panel";
 import { EscrowPanel } from "./escrow-panel";
 import { TeamPanel } from "./team-panel";
+import { OgPreviewCard } from "@/components/brand/og-preview-card";
 
 interface ChallengeStats {
   total_sessions: number;
@@ -579,6 +580,15 @@ export default function DashboardPage() {
 
               <CardContent>
                 <BenchmarkPanel brandId={brand.id} apiToken={apiToken} />
+              </CardContent>
+
+              <CardContent>
+                <OgPreviewCard
+                  brandName={brand.name}
+                  brandLogoUrl={brand.logoUrl}
+                  primaryColor={brand.primaryColor}
+                  challenges={brand.challenges ?? []}
+                />
               </CardContent>
             </Card>
           ))}

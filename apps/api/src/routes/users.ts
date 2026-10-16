@@ -34,6 +34,15 @@ import { signAccessToken } from "../lib/tokens";
 import { tokenRevocationKey, tokenTtlSeconds } from "../middleware/authenticate";
 import { logger } from "../lib/logger";
 import { handleUpdatePinnedBadges } from "./badges";
+import multer from "multer";
+import { ALLOWED_UPLOAD_TYPES, ALLOWED_CONTENT_TYPES, detectMime } from "./upload";
+import {
+  BUCKETS,
+  getPublicUrl,
+  uploadObject,
+  deleteObject,
+  optimizeBuffer,
+} from "@brandblitz/storage";
 
 const router: Router = Router();
 
@@ -100,6 +109,147 @@ router.get("/me", authenticate, async (req, res) => {
   };
 
   res.json({ user: safeUser });
+});
+
+const avatarUpload = multer({
+  limits: {
+    fileSize: ALLOWED_UPLOAD_TYPES["user-avatar"].maxMb * 1024 * 1024 + 1024,
+  },
+  storage: multer.memoryStorage(),
+}).fields([
+  { name: "avatar", maxCount: 1 },
+  { name: "file", maxCount: 1 },
+]);
+
+function avatarUploadMiddleware(req: any, res: any, next: any) {
+  avatarUpload(req, res, (err: any) => {
+    if (err) {
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return res.status(413).json({
+          error: `File exceeds maximum allowed size of ${ALLOWED_UPLOAD_TYPES["user-avatar"].maxMb}MB`,
+          code: "FILE_TOO_LARGE",
+        });
+      }
+      return next(err);
+    }
+    next();
+  });
+}
+
+/**
+ * POST /users/me/avatar
+ * Upload and update the authenticated user's custom avatar (#1018).
+ * Reuses the existing upload pipeline in upload.ts and its validation.
+ * Deletes old avatar from storage ONLY after the new one is stored and user record updated.
+ */
+router.post("/me/avatar", authenticate, avatarUploadMiddleware, async (req, res) => {
+  const file = (req.files as any)?.avatar?.[0] || (req.files as any)?.file?.[0] || req.file;
+
+  if (file) {
+    const maxBytes = ALLOWED_UPLOAD_TYPES["user-avatar"].maxMb * 1024 * 1024;
+    if (file.size > maxBytes || file.buffer.length > maxBytes) {
+      throw createError(
+        `File exceeds maximum allowed size of ${ALLOWED_UPLOAD_TYPES["user-avatar"].maxMb}MB`,
+        413,
+        "FILE_TOO_LARGE"
+      );
+    }
+
+    const detectedMime = detectMime(file.buffer);
+    if (!detectedMime || !ALLOWED_CONTENT_TYPES.includes(detectedMime)) {
+      throw createError(
+        "File content does not match allowed content types (image/png, image/jpeg, image/webp)",
+        415,
+        "UNSUPPORTED_MEDIA_TYPE"
+      );
+    }
+
+    if (file.mimetype && !(ALLOWED_CONTENT_TYPES as readonly string[]).includes(file.mimetype)) {
+      throw createError("Declared content type is not allowed", 400, "INVALID_CONTENT_TYPE");
+    }
+
+    // Never build storage keys from client-supplied filenames
+    const key = `avatars/${crypto.randomUUID()}.webp`;
+
+    const { webpBuffer } = await optimizeBuffer(file.buffer, "user-avatar", detectedMime);
+
+    await uploadObject({
+      bucket: BUCKETS.BRAND_ASSETS,
+      key,
+      body: webpBuffer,
+      contentType: "image/webp",
+      immutable: true,
+    });
+
+    const newAvatarUrl = getPublicUrl(BUCKETS.BRAND_ASSETS, key);
+
+    const user = await findUserById(req.user!.sub);
+    const oldAvatarUrl = user?.avatar_url;
+
+    await query("UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2", [
+      newAvatarUrl,
+      req.user!.sub,
+    ]);
+
+    // Cleanup old avatar from storage only after successful DB update
+    if (oldAvatarUrl) {
+      const match = oldAvatarUrl.match(/avatars\/[a-zA-Z0-9_\-\.]+/);
+      if (match) {
+        try {
+          await deleteObject(BUCKETS.BRAND_ASSETS, match[0]);
+        } catch (cleanupErr) {
+          logger.warn("Failed to delete replaced avatar from storage", {
+            oldKey: match[0],
+            userId: req.user!.sub,
+            error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ avatarUrl: newAvatarUrl, publicUrl: newAvatarUrl });
+    return;
+  }
+
+  // Also support JSON body with presigned key
+  if (req.body?.key) {
+    const { key: uploadKey } = z.object({ key: z.string().min(1) }).parse(req.body);
+    if (!uploadKey.startsWith("avatars/")) {
+      throw createError("Invalid avatar key prefix", 400);
+    }
+
+    const { optimizeImage } = await import("@brandblitz/storage");
+    const optimizedKey = await optimizeImage(uploadKey, "user-avatar");
+    const newAvatarUrl = getPublicUrl(BUCKETS.BRAND_ASSETS, optimizedKey);
+
+    const user = await findUserById(req.user!.sub);
+    const oldAvatarUrl = user?.avatar_url;
+
+    await query("UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2", [
+      newAvatarUrl,
+      req.user!.sub,
+    ]);
+
+    if (oldAvatarUrl) {
+      const match = oldAvatarUrl.match(/avatars\/[a-zA-Z0-9_\-\.]+/);
+      if (match && match[0] !== optimizedKey) {
+        try {
+          await deleteObject(BUCKETS.BRAND_ASSETS, match[0]);
+        } catch (cleanupErr) {
+          logger.warn("Failed to delete replaced avatar from storage", {
+            oldKey: match[0],
+            userId: req.user!.sub,
+            error: cleanupErr instanceof Error ? cleanupErr.message : String(cleanupErr),
+          });
+        }
+      }
+    }
+
+    res.status(200).json({ avatarUrl: newAvatarUrl, publicUrl: newAvatarUrl });
+    return;
+  }
+
+  throw createError("No avatar file provided", 400);
 });
 
 /**

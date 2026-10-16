@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
 export const s3 = new S3Client({
   endpoint: process.env.S3_ENDPOINT,
@@ -129,3 +129,16 @@ export async function uploadObject({
     }),
   );
 }
+
+/**
+ * Delete an object from S3-compatible storage.
+ */
+export async function deleteObject(bucket: string, key: string): Promise<void> {
+  await s3.send(
+    new DeleteObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    })
+  );
+}
+

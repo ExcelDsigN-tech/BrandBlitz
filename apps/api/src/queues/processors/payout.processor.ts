@@ -1,6 +1,6 @@
 import { Worker, UnrecoverableError, type Job, type WorkerOptions } from "bullmq";
 import { redis } from "../../lib/redis";
-import { processPayout, isFraudBlockError } from "../../services/payout";
+import { processPayout, processBatchPayout, isFraudBlockError } from "../../services/payout";
 import { logger } from "../../lib/logger";
 import { failPayoutsForChallenge } from "../../db/queries/payouts";
 import { query } from "../../db";
@@ -16,9 +16,18 @@ export const payoutWorkerOptions = {
   concurrency: PAYOUT_WORKER_CONCURRENCY,
 } satisfies WorkerOptions;
 
-export async function processPayoutJob(job: Job<{ challengeId: string; requestId?: string }>): Promise<void> {
+export async function processPayoutJob(job: Job<{ challengeId?: string; requestId?: string }>): Promise<void> {
+  if (job.name === "process-batch-payout") {
+    logger.info("Processing daily batch payout job", { jobId: job.id });
+    await processBatchPayout();
+    return;
+  }
+
   logger.info("Processing payout job", { jobId: job.id, challengeId: job.data.challengeId, requestId: job.data.requestId });
   try {
+    if (!job.data.challengeId) {
+      throw new Error("challengeId is required for process-payout job");
+    }
     await processPayout(job.data.challengeId);
   } catch (err) {
     // Fraud-blocked payouts must not be retried — re-running them won't change

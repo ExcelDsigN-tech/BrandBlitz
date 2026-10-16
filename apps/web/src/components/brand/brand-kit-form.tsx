@@ -38,6 +38,7 @@ const FormSchema = z.object({
       num <= MAX_CHALLENGE_DURATION_HOURS
     );
   }, "Duration must be between 1 and 720 hours"),
+  payoutSchedule: z.enum(["instant", "batched"]).default("instant"),
 });
 
 type BrandKitFields = z.infer<typeof FormSchema>;
@@ -57,6 +58,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
     secondaryColor: "#a5b4fc",
     poolAmountUsdc: "",
     durationHours: "72",
+    payoutSchedule: "instant" as "instant" | "batched",
   });
 
   const [logoKey, setLogoKey] = useState<string | null>(null);
@@ -169,6 +171,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
             brandId,
             poolAmountUsdc: fields.poolAmountUsdc,
             endsAt,
+            payoutSchedule: fields.payoutSchedule,
             ...(secondTier.prizePoolUsdc
               ? {
                   tiers: [
@@ -427,6 +430,58 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
               }
             />
             {fieldError("durationHours")}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="payoutScheduleInstant">Payout Schedule</Label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label
+                className={`flex cursor-pointer flex-col rounded-lg border p-4 transition-colors ${
+                  fields.payoutSchedule === "instant"
+                    ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                    : "border-[var(--border)]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="payoutSchedule"
+                    id="payoutScheduleInstant"
+                    value="instant"
+                    checked={fields.payoutSchedule === "instant"}
+                    onChange={() => setFields((prev) => ({ ...prev, payoutSchedule: "instant" }))}
+                    className="text-[var(--primary)]"
+                  />
+                  <span className="font-semibold text-sm">Instant Settlement</span>
+                </div>
+                <span className="mt-1 text-xs text-[var(--muted-foreground)]">
+                  Winners receive prize payouts immediately upon challenge settlement.
+                </span>
+              </label>
+              <label
+                className={`flex cursor-pointer flex-col rounded-lg border p-4 transition-colors ${
+                  fields.payoutSchedule === "batched"
+                    ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                    : "border-[var(--border)]"
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="payoutSchedule"
+                    id="payoutScheduleBatched"
+                    value="batched"
+                    checked={fields.payoutSchedule === "batched"}
+                    onChange={() => setFields((prev) => ({ ...prev, payoutSchedule: "batched" }))}
+                    className="text-[var(--primary)]"
+                  />
+                  <span className="font-semibold text-sm">Daily Batched Run</span>
+                </div>
+                <span className="mt-1 text-xs text-[var(--muted-foreground)]">
+                  Winners are grouped and processed together in a fixed daily batch at 03:00 UTC.
+                </span>
+              </label>
+            </div>
           </div>
         </CardContent>
       </Card>
