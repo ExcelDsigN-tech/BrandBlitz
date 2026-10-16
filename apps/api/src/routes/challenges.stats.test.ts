@@ -51,6 +51,11 @@ vi.mock("../middleware/authenticate", () => ({
 vi.mock("../middleware/rate-limit", () => ({
   reportLimiter: (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
     next(),
+  challengeRatingLimiter: (
+    _req: express.Request,
+    _res: express.Response,
+    next: express.NextFunction
+  ) => next(),
 }));
 
 vi.mock("../lib/cache", () => ({

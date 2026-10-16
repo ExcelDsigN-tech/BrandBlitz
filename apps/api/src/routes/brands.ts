@@ -6,6 +6,8 @@ import {
   getBrandById,
   getPublicBrandById,
   getPublicBrands,
+  getPublicBrandChallenges,
+  getPublicBrandStats,
   getBrandMetaById,
   getActiveDistractorBrands,
   toBrandApi,
@@ -27,6 +29,10 @@ import {
 import { findUserByEmail } from "../db/queries/users";
 import { checkBrandBudgetThreshold } from "../services/budget-alerts";
 import { getBrandAnalytics, getBrandBenchmark, BUCKET_LABELS } from "../db/queries/analytics";
+import {
+  getBrandRatingStats,
+  getBrandRatingStatsByChallenge,
+} from "../db/queries/challenge-ratings";
 import {
   createChallenge,
   insertChallengeQuestions,
@@ -281,6 +287,30 @@ router.get("/public", async (req, res) => {
   );
 
   res.json({ brands: result.rows });
+});
+
+/**
+ * GET /brands/:id/public
+ * Public brand profile: safe public fields, challenge history, and aggregate
+ * stats. No auth required; soft-deleted or unknown brands return 404.
+ */
+router.get("/:id/public", async (req, res) => {
+  const parsed = z.object({ id: z.string().uuid() }).safeParse(req.params);
+  if (!parsed.success) throw createError("Brand not found", 404);
+
+  const brand = await getPublicBrandById(parsed.data.id);
+  if (!brand) throw createError("Brand not found", 404);
+
+  const [challenges, stats] = await Promise.all([
+    getPublicBrandChallenges(parsed.data.id),
+    getPublicBrandStats(parsed.data.id),
+  ]);
+
+  res.json({
+    brand: toPublicBrandApi(brand),
+    challenges,
+    stats,
+  });
 });
 
 /**
@@ -633,7 +663,23 @@ router.get("/:id/dashboard", authenticate, async (req, res) => {
   const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const stats = await getBrandChallengeStats(brand.id);
-  res.json({ stats });
+  const [ratingStats, ratingsByChallenge] = await Promise.all([
+    getBrandRatingStats(brand.id),
+    getBrandRatingStatsByChallenge(brand.id),
+  ]);
+
+  res.json({
+    stats,
+    ratings: {
+      avgDifficulty: ratingStats.avg_difficulty,
+      ratingCount: ratingStats.rating_count,
+      byChallenge: ratingsByChallenge.map((row) => ({
+        challengeId: row.challenge_id,
+        avgDifficulty: row.avg_difficulty,
+        ratingCount: row.rating_count,
+      })),
+    },
+  });
 });
 
 /**
