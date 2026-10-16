@@ -132,6 +132,7 @@ const ChallengeSchema = z.object({
   maxPlayers: z.number().int().positive().optional(),
   endsAt: z.string().datetime(),
   licenseId: z.string().uuid().optional(),
+  payoutSchedule: z.enum(["instant", "batched"]).default("instant"),
   variants: z
     .array(
       z.object({
@@ -925,6 +926,7 @@ router.post("/challenges", authenticate, requireCurrentTosAccepted, async (req, 
     maxPlayers: body.maxPlayers,
     endsAt: body.endsAt,
     licenseId: license?.id,
+    payoutSchedule: body.payoutSchedule,
   });
 
   if (body.variants?.length) {
