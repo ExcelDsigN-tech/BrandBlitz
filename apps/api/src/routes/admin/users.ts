@@ -4,6 +4,7 @@ import { authenticate } from "../../middleware/authenticate";
 import { requireAdmin } from "../../middleware/require-admin";
 import { createError } from "../../middleware/error";
 import { findUserById, restoreUser, suspendUser, unsuspendUser } from "../../db/queries/users";
+import { bulkActionLimiter } from "../../middleware/rate-limit";
 import { createErasureRequest, findPendingErasureRequest } from "../../db/queries/gdpr";
 import { enqueueGdprErasure } from "../../queues/gdpr-erasure.queue";
 import { query } from "../../db/index";
@@ -63,6 +64,154 @@ router.patch("/:userId/suspend", async (req, res) => {
       suspensionReason: updated.suspension_reason,
       suspendedAt: updated.suspended_at,
     },
+  });
+});
+
+// ── Bulk suspend / unsuspend ─────────────────────────────────────────────────
+
+const MAX_BULK_USERS = 100;
+
+const BulkSuspendBodySchema = z
+  .object({
+    userIds: z.array(z.string().uuid()).min(1).max(MAX_BULK_USERS),
+    action: z.enum(["suspend", "unsuspend"]).default("suspend"),
+    reason: z.string().min(1).max(500).optional(),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (value.action === "suspend" && !value.reason) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Suspension reason is required",
+        path: ["reason"],
+      });
+    }
+  });
+
+interface BulkActionResult {
+  userId: string;
+  success: boolean;
+  status?: string;
+  error?: string;
+  code?: string;
+}
+
+/**
+ * POST /admin/users/bulk-suspend
+ * Apply a suspend or unsuspend action to many users in a single request.
+ * Each affected user gets its own audit_log entry; partial failures are
+ * reported per-user rather than failing the whole batch. Rate limited.
+ *
+ * Closes #998
+ */
+router.post("/bulk-suspend", bulkActionLimiter, async (req, res) => {
+  const parsed = BulkSuspendBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw createError(
+      parsed.error.issues.map((issue) => issue.message).join("; "),
+      400,
+      "INVALID_BULK_REQUEST"
+    );
+  }
+
+  const { userIds, action, reason } = parsed.data;
+  const actorId = req.user!.sub;
+  const results: BulkActionResult[] = [];
+
+  for (const userId of userIds) {
+    try {
+      const target = await findUserById(userId);
+      if (!target) {
+        results.push({ userId, success: false, error: "User not found", code: "NOT_FOUND" });
+        continue;
+      }
+
+      if (action === "suspend") {
+        if (target.status === "suspended") {
+          results.push({
+            userId,
+            success: false,
+            error: "User is already suspended",
+            code: "ALREADY_SUSPENDED",
+          });
+          continue;
+        }
+        if (target.role === "admin") {
+          results.push({
+            userId,
+            success: false,
+            error: "Cannot suspend an admin user",
+            code: "FORBIDDEN",
+          });
+          continue;
+        }
+
+        const updated = await suspendUser(userId, reason!, actorId);
+        if (!updated) {
+          results.push({ userId, success: false, error: "Failed to suspend user" });
+          continue;
+        }
+
+        await query(
+          `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+           VALUES ($1, 'user_suspend', 'user', $2, $3)`,
+          [
+            actorId,
+            userId,
+            JSON.stringify({ reason, suspendedAt: updated.suspended_at, bulk: true }),
+          ]
+        );
+
+        results.push({ userId, success: true, status: updated.status });
+      } else {
+        if (target.status !== "suspended") {
+          results.push({
+            userId,
+            success: false,
+            error: "User is not currently suspended",
+            code: "NOT_SUSPENDED",
+          });
+          continue;
+        }
+
+        const updated = await unsuspendUser(userId);
+        if (!updated) {
+          results.push({ userId, success: false, error: "Failed to unsuspend user" });
+          continue;
+        }
+
+        await query(
+          `INSERT INTO audit_log (actor_id, action, entity, entity_key, before, after)
+           VALUES ($1, 'user_unsuspend', 'user', $2, $3, $4)`,
+          [
+            actorId,
+            userId,
+            JSON.stringify({
+              previousReason: target.suspension_reason,
+              suspendedAt: target.suspended_at,
+            }),
+            JSON.stringify({ status: updated.status, bulk: true }),
+          ]
+        );
+
+        results.push({ userId, success: true, status: updated.status });
+      }
+    } catch (error) {
+      results.push({
+        userId,
+        success: false,
+        error: error instanceof Error ? error.message : "Unexpected error",
+      });
+    }
+  }
+
+  const succeeded = results.filter((result) => result.success).length;
+
+  res.json({
+    action,
+    succeeded,
+    failed: results.length - succeeded,
+    results,
   });
 });
 
@@ -144,7 +293,7 @@ router.delete("/:userId/suspend", async (req, res) => {
         suspendedAt: null,
         suspensionReason: null,
       }),
-    ],
+    ]
   );
 
   res.json({
@@ -267,7 +416,10 @@ router.get("/cohort", async (req, res) => {
 });
 
 // CSV column order
-const CSV_COLUMNS: Array<{ key: keyof import("../../db/queries/cohort").CohortUser; label: string }> = [
+const CSV_COLUMNS: Array<{
+  key: keyof import("../../db/queries/cohort").CohortUser;
+  label: string;
+}> = [
   { key: "id", label: "id" },
   { key: "email", label: "email" },
   { key: "display_name", label: "display_name" },
@@ -313,9 +465,7 @@ router.get("/cohort/export", async (req, res) => {
   const users = await getCohortUsersForExport(filter);
 
   const headerRow = CSV_COLUMNS.map((c) => c.label).join(",");
-  const dataRows = users.map((u) =>
-    CSV_COLUMNS.map((c) => escapeCsvField(u[c.key])).join(",")
-  );
+  const dataRows = users.map((u) => CSV_COLUMNS.map((c) => escapeCsvField(u[c.key])).join(","));
   const csv = [headerRow, ...dataRows].join("\n");
 
   res.setHeader("Content-Type", "text/csv; charset=utf-8");

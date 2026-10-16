@@ -40,10 +40,7 @@ function parseIpv4Hextets(part: string): string[] | null {
   if (isIP(part) !== 4) return null;
 
   const octets = part.split(".").map((octet) => Number.parseInt(octet, 10));
-  return [
-    ((octets[0] << 8) | octets[1]).toString(16),
-    ((octets[2] << 8) | octets[3]).toString(16),
-  ];
+  return [((octets[0] << 8) | octets[1]).toString(16), ((octets[2] << 8) | octets[3]).toString(16)];
 }
 
 function expandIpv6(address: string): string[] | null {
@@ -109,9 +106,10 @@ function ipKey(req: Request): string {
 function makeRedisStore() {
   return new RedisStore({
     sendCommand: async (...args: string[]) => {
-      const command = typeof (redis as any).call === "function"
-        ? (redis as any).call
-        : (redis as any).sendCommand;
+      const command =
+        typeof (redis as any).call === "function"
+          ? (redis as any).call
+          : (redis as any).sendCommand;
       if (!command) throw new TypeError("Redis client does not support call/sendCommand");
       try {
         return await command.apply(redis, args);
@@ -144,7 +142,9 @@ async function getApiRateLimit(): Promise<number> {
         cachedRateLimit = configObj.limit;
       }
     } catch (err) {
-      logger.warn("Failed to fetch rate_limit_requests_per_minute", { error: (err as Error).message });
+      logger.warn("Failed to fetch rate_limit_requests_per_minute", {
+        error: (err as Error).message,
+      });
     }
     lastRateLimitFetch = now;
   }
@@ -321,6 +321,41 @@ export const questionPreviewLimiter = rateLimit({
 });
 
 /**
+ * Challenge difficulty rating (issue #999): 10 req / 15 min per user.
+ */
+export const challengeRatingLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: userAwareKey,
+  passOnStoreError: true,
+  store: redisStore,
+  handler: (req, res) => {
+    record429("challengeRatingLimiter", userAwareKey(req));
+    res.status(429).json({ error: "Too many rating submissions, please try again later" });
+  },
+});
+
+/**
+ * Bulk admin actions (issue #998): 20 req / 15 min per admin.
+ * Prevents abuse of endpoints that mutate many users in a single request.
+ */
+export const bulkActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: userAwareKey,
+  passOnStoreError: true,
+  store: redisStore,
+  handler: (req, res) => {
+    record429("bulkActionLimiter", userAwareKey(req));
+    res.status(429).json({ error: "Too many bulk actions, please try again later" });
+  },
+});
+
+/**
  * Challenge report: 5 req / 15 min per authenticated user.
  * Prevents report-spam across multiple challenges.
  */
@@ -329,7 +364,8 @@ export const reportLimiter = rateLimit({
   max: 5,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  keyGenerator: (req) => (req.user?.sub ? `user:${req.user.sub}` : `ip:${normalizeClientIp(req.ip)}`),
+  keyGenerator: (req) =>
+    req.user?.sub ? `user:${req.user.sub}` : `ip:${normalizeClientIp(req.ip)}`,
   passOnStoreError: true,
   store: redisStore,
   handler: (req, res) => {

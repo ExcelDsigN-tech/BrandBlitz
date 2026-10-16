@@ -38,6 +38,7 @@ vi.mock("../db/index", () => ({
 vi.mock("../middleware/rate-limit", () => ({
   apiLimiter: (_req: any, _res: any, next: any) => next(),
   reportLimiter: (_req: any, _res: any, next: any) => next(),
+  challengeRatingLimiter: (_req: any, _res: any, next: any) => next(),
 }));
 
 vi.mock("../db/queries/brands", () => ({
@@ -107,7 +108,7 @@ describe("challenges routes", () => {
     mocks.authMockUser = null;
     mocks.redisGet.mockResolvedValue(null);
     mocks.redisSet.mockResolvedValue("OK");
-    
+
     const s = await startServer();
     currentServer = s.server;
     baseUrl = s.baseUrl;
@@ -143,11 +144,11 @@ describe("challenges routes", () => {
       const data: any = await response.json();
       expect(data.code).toBe("INVALID_QUERY");
     });
-    
+
     it("brandId filter honoured for authenticated owners", async () => {
       mocks.authMockUser = { sub: "user-owner" };
       const brandId = randomUUID();
-      
+
       mocks.getBrandById.mockResolvedValue({ id: brandId, owner_user_id: "user-owner" });
       const brandChallenges = [{ id: "brand-chal-1" }];
       mocks.getChallengesByBrandId.mockResolvedValue(brandChallenges);
@@ -161,7 +162,7 @@ describe("challenges routes", () => {
     });
 
     it("returns 403 Forbidden if unauthenticated user tries to filter by brandId", async () => {
-      mocks.authMockUser = null; 
+      mocks.authMockUser = null;
       const brandId = randomUUID();
       mocks.getBrandById.mockResolvedValue({ id: brandId, owner_user_id: "owner" });
 
@@ -191,7 +192,7 @@ describe("challenges routes", () => {
   describe("GET /challenges/:id", () => {
     it("returns 404 for non-existent challenge ID", async () => {
       mocks.getChallengeByIdAny.mockResolvedValue(null);
-      
+
       const response = await fetch(`${baseUrl}/challenges/not-found`);
       expect(response.status).toBe(404);
       const data: any = await response.json();
@@ -206,19 +207,25 @@ describe("challenges routes", () => {
         {
           id: "q1",
           question_text: "What is 2+2?",
-          option_a: "3", option_b: "4", option_c: "5", option_d: "6",
+          option_a: "3",
+          option_b: "4",
+          option_c: "5",
+          option_d: "6",
           correct_option: "B",
-          correct_answer: "4"
+          correct_answer: "4",
         },
         {
           id: "q2",
           question_text: "What color is the sky?",
-          option_a: "blue", option_b: "red", option_c: "green", option_d: "yellow",
+          option_a: "blue",
+          option_b: "red",
+          option_c: "green",
+          option_d: "yellow",
           correct_option: "A",
-          correct_answer: "blue"
-        }
+          correct_answer: "blue",
+        },
       ];
-      
+
       mocks.getChallengeQuestions.mockResolvedValue(mockQuestions);
 
       const response = await fetch(`${baseUrl}/challenges/chal-secret`);
@@ -227,11 +234,11 @@ describe("challenges routes", () => {
       const data: any = await response.json();
       expect(data.challenge).toEqual(mockChallenge);
       expect(data.questions).toHaveLength(2);
-      
+
       expect(data.questions[0]).not.toHaveProperty("correct_option");
       expect(data.questions[0]).not.toHaveProperty("correct_answer");
       expect(data.questions[0].option_a).toBe("3");
-      
+
       expect(data.questions[1]).not.toHaveProperty("correct_option");
       expect(data.questions[1]).not.toHaveProperty("correct_answer");
     });
@@ -395,14 +402,16 @@ describe("challenges routes", () => {
 
     it("paginates and maps leaderboard outputs cleanly mapping total_score DESC effectively", async () => {
       mocks.getChallengeByIdAny.mockResolvedValue({ id: "chal-leader" });
-      
+
       const mockSessions = [
         { username: "Alice", avatar_url: "alice.png", total_score: 500, completed_at: "time1" },
-        { username: "Bob", avatar_url: "bob.png", total_score: 400, completed_at: "time2" }
+        { username: "Bob", avatar_url: "bob.png", total_score: 400, completed_at: "time2" },
       ];
       mocks.getLeaderboard.mockResolvedValue(mockSessions);
 
-      const response = await fetch(`${baseUrl}/challenges/chal-leader/leaderboard?limit=10&offset=5`);
+      const response = await fetch(
+        `${baseUrl}/challenges/chal-leader/leaderboard?limit=10&offset=5`
+      );
       expect(response.status).toBe(200);
 
       const data: any = await response.json();
@@ -414,15 +423,15 @@ describe("challenges routes", () => {
         username: "Alice",
         avatarUrl: "alice.png",
         totalScore: 500,
-        endedAt: "time1"
+        endedAt: "time1",
       });
-      
+
       expect(data.sessions[1]).toEqual({
         rank: 7,
         username: "Bob",
         avatarUrl: "bob.png",
         totalScore: 400,
-        endedAt: "time2"
+        endedAt: "time2",
       });
 
       expect(mocks.getLeaderboard).toHaveBeenCalledWith("chal-leader", 10, 5);

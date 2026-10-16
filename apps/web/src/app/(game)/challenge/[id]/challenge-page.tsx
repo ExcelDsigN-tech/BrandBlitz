@@ -20,6 +20,7 @@ import { scoresForResume, shouldShowRecoveryModal } from "@/components/game/sess
 import { BrandKitPreview } from "@/components/brand/brand-kit-preview";
 import { ReportModal } from "@/components/game/report-modal";
 import { FirstRunTutorial } from "@/components/game/first-run-tutorial";
+import { ChallengeRatingPrompt } from "@/components/game/challenge-rating-prompt";
 
 const WarmupPhase = dynamic(
   () => import("@/components/game/warmup-phase").then((m) => m.WarmupPhase),
@@ -657,6 +658,9 @@ export function ChallengePage({ params }: Props) {
           primaryColor={challenge?.primary_color ?? undefined}
           secondaryColor={challenge?.secondary_color ?? undefined}
         />
+        <div className="px-6 pb-10">
+          <ChallengeRatingPrompt challengeId={challengeId} apiToken={apiToken} />
+        </div>
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
       </>
     );

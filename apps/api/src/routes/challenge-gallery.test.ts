@@ -90,6 +90,7 @@ vi.mock("../lib/redis", () => ({
 vi.mock("../middleware/rate-limit", () => ({
   apiLimiter: (_req: any, _res: any, next: any) => next(),
   reportLimiter: (_req: any, _res: any, next: any) => next(),
+  challengeRatingLimiter: (_req: any, _res: any, next: any) => next(),
 }));
 
 vi.mock("../db/queries/sessions", () => ({
@@ -406,7 +407,10 @@ describe("POST /challenges/:id/template-opt-in", () => {
   it("returns 200 with updated challenge when opt-in succeeds", async () => {
     mocks.getChallengeByIdAny.mockResolvedValue({ ...mockChallenge, archived: false });
     mocks.getBrandById.mockResolvedValue(mockBrand);
-    mocks.optChallengeIntoGallery.mockResolvedValue({ ...mockChallenge, is_gallery_template: true });
+    mocks.optChallengeIntoGallery.mockResolvedValue({
+      ...mockChallenge,
+      is_gallery_template: true,
+    });
 
     const res = await fetch(`${baseUrl}/challenges/${CHALLENGE_ID}/template-opt-in`, {
       method: "POST",
