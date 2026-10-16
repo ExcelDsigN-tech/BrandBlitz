@@ -8,6 +8,8 @@
     "build": "turbo run build",
     "test": "vitest run --config vitest.config.ts",
     "e2e": "playwright test -c e2e/playwright.config.ts",
+    "loadtest:seed": "tsx --env-file-if-exists .env scripts/perf/seed-load-test.ts",
+    "loadtest": "k6 run tests/load/challenge-play.js",
     "test:coverage": "vitest run --config vitest.config.ts --coverage",
     "lint": "turbo run lint",
     "type-check": "turbo run type-check",

@@ -60,3 +60,6 @@ fix.md
 .env.*
 !.env.example
 !.env.sample
+
+# k6 load-test fixtures and results (tests/load/)
+tests/load/.data/
