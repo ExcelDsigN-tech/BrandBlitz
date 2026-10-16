@@ -44,7 +44,7 @@ re-litigate the decision.
 - **No drift channel**: the schema lives in SQL files, not in a
   TypeScript model that has to be kept in lock-step. The runtime
   query layer ([sql-template-strings](https://www.npmjs.com/package/sql-template-strings)
-  + a thin type generator) reads from the live schema.
+  - a thin type generator) reads from the live schema.
 - **Operational simplicity**: zero new third-party tools in the
   production runbook. `pnpm migrate` is just a thin wrapper around
   `psql`.
@@ -53,7 +53,7 @@ Considered alternatives:
 
 - **Prisma migrate**: tempting because of the model-first DX, but
   adoption would force us to express our existing schema in
-  `schema.prisma` then *generate* migrations from it. Net loss in
+  `schema.prisma` then _generate_ migrations from it. Net loss in
   reviewability for non-trivial migrations.
 - **Drizzle migrate**: similar trade-off; the generator is
   cleaner than Prisma's, but we still pay the model-first cost.
@@ -79,8 +79,29 @@ Considered alternatives:
 - New contributors learn one tool (`pnpm migrate`) instead of two
   (an ORM model API + an ORM CLI).
 
+## Addendum: duplicate prefixes (#951)
+
+Two directories hold migrations. `apps/api/migrations/` is canonical: it's
+what `migrate.ts` reads. The root `migrations/` is historical and frozen (see
+`migrations/README.md`). The `NNNN_<slug>.sql` pattern above describes the
+root directory; new files use `<NNNNN>-<kebab-slug>.sql` per
+`docs/database/migrations.md`.
+
+Both directories already contain numeric prefixes shared by more than one
+file, compared as integers:
+
+- `apps/api/migrations/`: 12 (`00012-*`, `0012-*`), 27 (two `00027-*`, two
+  `0027-*`), 30 (`00030-*`, `0030-*`).
+- `migrations/`: 007, 011, 012, 014, 015, 018, 019.
+
+Applied migrations can't be renamed without rewriting `schema_migrations`
+everywhere, so these exact groups are grandfathered in
+`apps/api/src/db/migration-lint.ts`. `migrate:lint` runs in CI and rejects
+any new collision or any file added to an existing group.
+
 ## References
 
 - `apps/api/scripts/migrate.ts`
-- `migrations/`
+- `apps/api/migrations/` (canonical), `migrations/` (historical)
+- `apps/api/src/db/migration-lint.ts`
 - Closes #68.

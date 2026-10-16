@@ -24,14 +24,14 @@ This ensures migrations are ordered correctly regardless of the number of digits
 
 ### Historical Note
 
-Earlier migrations (00000-00012) used 5-digit prefixes, while migrations 0006-0026 used 4-digit prefixes. This mixed convention created ambiguity and a duplicate "0012" / "00012" that required historical files to remain unchanged. All new migrations must use 5-digit prefixes to prevent future confusion and ensure correct sort order.
+Earlier migrations (00000-00012) used 5-digit prefixes, while migrations 0006-0030 used 4-digit prefixes. This mixed convention created ambiguity and duplicate prefixes (12, 27 and 30, compared as integers) that required historical files to remain unchanged. `pnpm --filter @brandblitz/api migrate:lint` runs in CI and fails on any new duplicate prefix; the existing groups are allowlisted in `src/db/migration-lint.ts` and that list must not grow. All new migrations must use 5-digit prefixes to prevent future confusion and ensure correct sort order.
 
 Some existing files (e.g. `0015_idx_audit_log_entity_key.sql`, `0021_session_round_scores_reaction_time.sql`) use an underscore after the sequence number instead of a hyphen. The migration runner sorts lexicographically and does not care which separator is used, so this does not affect correctness — but **a hyphen is the standard separator** per the convention above. Existing underscore-separated files are left as-is; all new migrations must use a hyphen.
 
 ## Adding a New Migration
 
-1. Find the highest sequence number currently in use (e.g., 00026)
-2. Create the next file: `00027-your-slug.sql`
+1. Find the highest sequence number currently in use, comparing prefixes as integers (e.g., 00034)
+2. Create the next file: `00035-your-slug.sql`
 3. Write the SQL (add a `.down.sql` file if the migration is reversible)
 4. Commit both files
 
