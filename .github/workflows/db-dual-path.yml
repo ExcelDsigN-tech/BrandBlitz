@@ -70,6 +70,11 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -h localhost -p 5433 -U bb -d brandblitz_fresh -f init.sql
 
       # ── Migration path ────────────────────────────────────────────────────
+      - name: Seed migration DB from shared baseline
+        env:
+          PGPASSWORD: bb
+        run: psql -v ON_ERROR_STOP=1 -h localhost -p 5434 -U bb -d brandblitz_migration -f init.sql
+
       - name: Apply migrations in order
         env:
           PGPASSWORD: bb
