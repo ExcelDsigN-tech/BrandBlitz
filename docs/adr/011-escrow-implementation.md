@@ -1,4 +1,8 @@
-# ADR 003: Escrow Contract Implementation in Production Path
+# ADR 011: Escrow Contract Implementation in Production Path
+
+> Originally filed as `003-escrow-implementation.md`, colliding with
+> [ADR 003](./003-migrations-framework.md). Renumbered to 011 in #945; the
+> content is unchanged.
 
 ## Status
 
@@ -7,6 +11,7 @@ Accepted
 ## Context
 
 ADR 002 decided to use Soroban escrow contracts for prize-pool custody. However, the implementation was incomplete:
+
 - The contract existed but was never called from the API
 - No wrapper library existed to interact with the contract
 - The payout service used direct hot-wallet transfers instead of contract settlement
@@ -36,9 +41,11 @@ Implement full escrow integration in the production payout path:
 ## Implementation
 
 ### 1. EscrowClient Wrapper
+
 **File**: `packages/stellar/src/escrow.ts`
 
 Provides:
+
 - `initialize(admin, token, memo, signerSecret)` — Set up contract for challenge
 - `deposit(depositor, amountStroops, signerSecret)` — Brand funds pool
 - `settle(recipients, signerSecret)` — Distribute to winners (atomic)
@@ -47,47 +54,57 @@ Provides:
 - `isSettled()` — View settlement status
 
 ### 2. Payout Service Integration
+
 **File**: `apps/api/src/services/payout.ts`
 
 Modified `processPayout()` to:
+
 1. Check if `SOROBAN_CONTRACT_ID` is configured
 2. If yes: use `EscrowClient.settle()` for atomic distribution
 3. If no: fall back to `submitBatchPayout()` (direct transfers)
 4. Log which path was used for debugging
 
 ### 3. Deployment Script
+
 **File**: `contracts/contracts/escrow/Makefile`
 
 Added targets:
+
 - `make deploy-testnet` — Deploy to Stellar testnet
 - `make deploy-mainnet` — Deploy to Stellar mainnet
 
 Requires:
+
 - `STELLAR_ACCOUNT` env var (signer account)
 - `stellar` CLI installed
 
 ### 4. Configuration
+
 **File**: `.env.example`
 
 Added:
+
 - `SOROBAN_CONTRACT_ID` — Contract ID after deployment
 - `STELLAR_RPC_URL` — Soroban RPC endpoint
 
 ## Rationale
 
 ### Why Escrow for All Challenges?
+
 - **Consistency**: One settlement path, easier to reason about
 - **Non-custodial**: Maximizes the benefit of ADR 002
 - **Atomic**: All-or-nothing distribution prevents partial payouts
 - **Auditable**: On-chain proof of settlement
 
 ### Why Graceful Fallback?
+
 - **Safety**: Can disable escrow if contract has bugs
 - **Testing**: Allows staging environment to test without contract
 - **Rollout**: Can enable escrow gradually per environment
 - **Recovery**: Quick path if Soroban RPC is down
 
 ### Why Wrapper Library?
+
 - **Abstraction**: Hides Soroban SDK complexity
 - **Reusability**: Can be used by other services (deposit-monitor, etc.)
 - **Testing**: Easier to mock for unit tests
@@ -96,12 +113,14 @@ Added:
 ## Consequences
 
 ### Positive
+
 - ✅ Non-custodial by default (reduces regulatory risk)
 - ✅ Atomic settlement (no partial-payout bugs)
 - ✅ On-chain auditability (disputes resolved against contract)
 - ✅ Graceful degradation (works without contract)
 
 ### Negative
+
 - ⚠️ Soroban RPC dependency (another service to monitor)
 - ⚠️ Gas costs (platform pays for settlement transactions)
 - ⚠️ Contract upgrade complexity (requires Wasm update + ADR)
@@ -110,6 +129,7 @@ Added:
 ## Deployment Checklist
 
 ### Testnet
+
 - [ ] Deploy contract: `cd contracts/contracts/escrow && make deploy-testnet`
 - [ ] Set `SOROBAN_CONTRACT_ID` in `.env.test`
 - [ ] Run integration tests
@@ -117,12 +137,14 @@ Added:
 - [ ] Verify all payouts use escrow path
 
 ### Staging
+
 - [ ] Deploy contract to staging Soroban
 - [ ] Set `SOROBAN_CONTRACT_ID` in staging env
 - [ ] Run full end-to-end test (brand deposit → challenge → payout)
 - [ ] Monitor for 7 days
 
 ### Mainnet
+
 - [ ] Audit contract code (external security firm)
 - [ ] Deploy contract: `cd contracts/contracts/escrow && make deploy-mainnet`
 - [ ] Set `SOROBAN_CONTRACT_ID` in production env
@@ -133,17 +155,20 @@ Added:
 ## Monitoring
 
 ### Metrics
+
 - `payout.escrow_settlement_total` — Successful escrow settlements
 - `payout.escrow_settlement_failed_total` — Failed escrow settlements
 - `payout.fallback_direct_transfer_total` — Fallback to direct transfers
 - `payout.settlement_latency_ms` — Time to settle
 
 ### Alerts
+
 - Alert if `escrow_settlement_failed_total` > 0 in 1h
 - Alert if `fallback_direct_transfer_total` > 0 (indicates contract issues)
 - Alert if `settlement_latency_ms` > 60s (Soroban RPC slow)
 
 ### Logs
+
 - Log contract ID and tx hash for every settlement
 - Log fallback reason if direct transfer used
 - Log gas costs for cost tracking
@@ -151,16 +176,19 @@ Added:
 ## Testing
 
 ### Unit Tests
+
 - Mock EscrowClient for payout service tests
 - Verify fallback logic when contract ID not set
 
 ### Integration Tests
+
 - Deploy contract to testnet
 - Initialize, deposit, settle, verify balances
 - Test refund path
 - Test error handling (insufficient balance, etc.)
 
 ### E2E Tests
+
 - Full flow: brand creates challenge → deposits → plays → settles
 - Verify winner receives USDC from contract
 - Verify contract balance decreases

@@ -20,11 +20,11 @@ at the bottom.
 
 ## Prerequisites
 
-| Tool | Install | Notes |
-|---|---|---|
-| Rust toolchain | <https://rustup.rs> | Needed for `cargo` |
-| `wasm32v1-none` target | `rustup target add wasm32v1-none` | Build target the Makefile emits |
-| Stellar CLI 25 | `cargo install --locked stellar-cli@25 --features opt` | Provides the `stellar` command |
+| Tool                   | Install                                                | Notes                           |
+| ---------------------- | ------------------------------------------------------ | ------------------------------- |
+| Rust toolchain         | <https://rustup.rs>                                    | Needed for `cargo`              |
+| `wasm32v1-none` target | `rustup target add wasm32v1-none`                      | Build target the Makefile emits |
+| Stellar CLI 25         | `cargo install --locked stellar-cli@25 --features opt` | Provides the `stellar` command  |
 
 All commands below are run from `contracts/contracts/escrow` (the directory that
 holds the [`Makefile`](../../contracts/contracts/escrow/Makefile)), unless noted.
@@ -169,5 +169,5 @@ specifically want to exercise the on-chain escrow settlement path.
 
 See [`docs/03-stellar-architecture.md`](../03-stellar-architecture.md#fallback-behavior)
 for how the runtime switch works, and
-[`docs/adr/003-escrow-implementation.md`](../adr/003-escrow-implementation.md) for
+[`docs/adr/011-escrow-implementation.md`](../adr/011-escrow-implementation.md) for
 the rationale.

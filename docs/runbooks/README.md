@@ -16,8 +16,10 @@ Operational playbooks for BrandBlitz on-call engineers. Each runbook covers one 
 | [leaked-secret.md](leaked-secret.md)                   | Secret committed to git or exposed in logs — contain and rotate                   |
 | [rotate-minio-certs.md](rotate-minio-certs.md)         | Rotate expired or compromised MinIO TLS certificates                              |
 | [rotate-s3-credentials.md](rotate-s3-credentials.md)   | Rotate S3 / R2 access keys                                                        |
-| [rotate-secrets.md](rotate-secrets.md)                 | General secret rotation procedure for all services                                |
+| [rotate-secrets.md](rotate-secrets.md)                 | Secret inventory, rotation cadence, and procedure for every secret                |
 | [session-forced-signout.md](session-forced-signout.md) | Force-revoke refresh tokens for a user or entire fleet                            |
+| [gdpr-erasure.md](gdpr-erasure.md)                     | Process a GDPR right-to-erasure request (pseudonymise PII, keep financial rows)   |
+| [tls-setup.md](tls-setup.md)                           | Production TLS / HTTPS setup and verification for the nginx proxy                 |
 
 ---
 

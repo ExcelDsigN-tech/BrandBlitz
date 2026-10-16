@@ -27,16 +27,16 @@ If you discover a security vulnerability in BrandBlitz, please report it respons
 
 If you suspect a credential or API key has been leaked:
 
-1. Rotate the secret immediately using the [Secrets Rotation Runbook](docs/runbooks/secrets-rotation.md)
+1. Rotate the secret immediately using the [Secrets Rotation Runbook](docs/runbooks/rotate-secrets.md)
 2. Review logs for unauthorized activity during the compromise window
 3. File an issue or email [security@brandblitz.app](mailto:security@brandblitz.app) with the timeline
 
 ### Secrets Rotation Schedule
 
-All long-lived secrets are rotated on a regular schedule to minimize the impact of a compromise. See [Secrets Rotation Runbook](docs/runbooks/secrets-rotation.md) for:
+All long-lived secrets are rotated on a regular schedule to minimize the impact of a compromise. See [Secrets Rotation Runbook](docs/runbooks/rotate-secrets.md) for:
 
 - Rotation intervals for each secret
-- Step-by-step procedures for JWT_SECRET, STELLAR_HOT_WALLET_SECRET, GOOGLE_CLIENT_SECRET, WEBHOOK_SECRET, DATABASE_URL, SESSION_INTEGRITY_KEY, PHONE_HASH_SALT, and TWILIO_AUTH_TOKEN
+- Step-by-step procedures for JWT_SECRET, HOT_WALLET_SECRET, GOOGLE_CLIENT_SECRET, WEBHOOK_SECRET, DATABASE_URL, SESSION_INTEGRITY_KEY, PHONE_HASH_SALT, and TWILIO_AUTH_TOKEN
 - Monitoring and rollback procedures
 
 ## Security Practices
