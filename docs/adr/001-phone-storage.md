@@ -34,4 +34,38 @@ The application verifies ownership with Twilio first, then hashes the normalized
 
 - Support tooling can no longer read the user’s phone number from PostgreSQL directly.
 - The `PHONE_HASH_SALT` secret must be managed like other application secrets.
-- Existing environments must apply the migration that adds `phone_hash` and `phone_verified_at`, then drops `phone_number`.
+- The hashed-phone shape is part of the **baseline schema snapshot**, not a
+  forward migration. `apps/api/migrations/00000-initial.sql` creates the
+  `users` table with `phone_hash TEXT UNIQUE`, `phone_verified BOOLEAN NOT NULL
+DEFAULT FALSE` and `phone_verified_at TIMESTAMPTZ`, plus
+  `idx_users_phone_hash`. It has no `phone_number` column. Any database built
+  from `init.sql` or `pnpm --filter @brandblitz/api migrate` already matches
+  this ADR, and there is nothing further to apply.
+- **Known gap: no forward migration exists in the live migration tree.** The
+  `phone_number` → `phone_hash` transition this ADR originally described lives
+  only in `migrations/001_phone_storage_schema.sql`, under the root
+  `migrations/` directory. `apps/api/scripts/migrate.ts` reads only
+  `apps/api/migrations/`, so `pnpm migrate` never runs that file (see issue
+  #948, the two-migrations-directories problem). An environment created
+  _before_ the baseline snapshot that still has a `phone_number` column will
+  not be upgraded automatically. It must apply
+  `migrations/001_phone_storage_schema.sql` by hand (`psql -f`), then confirm
+  that `phone_number` is gone and `phone_hash` / `phone_verified_at` exist. If
+  such environments still exist, this should be turned into a real
+  `apps/api/migrations/` file. None is known at the time of writing.
+
+## References
+
+- `apps/api/migrations/00000-initial.sql`: baseline snapshot. The `users`
+  table definition there is the source of truth for this ADR's columns
+  (verified: `phone_hash` and `phone_verified_at` are present, `phone_number`
+  is absent).
+- `apps/api/scripts/migrate.ts`: the migration runner. It reads only
+  `apps/api/migrations/`.
+- `migrations/001_phone_storage_schema.sql`: historical, **not executed** by
+  the migration runner. Kept only as a manual upgrade path for pre-baseline
+  databases (see Consequences).
+- Issue #948: root `migrations/` vs `apps/api/migrations/` confusion.
+- `apps/api/src/db/queries/users.ts`: reads and writes `phone_hash`.
+- `docs/guides/phone-verification.md`
+- Issue #960: correction of this ADR's migration reference.

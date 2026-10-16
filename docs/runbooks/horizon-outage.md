@@ -12,12 +12,12 @@ One or more of:
 
 ## Impact
 
-| Component | Effect |
-| --- | --- |
+| Component         | Effect                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
 | Challenge payouts | **Blocked** — BullMQ jobs retry with exponential backoff; recipients are not paid until Horizon recovers |
-| Balance checks | **Degraded** — hot-wallet balance reads fail; deposit monitoring halted |
-| New challenges | **Unaffected** if Horizon is only used post-game |
-| Leaderboards / UI | **Unaffected** — served from PostgreSQL |
+| Balance checks    | **Degraded** — hot-wallet balance reads fail; deposit monitoring halted                                  |
+| New challenges    | **Unaffected** if Horizon is only used post-game                                                         |
+| Leaderboards / UI | **Unaffected** — served from PostgreSQL                                                                  |
 
 ## Diagnosis
 
@@ -91,5 +91,6 @@ Link template: [post-mortem template](https://www.notion.so/brandblitz/post-mort
 
 - [payout-stuck-in-queue.md](payout-stuck-in-queue.md)
 - [hot-wallet-low-balance.md](hot-wallet-low-balance.md)
+- [deposit-monitor-lag.md](deposit-monitor-lag.md): an RPC outage also stalls the deposit-monitor and fires `DepositMonitorIndexerLagHigh` / `DepositMonitorPollErrors`
 - `packages/stellar/src/client.ts` — shared HTTP agent config
 - `packages/stellar/src/payout.ts` — batch submission logic
