@@ -10,6 +10,7 @@ export type ChallengeStatus =
   | "payout_failed"
   | "cancelled"
   | "refunded";
+export type RefundPolicy = "full" | "partial_percentage" | "none_after_start";
 
 export interface Challenge {
   id: string;
@@ -36,6 +37,8 @@ export interface Challenge {
   challenge_license_id?: string | null;
   is_gallery_template?: boolean;
   gallery_opted_in_at?: string | null;
+  refund_policy?: RefundPolicy;
+  refund_percentage?: string;
 }
 
 export interface GalleryTemplate {
@@ -77,12 +80,14 @@ export async function createChallenge(data: {
   maxPlayers?: number;
   endsAt?: string;
   licenseId?: string;
+  refundPolicy?: RefundPolicy;
+  refundPercentage?: number;
 }): Promise<Challenge> {
   const result = await query<Challenge>(
     `INSERT INTO challenges
        (brand_id, challenge_id, deposit_memo, pool_amount_stroops, max_players, ends_at,
-        challenge_license_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7)
+        challenge_license_id, refund_policy, refund_percentage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      RETURNING *, (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc`,
     [
       data.brandId,
@@ -92,6 +97,8 @@ export async function createChallenge(data: {
       data.maxPlayers ?? null,
       data.endsAt ?? null,
       data.licenseId ?? null,
+      data.refundPolicy ?? "full",
+      data.refundPercentage ?? 100,
     ]
   );
   return result.rows[0];
@@ -728,9 +735,7 @@ export async function optChallengeOutOfGallery(
 /**
  * Fetch a single gallery template by id (must be opted in and ended).
  */
-export async function getGalleryTemplateById(
-  id: string
-): Promise<GalleryTemplate | null> {
+export async function getGalleryTemplateById(id: string): Promise<GalleryTemplate | null> {
   const result = await query<GalleryTemplate>(
     `SELECT
        c.id,

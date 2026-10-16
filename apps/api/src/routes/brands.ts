@@ -121,6 +121,8 @@ const ChallengeSchema = z.object({
   maxPlayers: z.number().int().positive().optional(),
   endsAt: z.string().datetime(),
   licenseId: z.string().uuid().optional(),
+  refundPolicy: z.enum(["full", "partial_percentage", "none_after_start"]).default("full"),
+  refundPercentage: z.number().min(0).max(100).default(100),
 });
 
 const LicenseChallengeSchema = z.object({ challengeId: z.string().uuid() }).strict();
@@ -710,6 +712,8 @@ router.post("/challenges", authenticate, requireCurrentTosAccepted, async (req, 
     maxPlayers: body.maxPlayers,
     endsAt: body.endsAt,
     licenseId: license?.id,
+    refundPolicy: body.refundPolicy,
+    refundPercentage: body.refundPercentage,
   });
 
   const distractorBrands = await getActiveDistractorBrands(body.brandId);

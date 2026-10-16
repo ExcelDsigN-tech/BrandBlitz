@@ -137,6 +137,7 @@ export function ChallengePage({ params }: Props) {
   const [showTooltip, setShowTooltip] = React.useState(false);
   const [showReportModal, setShowReportModal] = React.useState(false);
   const [showTutorial, setShowTutorial] = React.useState(false);
+  const [accessibilityMode, setAccessibilityMode] = React.useState(false);
 
   const mountedRef = React.useRef(true);
   const currentRoundRef = React.useRef(currentRound);
@@ -175,6 +176,7 @@ export function ChallengePage({ params }: Props) {
     void (async () => {
       try {
         const res = await api.get("/users/me", { skipErrorToast: true });
+        if (!cancelled) setAccessibilityMode(Boolean(res.data.user?.accessibility_mode));
         if (!cancelled && !res.data.user?.onboarding_completed) {
           setShowTutorial(true);
         }
@@ -641,6 +643,7 @@ export function ChallengePage({ params }: Props) {
           answerState={answerState}
           disabled={!isOnline}
           pauseTimer={!isOnline}
+          accessibilityMode={accessibilityMode}
         />
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
       </div>

@@ -28,6 +28,7 @@ interface BonusStatus {
 
 interface ReferralData {
   referralCode: string;
+  vanitySlug?: string | null;
   referredUsers: ReferredUser[];
   bonusStatus: BonusStatus;
 }
@@ -40,6 +41,9 @@ export default function ReferralsPage() {
   const [data, setData] = useState<ReferralData | null>(null);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [vanitySlug, setVanitySlug] = useState("");
+  const [savingSlug, setSavingSlug] = useState(false);
+  const [slugMessage, setSlugMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -54,6 +58,7 @@ export default function ReferralsPage() {
       const api = createApiClient(apiToken);
       const response = await api.get("/users/me/referrals");
       setData(response.data);
+      setVanitySlug(response.data.vanitySlug ?? "");
     } catch (error) {
       console.error("Failed to load referral data", error);
       setData(null);
@@ -142,7 +147,33 @@ export default function ReferralsPage() {
     );
   }
 
-  const referralUrl = typeof window !== "undefined" ? `${window.location.origin}?ref=${data.referralCode}` : "";
+  const referralUrl =
+    typeof window !== "undefined" ? `${window.location.origin}?ref=${data.referralCode}` : "";
+
+  async function saveVanitySlug() {
+    if (!apiToken || !vanitySlug.trim()) return;
+    setSavingSlug(true);
+    setSlugMessage(null);
+    try {
+      const response = await createApiClient(apiToken).patch("/users/me/referral-code", {
+        vanitySlug: vanitySlug.trim().toLowerCase(),
+      });
+      setData((current) =>
+        current
+          ? {
+              ...current,
+              referralCode: response.data.vanitySlug,
+              vanitySlug: response.data.vanitySlug,
+            }
+          : current
+      );
+      setSlugMessage("Vanity slug saved.");
+    } catch {
+      setSlugMessage("That slug is unavailable or invalid.");
+    } finally {
+      setSavingSlug(false);
+    }
+  }
   const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     `Join me on BrandBlitz! Use my referral link: ${referralUrl}`
   )}`;
@@ -195,6 +226,35 @@ export default function ReferralsPage() {
           <p className="mt-2 text-xs text-[var(--muted-foreground)]">
             Code: <span className="font-mono font-semibold">{data.referralCode}</span>
           </p>
+          <div className="mt-5 border-t border-[var(--border)] pt-5">
+            <label htmlFor="vanity-slug" className="mb-2 block text-sm font-medium">
+              Customize your referral slug
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="vanity-slug"
+                value={vanitySlug}
+                onChange={(event) => setVanitySlug(event.target.value)}
+                minLength={3}
+                maxLength={32}
+                pattern="[a-z0-9-]+"
+                className="flex-1 rounded border border-[var(--border)] bg-[var(--background)] px-3 py-2 font-mono text-sm"
+                aria-describedby="vanity-slug-help"
+              />
+              <Button onClick={saveVanitySlug} disabled={savingSlug || vanitySlug.length < 3}>
+                {savingSlug ? "Saving..." : "Save slug"}
+              </Button>
+            </div>
+            <p id="vanity-slug-help" className="mt-2 text-xs text-[var(--muted-foreground)]">
+              3-32 lowercase letters, numbers, or hyphens. Your existing referral code remains
+              valid.
+            </p>
+            {slugMessage && (
+              <p role="status" className="mt-2 text-sm">
+                {slugMessage}
+              </p>
+            )}
+          </div>
         </CardContent>
       </Card>
 
@@ -241,10 +301,7 @@ export default function ReferralsPage() {
               </thead>
               <tbody>
                 {data.referredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-[var(--border)] last:border-0"
-                  >
+                  <tr key={user.id} className="border-b border-[var(--border)] last:border-0">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         {user.avatarUrl ? (
@@ -256,15 +313,13 @@ export default function ReferralsPage() {
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)]/10 text-xs font-semibold">
+                          <div className="bg-[var(--primary)]/10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold">
                             {user.displayName.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div>
                           <p className="font-medium">{user.displayName}</p>
-                          <p className="text-xs text-[var(--muted-foreground)]">
-                            @{user.username}
-                          </p>
+                          <p className="text-xs text-[var(--muted-foreground)]">@{user.username}</p>
                         </div>
                       </div>
                     </td>
@@ -294,11 +349,7 @@ export default function ReferralsPage() {
             <EmptyState
               title="No referrals yet"
               description="Share your referral link to start earning bonuses when your friends join."
-              action={
-                <Button onClick={handleCopyLink}>
-                  Copy Referral Link
-                </Button>
-              }
+              action={<Button onClick={handleCopyLink}>Copy Referral Link</Button>}
             />
           </CardContent>
         </Card>

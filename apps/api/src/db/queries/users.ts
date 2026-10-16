@@ -22,6 +22,9 @@ export interface User {
   stellar_address: string | null;
   embedded_wallet_address: string | null;
   referral_code: string | null;
+  vanity_slug?: string | null;
+  timezone?: string | null;
+  accessibility_mode?: boolean;
   league: "bronze" | "silver" | "gold" | null;
   total_score: number;
   total_earned_usdc: string;
@@ -82,7 +85,7 @@ export async function findUserByPhoneHash(phoneHash: string): Promise<User | nul
 
 export async function findUserByReferralCode(referralCode: string): Promise<User | null> {
   const result = await query<User>(
-    "SELECT * FROM users WHERE referral_code = $1 AND deleted_at IS NULL LIMIT 1",
+    "SELECT * FROM users WHERE (referral_code = $1 OR vanity_slug = $1) AND deleted_at IS NULL LIMIT 1",
     [referralCode]
   );
   return result.rows[0] ?? null;
@@ -104,6 +107,29 @@ export async function setUserReferralCode(userId: string, referralCode: string):
      WHERE id = $2
        AND referral_code IS NULL`,
     [referralCode, userId]
+  );
+}
+
+export async function setUserVanitySlug(userId: string, vanitySlug: string): Promise<void> {
+  await query(
+    `UPDATE users
+     SET vanity_slug = $1, updated_at = NOW()
+     WHERE id = $2 AND deleted_at IS NULL`,
+    [vanitySlug, userId]
+  );
+}
+
+export async function updateUserPreferences(
+  userId: string,
+  data: { timezone?: string; accessibilityMode?: boolean }
+): Promise<void> {
+  await query(
+    `UPDATE users
+     SET timezone = COALESCE($2, timezone),
+         accessibility_mode = COALESCE($3, accessibility_mode),
+         updated_at = NOW()
+     WHERE id = $1 AND deleted_at IS NULL`,
+    [userId, data.timezone ?? null, data.accessibilityMode ?? null]
   );
 }
 

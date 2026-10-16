@@ -33,6 +33,7 @@ interface ChallengeRoundProps {
   onRetry?: () => void;
   /** Called each second when countdown is ≤5 s for tick sound. */
   onTick?: () => void;
+  accessibilityMode?: boolean;
 }
 
 const OPTIONS: ("A" | "B" | "C" | "D")[] = ["A", "B", "C", "D"];
@@ -49,6 +50,7 @@ export function ChallengeRound({
   answerError = null,
   onRetry,
   onTick,
+  accessibilityMode = false,
 }: ChallengeRoundProps) {
   const [localSelected, setLocalSelected] = useState<AnswerOptionKey | null>(null);
   const [localLocked, setLocalLocked] = useState(false);
@@ -104,7 +106,11 @@ export function ChallengeRound({
   };
 
   return (
-    <div className="mx-auto max-w-lg space-y-6">
+    <div
+      className={`mx-auto max-w-lg space-y-6 ${accessibilityMode ? "accessibility-play-mode" : ""}`}
+      data-accessibility-mode={accessibilityMode ? "on" : "off"}
+      aria-describedby={accessibilityMode ? "keyboard-shortcuts" : undefined}
+    >
       {/* Round indicator */}
       <div className="flex items-center justify-between" data-tutorial="score">
         <span className="text-sm font-medium text-[var(--muted-foreground)]">
@@ -147,6 +153,11 @@ export function ChallengeRound({
 
       {/* Question text */}
       <p className="text-center text-xl font-semibold">{question.question_text}</p>
+      {accessibilityMode && (
+        <p id="keyboard-shortcuts" className="text-center text-sm text-[var(--muted-foreground)]">
+          Keyboard controls: press A, B, C, or D (or 1, 2, 3, or 4) to answer.
+        </p>
+      )}
 
       {/* Answer options */}
       <div className="grid grid-cols-1 gap-3">
@@ -178,7 +189,9 @@ export function ChallengeRound({
           role="alert"
           className="mt-4 rounded-md border border-red-500/50 bg-red-500/10 p-4 text-sm"
         >
-          <p className="text-red-500">Could not submit your answer. Check your connection and try again.</p>
+          <p className="text-red-500">
+            Could not submit your answer. Check your connection and try again.
+          </p>
           {onRetry && (
             <Button type="button" variant="outline" size="sm" className="mt-2" onClick={onRetry}>
               Retry
