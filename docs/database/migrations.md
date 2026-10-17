@@ -6,6 +6,8 @@
 `apps/api/migrations/00000-initial.sql` and then applies the forward migration
 files under `apps/api/migrations/`.
 
+> **Important**: The migration runner (`apps/api/scripts/migrate.ts`) reads **only** from `apps/api/migrations/`. A legacy `migrations/` directory exists at the repository root but is not used by the migration system. Always add new migrations to `apps/api/migrations/`.
+
 ### Rules
 
 | Scenario                        | What to run                                    |
