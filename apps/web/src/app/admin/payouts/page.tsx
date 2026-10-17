@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { createApiClient } from "@/lib/api";
+import { toast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Payout {
   id: string;
@@ -104,8 +106,9 @@ export default function AdminPayoutsPage() {
       const api = createApiClient(apiToken);
       await api.post(`/admin/payouts/${payoutId}/retry`);
       await loadPayouts(pagination.page);
+      toast.success("Payout retry submitted.");
     } catch {
-      // error toast already handled by api client
+      toast.error("Payout retry failed. Please try again.");
     } finally {
       setRetryingIds((prev) => {
         const next = new Set(prev);
@@ -116,7 +119,37 @@ export default function AdminPayoutsPage() {
   };
 
   if (status === "loading" || (status === "authenticated" && userRole !== "admin")) {
-    return null;
+    return (
+      <div className="mx-auto max-w-7xl px-4 py-8">
+        <div className="mb-6 flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="rounded-lg border p-4">
+              <Skeleton className="mb-2 h-4 w-24" />
+              <Skeleton className="h-7 w-32" />
+            </div>
+          ))}
+        </div>
+        <Skeleton className="mb-6 h-14 w-full rounded-lg" />
+        <div className="rounded-lg border">
+          <div className="border-b px-6 py-4">
+            <Skeleton className="h-5 w-24" />
+          </div>
+          <div className="divide-y">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="ml-auto h-4 w-20" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (

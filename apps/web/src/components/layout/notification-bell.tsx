@@ -12,12 +12,14 @@ const ICONS: Record<NotificationType, string> = {
   payout_received: "💸",
   badge_earned: "🏅",
   streak_milestone: "🔥",
+  rank_overtaken: "📉",
 };
 
 const TYPE_LABELS: Record<NotificationType, string> = {
   payout_received: "Payout received",
   badge_earned: "Badge earned",
   streak_milestone: "Streak milestone",
+  rank_overtaken: "Rank drop",
 };
 
 function notificationSummary(n: Notification): string {
@@ -33,6 +35,13 @@ function notificationSummary(n: Notification): string {
     case "streak_milestone": {
       const days = n.payload.milestone as number | undefined;
       return days ? `${days}-day streak reached` : "Streak milestone reached";
+    }
+    case "rank_overtaken": {
+      const rank = n.payload.new_rank as number | undefined;
+      const name = n.payload.challenge_name as string | undefined;
+      if (rank && name) return `You dropped to #${rank} on ${name}`;
+      if (rank) return `You dropped to rank #${rank}`;
+      return "You've been overtaken on the leaderboard";
     }
   }
 }
@@ -59,8 +68,11 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [toastQueue, setToastQueue] = useState<Notification[]>([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(5);
   const seenIds = useRef<Set<string>>(new Set());
   const drawerRef = useRef<HTMLDivElement>(null);
+
+  const [statusFeedback, setStatusFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -131,8 +143,11 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
       await api.patch("/users/me/notifications/read-all", {}, { skipErrorToast: true });
       const now = new Date().toISOString();
       setNotifications((prev) => prev.map((n) => ({ ...n, read_at: n.read_at ?? now })));
+      setStatusFeedback({ message: "All notifications marked as read", type: "success" });
     } catch {
-      // best-effort
+      setStatusFeedback({ message: "Failed to mark notifications as read", type: "error" });
+    } finally {
+      setTimeout(() => setStatusFeedback(null), 3000);
     }
   }, [apiToken]);
 
@@ -198,13 +213,26 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
               )}
             </div>
 
+            {statusFeedback && (
+              <div
+                role="status"
+                className={`px-4 py-1.5 text-xs font-medium text-center border-b ${
+                  statusFeedback.type === "success"
+                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                    : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                }`}
+              >
+                {statusFeedback.message}
+              </div>
+            )}
+
             <div className="max-h-96 overflow-y-auto">
               {notifications.length === 0 ? (
                 <p className="py-10 text-center text-sm text-[var(--muted-foreground)]">
                   No notifications yet
                 </p>
               ) : (
-                notifications.map((n) => (
+                notifications.slice(0, visibleCount).map((n) => (
                   <div
                     key={n.id}
                     className={`flex items-start gap-3 border-b border-[var(--border)] px-4 py-3 last:border-0 transition-colors ${
@@ -236,6 +264,30 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
                 ))
               )}
             </div>
+
+            {notifications.length > 0 && (
+              <div className="border-t border-[var(--border)] px-4 py-2.5 bg-[var(--muted)]/20 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+                {notifications.length > visibleCount ? (
+                  <>
+                    <span>
+                      Showing {Math.min(visibleCount, notifications.length)} of {notifications.length}
+                    </span>
+                    <button
+                      onClick={() => setVisibleCount((prev) => prev + 5)}
+                      className="font-medium text-[var(--primary)] hover:underline focus:outline-none"
+                    >
+                      Load older
+                    </button>
+                  </>
+                ) : (
+                  <span className="w-full text-center py-0.5">
+                    {notifications.length >= 50
+                      ? "Showing 50 most recent notifications"
+                      : "All notifications loaded"}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
       </div>

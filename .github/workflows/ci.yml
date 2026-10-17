@@ -27,7 +27,7 @@ jobs:
             --ignore '.corepack/**' \
             --config .markdownlint.json \
             || true   # report findings but don't fail until rule-set is stable
-          markdownlint 'docs/runbooks/*.md' --ignore node_modules
+          markdownlint 'docs/runbooks/*.md' --ignore node_modules --config .markdownlint.json
         # The second call enforces runbooks strictly because they are the
         # critical operational documents (rotate-secrets.md, cdn-purge.md, …)
 
@@ -61,13 +61,28 @@ jobs:
             exit 1
           fi
 
+  # ── Validate .env.example vs config schema ──────────────────────────────────
+  validate-env-example:
+    name: Validate .env.example vs config schema
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Validate .env.example against config schema
+        run: pnpm validate-env-example
+
   # ── Unit tests ───────────────────────────────────────────────────────────────
   test-api:
     name: API unit tests
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: brandblitz
           POSTGRES_PASSWORD: brandblitz_dev

@@ -1,5 +1,6 @@
 import { query } from "../index";
 import { usdcToStroops } from "../../lib/usdc";
+import { encodeCursor, buildCursorWhereSimple, decodeCursorSafe } from "../pagination";
 
 export type PayoutStatus = "pending" | "sent" | "confirmed" | "failed";
 
@@ -162,4 +163,67 @@ export async function getStuckPayouts(limit = 50): Promise<(Payout & { fee_bump_
     [limit]
   );
   return result.rows;
+}
+
+export interface PayoutDetail extends Payout {
+  username: string;
+}
+
+export async function getPayouts(opts: {
+  status?: string;
+  cursor?: string;
+  pageSize: number;
+}): Promise<{ payouts: PayoutDetail[]; nextCursor: string | null }> {
+  const statusParam = opts.status && opts.status !== "all" ? opts.status : null;
+  const cursorValues = decodeCursorSafe(opts.cursor, ["created_at", "id"]);
+
+  let whereExtra = "";
+  const params: unknown[] = [statusParam];
+
+  if (cursorValues) {
+    const { clause, params: cursorParams } = buildCursorWhereSimple(
+      "p.created_at",
+      "DESC",
+      cursorValues.created_at,
+      cursorValues.id as string,
+      2
+    );
+    whereExtra = clause;
+    params.push(cursorValues.created_at, cursorValues.id);
+  }
+
+  params.push(opts.pageSize);
+
+  const result = await query<PayoutDetail>(
+    `SELECT
+       p.id,
+       p.challenge_id,
+       p.user_id,
+       COALESCE(u.username, u.display_name, 'Unknown') AS username,
+       p.stellar_address,
+       p.amount_stroops,
+       (p.amount_stroops::numeric / 10000000)::numeric(20,7)::text AS amount_usdc,
+       p.tx_hash,
+       p.status,
+       p.error_message,
+       p.created_at
+     FROM payouts p
+     LEFT JOIN users u ON p.user_id = u.id
+     WHERE ($1::text IS NULL OR p.status = $1)
+     ${whereExtra}
+     ORDER BY p.created_at DESC, p.id DESC
+     LIMIT $${params.length}`,
+    params
+  );
+
+  const payouts = result.rows;
+  const nextCursor: string | null =
+    payouts.length === opts.pageSize
+      ? encodeCursor({
+          created_at: payouts[payouts.length - 1].created_at,
+          id: payouts[payouts.length - 1].id,
+        })
+      : null;
+
+  return { payouts, nextCursor };
 }

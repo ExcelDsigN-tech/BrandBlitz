@@ -3,8 +3,9 @@ import { z } from "zod";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAdmin } from "../../middleware/require-admin";
 import { createError } from "../../middleware/error";
-import { softDeleteChallenge, restoreChallenge } from "../../db/queries/challenges";
+import { softDeleteChallenge, restoreChallenge, getChallengeById } from "../../db/queries/challenges";
 import { refundChallenge } from "../../services/refund";
+import { enqueuePayout } from "../../services/payout";
 import { query } from "../../db/index";
 
 const router = Router();
@@ -124,7 +125,7 @@ router.get("/:id/fraud", async (req, res) => {
 
   // Verify challenge exists
   const challengeExists = await query(
-    "SELECT id FROM challenges WHERE id = $1",
+    "SELECT id FROM challenges WHERE id = $1 AND deleted_at IS NULL",
     [challengeId]
   );
 
@@ -167,6 +168,35 @@ router.post("/:id/refund", async (req, res) => {
     if (message === "No deposit found") throw createError(message, 404, "NO_DEPOSIT_FOUND");
     throw error;
   }
+});
+
+/**
+ * POST /admin/challenges/:id/settle
+ * Manually trigger payout settlement for a challenge: enqueues the payout
+ * BullMQ job and records the action in audit_log.
+ */
+router.post("/:id/settle", async (req, res) => {
+  const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+
+  const challenge = await getChallengeById(id);
+  if (!challenge) throw createError("Challenge not found", 404);
+  if (challenge.status === "settled") {
+    throw createError("Challenge already settled", 409, "CHALLENGE_SETTLED");
+  }
+
+  try {
+    await enqueuePayout(id, res.locals.requestId);
+  } catch (error) {
+    throw createError("Settlement failed", 500, "SETTLEMENT_FAILED");
+  }
+
+  await query(
+    `INSERT INTO audit_log (actor_id, action, entity, entity_key)
+     VALUES ($1, 'challenge_settle', 'challenge', $2)`,
+    [req.user!.sub, id]
+  );
+
+  res.status(202).json({ message: "Settlement job enqueued." });
 });
 
 /**

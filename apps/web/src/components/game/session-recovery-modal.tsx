@@ -29,11 +29,27 @@ export function SessionRecoveryModal({
   onStartNew,
 }: SessionRecoveryModalProps) {
   const dialogRef = React.useRef<HTMLDivElement>(null);
+  const [remainingMs, setRemainingMs] = React.useState(session.remainingTimeMs);
+
+  React.useEffect(() => {
+    if (session.status === "expired" || remainingMs <= 0) return;
+
+    const interval = setInterval(() => {
+      setRemainingMs((prev) => Math.max(0, prev - 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [session.status, remainingMs]);
+
+  React.useEffect(() => {
+    setRemainingMs(session.remainingTimeMs);
+  }, [session.remainingTimeMs]);
+  const [confirmingForfeit, setConfirmingForfeit] = React.useState(false);
 
   React.useEffect(() => {
     const firstButton = dialogRef.current?.querySelector<HTMLButtonElement>("button");
     firstButton?.focus();
-  }, []);
+  }, [confirmingForfeit]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Tab") return;
@@ -53,7 +69,7 @@ export function SessionRecoveryModal({
     }
   };
 
-  const expired = session.status === "expired";
+  const expired = session.status === "expired" || remainingMs <= 0;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 px-4">
@@ -68,12 +84,14 @@ export function SessionRecoveryModal({
       >
         <div className="space-y-2">
           <h2 id="session-recovery-title" className="text-xl font-semibold">
-            {expired ? "Session expired" : "Resume challenge?"}
+            {expired ? "Session expired" : confirmingForfeit ? "Forfeit session?" : "Resume challenge?"}
           </h2>
           <p id="session-recovery-description" className="text-sm text-[var(--muted-foreground)]">
             {expired
               ? "This challenge session timed out before it was completed."
-              : "We found an interrupted challenge session for this account."}
+              : confirmingForfeit
+                ? "Are you sure you want to forfeit? Your current score and progress will be lost."
+                : "We found an interrupted challenge session for this account."}
           </p>
         </div>
 
@@ -84,7 +102,7 @@ export function SessionRecoveryModal({
           </div>
           <div className="rounded-md border border-[var(--border)] p-3">
             <dt className="text-xs text-[var(--muted-foreground)]">Time</dt>
-            <dd className="mt-1 text-lg font-semibold">{formatTime(session.remainingTimeMs)}</dd>
+            <dd className="mt-1 text-lg font-semibold">{formatTime(remainingMs)}</dd>
           </div>
           <div className="rounded-md border border-[var(--border)] p-3">
             <dt className="text-xs text-[var(--muted-foreground)]">Score</dt>
@@ -97,9 +115,18 @@ export function SessionRecoveryModal({
             <Button type="button" onClick={onStartNew}>
               Start New
             </Button>
+          ) : confirmingForfeit ? (
+            <>
+              <Button type="button" variant="outline" onClick={() => setConfirmingForfeit(false)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="destructive" onClick={onForfeit}>
+                Confirm Forfeit
+              </Button>
+            </>
           ) : (
             <>
-              <Button type="button" variant="outline" onClick={onForfeit}>
+              <Button type="button" variant="outline" onClick={() => setConfirmingForfeit(true)}>
                 Forfeit
               </Button>
               <Button type="button" onClick={onResume}>

@@ -31,6 +31,10 @@ vi.mock("../middleware/rate-limit", () => ({
   uploadLimiter: (_req: any, _res: any, next: any) => next(),
   phoneRateLimit: (_req: any, _res: any, next: any) => next(),
   webhookLimiter: (_req: any, _res: any, next: any) => next(),
+  webhookRotationLimiter: (_req: any, _res: any, next: any) => next(),
+  waitlistLimiter: (_req: any, _res: any, next: any) => next(),
+  questionPreviewLimiter: (_req: any, _res: any, next: any) => next(),
+  reportLimiter: (_req: any, _res: any, next: any) => next(),
 }));
 
 vi.mock("@brandblitz/storage", () => ({

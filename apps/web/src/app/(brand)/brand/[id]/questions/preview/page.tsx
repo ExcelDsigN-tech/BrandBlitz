@@ -20,7 +20,6 @@ interface PreviewQuestion {
   question_type: string;
   prompt_type: string;
   question_text: string;
-  correct_answer: string;
   option_a: string;
   option_b: string;
   option_c: string;

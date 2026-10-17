@@ -10,7 +10,13 @@ const mocks = vi.hoisted(() => ({
   getSession: vi.fn(),
   getChallengeById: vi.fn(),
   markWarmupCompleted: vi.fn(),
+  markWarmupStarted: vi.fn(),
   createFraudFlag: vi.fn(),
+  sessionTimeoutQueueAdd: vi.fn(),
+  // Session the mocked enforceOneSessionPerChallenge middleware attaches to
+  // req.session, mirroring what the real middleware (claimSession / getSession)
+  // would set before the warmup-start handler runs.
+  middlewareSession: null as Record<string, unknown> | null,
 }));
 
 vi.mock("../lib/redis", () => ({
@@ -24,12 +30,16 @@ vi.mock("../lib/redis", () => ({
 vi.mock("../db/queries/sessions", () => ({
   getSession: mocks.getSession,
   markWarmupCompleted: mocks.markWarmupCompleted,
-  markWarmupStarted: vi.fn(),
+  markWarmupStarted: mocks.markWarmupStarted,
   markChallengeStarted: vi.fn(),
   recordRoundScore: vi.fn(),
   finishSession: vi.fn(),
   storeSessionHmac: vi.fn(),
   claimSession: vi.fn(),
+}));
+
+vi.mock("../queues/session-timeout.queue", () => ({
+  sessionTimeoutQueue: { add: mocks.sessionTimeoutQueueAdd },
 }));
 
 vi.mock("../db/queries/challenges", () => ({
@@ -60,7 +70,10 @@ vi.mock("../middleware/require-active-user", () => ({
 }));
 
 vi.mock("../middleware/anti-cheat", () => ({
-  enforceOneSessionPerChallenge: (req: any, res: any, next: any) => next(),
+  enforceOneSessionPerChallenge: (req: any, res: any, next: any) => {
+    req.session = mocks.middlewareSession;
+    next();
+  },
   validateReactionTime: (req: any, res: any, next: any) => next(),
   validateDeviceFingerprint: (req: any, res: any, next: any) => next(),
   detectClockSkew: (req: any, res: any, next: any) => {
@@ -430,5 +443,135 @@ describe("GET /sessions/:challengeId (recovery)", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.session.status).toBe("expired");
+  });
+});
+
+// #375 — POST /:challengeId/warmup-start.
+//
+// The issue this suite was written against assumes behavior that doesn't
+// exist in this codebase: there is no "ready" session status (the real enum
+// is warmup | active | completed | flagged | abandoned), re-calling this
+// endpoint is silently idempotent rather than rejected with 409 (see
+// markWarmupStarted's `COALESCE(warmup_started_at, NOW())`), and there is no
+// per-session delayed timeout job — session-timeout.queue.ts registers a
+// single recurring sweep job at worker startup, never enqueued from this
+// route. These tests cover the route's real, verified behavior instead.
+describe("sessions warmup-start endpoint", () => {
+  let app: express.Express;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    app = express();
+    app.use(express.json());
+    const sessionsRouter = await import("./sessions");
+    app.use("/sessions", sessionsRouter.default);
+    app.use(errorHandler);
+
+    mocks.getChallengeById.mockResolvedValue({
+      id: "challenge-1",
+      status: "active",
+    });
+    mocks.middlewareSession = {
+      id: "session-1",
+      user_id: "user-1",
+      challenge_id: "challenge-1",
+      status: "warmup",
+      warmup_started_at: null,
+    };
+    mocks.markWarmupStarted.mockResolvedValue(undefined);
+    mocks.redisSet.mockResolvedValue("OK");
+  });
+
+  it("returns 401 when no auth token is provided", async () => {
+    const response = await request(app).post("/sessions/challenge-1/warmup-start").send({});
+
+    expect(response.status).toBe(401);
+  });
+
+  it("returns 404 when the challenge does not exist", async () => {
+    mocks.getChallengeById.mockResolvedValue(null);
+
+    const response = await request(app)
+      .post("/sessions/challenge-1/warmup-start")
+      .set("Authorization", "Bearer test-token")
+      .send({});
+
+    expect(response.status).toBe(404);
+    expect(response.body.error).toBe("Challenge not available");
+  });
+
+  it("returns 404 when the challenge exists but is not active", async () => {
+    mocks.getChallengeById.mockResolvedValue({ id: "challenge-1", status: "completed" });
+
+    const response = await request(app)
+      .post("/sessions/challenge-1/warmup-start")
+      .set("Authorization", "Bearer test-token")
+      .send({});
+
+    expect(response.status).toBe(404);
+  });
+
+  it("is idempotent: calling it twice for the same session returns 200 both times (not 409)", async () => {
+    const first = await request(app)
+      .post("/sessions/challenge-1/warmup-start")
+      .set("Authorization", "Bearer test-token")
+      .send({});
+    const second = await request(app)
+      .post("/sessions/challenge-1/warmup-start")
+      .set("Authorization", "Bearer test-token")
+      .send({});
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(mocks.markWarmupStarted).toHaveBeenCalledTimes(2);
+    expect(mocks.markWarmupStarted).toHaveBeenNthCalledWith(1, "session-1");
+    expect(mocks.markWarmupStarted).toHaveBeenNthCalledWith(2, "session-1");
+  });
+
+  it("returns 200 and calls markWarmupStarted with the session id (persists warmup_started_at)", async () => {
+    const response = await request(app)
+      .post("/sessions/challenge-1/warmup-start")
+      .set("Authorization", "Bearer test-token")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(response.body.sessionId).toBe("session-1");
+    expect(mocks.markWarmupStarted).toHaveBeenCalledWith("session-1");
+  });
+
+  it("computes unlockAt deterministically from a stubbed Date.now and stores it in Redis with a 300s TTL", async () => {
+    const fixedTime = 1700000000000;
+    const originalDateNow = Date.now;
+    Date.now = vi.fn(() => fixedTime);
+
+    try {
+      const response = await request(app)
+        .post("/sessions/challenge-1/warmup-start")
+        .set("Authorization", "Bearer test-token")
+        .send({});
+
+      const expectedUnlockAt = fixedTime + 20 * 1000; // WARMUP_MIN_SECONDS = 20
+
+      expect(response.status).toBe(200);
+      expect(response.body.unlockAt).toBe(expectedUnlockAt);
+      expect(mocks.redisSet).toHaveBeenCalledWith(
+        "warmup:unlock:session-1",
+        expectedUnlockAt.toString(),
+        "EX",
+        300
+      );
+    } finally {
+      Date.now = originalDateNow;
+    }
+  });
+
+  it("does not enqueue any session-timeout job — timeout handling is a separate recurring sweep, not per-call", async () => {
+    const response = await request(app)
+      .post("/sessions/challenge-1/warmup-start")
+      .set("Authorization", "Bearer test-token")
+      .send({});
+
+    expect(response.status).toBe(200);
+    expect(mocks.sessionTimeoutQueueAdd).not.toHaveBeenCalled();
   });
 });

@@ -45,10 +45,29 @@ nginx:
 Dev uses `nginx/nginx.dev.conf` directly (no variable substitution needed) via
 `docker-compose.yml`. The template is prod-only.
 
+### Local TLS certs (optional)
+
+If you need HTTPS in local dev (e.g. for testing secure cookies or WebAuthn):
+
+```bash
+bash scripts/generate-nginx-dev-certs.sh
+```
+
+This creates `nginx/certs/server.crt` and `nginx/certs/server.key` (self-signed,
+valid 365 days). The script follows the same pattern as `scripts/generate-minio-certs.sh`.
+
+To enable TLS, uncomment the HTTPS server block in `nginx/nginx.dev.conf` and
+ensure the certs directory is volume-mounted in `docker-compose.yml`:
+
+```yaml
+# docker-compose.yml — nginx service volumes
+- ./nginx/certs:/etc/nginx/certs:ro
+```
+
 ## Updating the config
 
-Edit `nginx/templates/nginx.prod.conf.template`. Do **not** edit `nginx/nginx.prod.conf`
-(kept only for reference; it is no longer mounted in prod).
+Edit `nginx/templates/nginx.prod.conf.template`. Production renders this template at
+startup; generated configuration files are not committed or edited manually.
 
 ## CI check
 

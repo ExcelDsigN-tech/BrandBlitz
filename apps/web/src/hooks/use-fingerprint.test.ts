@@ -26,6 +26,19 @@ describe("useFingerprint", () => {
     });
   });
 
+  it("should return the visitorId collected by the FingerprintJS agent", async () => {
+    process.env.NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY = "test-key";
+    const get = vi.fn().mockResolvedValue({ visitorId: "visitor-id" });
+    (window as any).fpPromise = Promise.resolve({ get });
+
+    const { result } = renderHook(() => useFingerprint());
+
+    await waitFor(() => {
+      expect(result.current).toBe("visitor-id");
+    });
+    expect(get).toHaveBeenCalledOnce();
+  });
+
   it("should gracefully handle FingerprintJS load failures", async () => {
     process.env.NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY = "test-key";
     (window as any).fpPromise = Promise.reject(new Error("Failed to load FingerprintJS"));

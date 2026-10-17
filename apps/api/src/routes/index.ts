@@ -2,6 +2,7 @@ import type { Express } from "express";
 import authRoutes from "./auth";
 import brandsRoutes from "./brands";
 import challengesRoutes from "./challenges";
+import challengeTemplatesRoutes from "./challenge-templates";
 import sessionsRoutes from "./sessions";
 import uploadRoutes from "./upload";
 import usersRoutes from "./users";
@@ -20,11 +21,13 @@ import adminQueueStatsRoutes from "./admin/queue-stats";
 import adminWaitlistRoutes from "./admin/waitlist";
 import adminRoutes from "./admin";
 import deleteAccountRoutes from "./me/delete-account";
+import exportDataRoutes from "./me/export-data";
 import docsRoutes from "./docs";
 import cspReportRoutes from "./csp-report";
 import legalRoutes from "./legal";
 import configRoutes from "./config";
 import adminCacheRoutes from "./admin/cache";
+import adminTestRoutes from "./admin/test";
 import metricsRoutes from "./metrics";
 import waitlistRoutes from "./waitlist";
 
@@ -40,9 +43,11 @@ export function registerRoutes(app: Express): void {
   app.use("/auth", authRoutes);
   app.use("/brands", brandsRoutes);
   app.use("/challenges", challengesRoutes);
+  app.use("/challenge-templates", challengeTemplatesRoutes);
   app.use("/sessions", sessionsRoutes);
   app.use("/upload", uploadRoutes);
   app.use("/users", usersRoutes);
+  app.use("/api/users", usersRoutes);
   app.use("/leaderboard", leaderboardRoutes);
   app.use("/webhooks", webhooksRoutes);
   app.use("/leagues", leaguesRoutes);
@@ -57,10 +62,12 @@ export function registerRoutes(app: Express): void {
   app.use("/admin/stats", adminStatsRoutes);
   app.use("/admin/queue-stats", adminQueueStatsRoutes);
   app.use("/admin/waitlist", adminWaitlistRoutes);
+  app.use("/admin/test", adminTestRoutes);
   // General admin endpoints (archive inspection, dead-letter queue triage).
   // Mounted after the more specific /admin/* routers; its own routes
   // (/admin/dlq, /admin/archive/...) do not overlap with them.
   app.use("/admin", adminRoutes);
   app.use("/me/delete-account", deleteAccountRoutes);
+  app.use("/me/export", exportDataRoutes);
   app.use("/waitlist", waitlistRoutes);
 }

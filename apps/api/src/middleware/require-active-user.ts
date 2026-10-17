@@ -14,7 +14,7 @@ import { createError } from "./error";
 export async function requireActiveUser(
   req: Request,
   _res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   const userId = req.user?.sub;
   if (!userId) {
@@ -26,11 +26,19 @@ export async function requireActiveUser(
     throw createError("User not found", 404, "USER_NOT_FOUND");
   }
 
+  if (req.user?.isImpersonated) {
+    throw createError(
+      "Impersonated sessions cannot perform mutating actions (read-only mode)",
+      403,
+      "IMPERSONATION_READ_ONLY"
+    );
+  }
+
   if (user.status === "suspended" || user.suspended_at !== null) {
     throw createError(
       "Your account has been suspended. Please contact support for assistance.",
       403,
-      "ACCOUNT_SUSPENDED",
+      "ACCOUNT_SUSPENDED"
     );
   }
 

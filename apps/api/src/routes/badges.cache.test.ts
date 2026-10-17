@@ -3,12 +3,14 @@ import { describe, it, expect, jest, beforeEach } from "@jest/globals";
 const mockRedisGet = jest.fn();
 const mockRedisSet = jest.fn();
 const mockRedisDel = jest.fn();
+const mockRedisUnlink = jest.fn();
 
 jest.mock("../lib/redis", () => ({
   redis: {
     get: mockRedisGet,
     set: mockRedisSet,
     del: mockRedisDel,
+    unlink: mockRedisUnlink,
   },
 }));
 
@@ -86,12 +88,12 @@ describe("badges cache", () => {
     expect(res.headers["x-cache"]).toBe("MISS");
   });
 
-  it("flush endpoint returns 204 and calls redis.del", async () => {
-    mockRedisDel.mockResolvedValueOnce(1);
+  it("flush endpoint returns 204 and calls redis.unlink", async () => {
+    mockRedisUnlink.mockResolvedValueOnce(1);
 
     const res = await request(adminApp).post("/badges/flush");
     expect(res.status).toBe(204);
-    expect(mockRedisDel).toHaveBeenCalledWith("badges:definitions");
+    expect(mockRedisUnlink).toHaveBeenCalledWith("badges:definitions");
   });
 
   it("flush endpoint returns 403 for non-admin", async () => {

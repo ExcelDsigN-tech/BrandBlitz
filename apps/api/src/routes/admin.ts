@@ -8,11 +8,7 @@ import { ensureLeagueRepeatableJobs } from "../queues/league.queue";
 import { decodeCursorSafe, encodeCursor } from "../db/pagination";
 import { createError } from "../middleware/error";
 import { logger } from "../lib/logger";
-import {
-  DLQ_QUEUES,
-  DLQ_SOURCE_QUEUES,
-  type DeadLetterPayload,
-} from "../queues/dlq";
+import { DLQ_QUEUES, DLQ_SOURCE_QUEUES, type DeadLetterPayload } from "../queues/dlq";
 import { feeBumpTransaction } from "@brandblitz/stellar";
 import { updatePayoutFeeBumpStatus } from "../db/queries/payouts";
 import { config } from "../lib/config";
@@ -39,6 +35,7 @@ type AdminUserRow = {
   created_at: string;
   suspended_at: string | null;
   fraud_score: number;
+  fraud_score_overridden: boolean;
   total_payouts: number;
 };
 
@@ -94,7 +91,9 @@ router.get("/users", async (req, res) => {
               u.email,
               u.created_at,
               u.suspended_at,
-              COALESCE(ft.fraud_score, 0)::int AS fraud_score,
+              -- A manual override (#1010) takes precedence over the computed count.
+              COALESCE(u.fraud_score_override, ft.fraud_score, 0)::int AS fraud_score,
+              (u.fraud_score_override IS NOT NULL) AS fraud_score_overridden,
               COALESCE(pt.total_payouts, 0)::int AS total_payouts
        FROM users u
        LEFT JOIN fraud_totals ft ON ft.user_id = u.id
@@ -130,6 +129,7 @@ router.get("/users", async (req, res) => {
       createdAt: user.created_at,
       suspendedAt: user.suspended_at,
       fraudScore: user.fraud_score,
+      fraudScoreOverridden: user.fraud_score_overridden,
       totalPayouts: user.total_payouts,
     })),
     nextCursor,
@@ -314,10 +314,7 @@ router.post("/users/:id/suspend", async (req, res) => {
     id: string;
     status: string;
     suspended_at: string | null;
-  }>(
-    `SELECT id, status, suspended_at FROM users WHERE id = $1`,
-    [userId]
-  );
+  }>(`SELECT id, status, suspended_at FROM users WHERE id = $1`, [userId]);
 
   if (userResult.rows.length === 0) {
     throw createError("User not found", 404);
@@ -343,11 +340,14 @@ router.post("/users/:id/suspend", async (req, res) => {
     await client.query(
       `INSERT INTO audit_log (action, entity_type, entity_id, metadata)
        VALUES ('suspend', 'user', $1, $2::jsonb)`,
-      [userId, JSON.stringify({
-        reason: body.reason,
-        duration_days: body.durationDays || null,
-        performed_by: req.user!.sub
-      })]
+      [
+        userId,
+        JSON.stringify({
+          reason: body.reason,
+          duration_days: body.durationDays || null,
+          performed_by: req.user!.sub,
+        }),
+      ]
     );
 
     const sessionsResult = await client.query(
@@ -371,6 +371,16 @@ router.post("/users/:id/suspend", async (req, res) => {
   } finally {
     client.release();
   }
+});
+
+/**
+ * GET /admin/brands/:id/webhooks/deliveries
+ * Admin route to view brand webhook delivery status and history.
+ */
+router.get("/brands/:id/webhooks/deliveries", async (req, res) => {
+  const { getBrandWebhookDeliveries } = await import("../services/brand-webhooks");
+  const deliveries = await getBrandWebhookDeliveries(req.params.id);
+  res.json({ deliveries });
 });
 
 export default router;

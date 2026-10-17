@@ -1,7 +1,6 @@
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { LeaderboardEntry } from "@/lib/api";
-import { LiveGlobalLeaderboard } from "@/components/leaderboard/live-global-leaderboard";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -9,6 +8,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { OfflineBanner } from "@/components/layout/offline-banner";
+import { ChallengeLeaderboardClient } from "./challenge-leaderboard-client";
 
 interface Props {
   params: {
@@ -21,7 +21,6 @@ export const metadata: Metadata = {
   description: "See the top performers for this challenge and their USDC earnings.",
 };
 
-// Enable ISR with 30-second revalidation
 export const revalidate = 30;
 
 async function getChallengeLeaderboard(challengeId: string): Promise<{
@@ -47,19 +46,16 @@ async function getChallengeLeaderboard(challengeId: string): Promise<{
 
 function LeaderboardSkeleton() {
   return (
-    <div className="border-b border-[var(--border)] last:border-0 px-6 py-4 space-y-4">
+    <div className="space-y-4 border-b border-[var(--border)] px-6 py-4 last:border-0">
       {Array.from({ length: 6 }).map((_, idx) => (
-        <div
-          key={idx}
-          className="grid grid-cols-[80px_1fr_120px_120px] gap-4 items-center"
-        >
+        <div key={idx} className="grid grid-cols-[80px_1fr_120px_120px] items-center gap-4">
           <Skeleton className="h-5 w-10" />
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-8 rounded-full" />
             <Skeleton className="h-4 w-36" />
           </div>
-          <Skeleton className="h-4 w-20 ml-auto" />
-          <Skeleton className="h-4 w-16 ml-auto" />
+          <Skeleton className="ml-auto h-4 w-20" />
+          <Skeleton className="ml-auto h-4 w-16" />
         </div>
       ))}
     </div>
@@ -67,7 +63,7 @@ function LeaderboardSkeleton() {
 }
 
 async function LeaderboardContent({ challengeId }: { challengeId: string }) {
-  const { entries, hasMore, failed } = await getChallengeLeaderboard(challengeId);
+  const { entries, hasMore, failed } = await getChallengeLeaderboard(challengeId, "global");
 
   if (failed) {
     return (
@@ -85,8 +81,13 @@ async function LeaderboardContent({ challengeId }: { challengeId: string }) {
     );
   }
 
-  // LiveGlobalLeaderboard also supports a specific challengeId if passed
-  return <LiveGlobalLeaderboard initial={entries} initialHasMore={hasMore} challengeId={challengeId} />;
+  return (
+    <ChallengeLeaderboardClient
+      challengeId={challengeId}
+      initialEntries={entries}
+      initialHasMore={hasMore}
+    />
+  );
 }
 
 export default function ChallengeLeaderboardPage({ params }: Props) {
@@ -98,8 +99,16 @@ export default function ChallengeLeaderboardPage({ params }: Props) {
         <p className="mb-8 text-[var(--muted-foreground)]">Top performers for this challenge</p>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Rankings</CardTitle>
+            <a
+              href={`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001/api"}/leaderboard/${params.challengeId}/export.csv`}
+              download
+            >
+              <Button variant="outline" size="sm">
+                Export CSV
+              </Button>
+            </a>
           </CardHeader>
           <CardContent className="p-0">
             <Suspense fallback={<LeaderboardSkeleton />}>

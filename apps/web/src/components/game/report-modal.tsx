@@ -35,6 +35,8 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
   const lastSubmitRef = React.useRef(0);
 
   const canSubmit = reason !== "" && !submitting;
+  const isNearLimit = note.length >= MAX_NOTE_LENGTH * 0.85;
+  const isAtLimit = note.length >= MAX_NOTE_LENGTH;
 
   React.useEffect(() => {
     if (!open) {
@@ -82,6 +84,10 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
           <DialogTitle>Report Challenge</DialogTitle>
           <DialogDescription>
             Help us keep BrandBlitz safe. Select a reason for your report.
+            {" "}
+            <a href="/docs/guides/reporting-a-challenge" className="underline" target="_blank" rel="noopener noreferrer">
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -135,7 +141,15 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
                 rows={3}
                 className="w-full resize-none rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               />
-              <p className="mt-1 text-right text-xs text-[var(--muted-foreground)]">
+              <p
+                className={`mt-1 text-right text-xs transition-colors ${
+                  isAtLimit
+                    ? "font-semibold text-red-600"
+                    : isNearLimit
+                      ? "font-medium text-amber-600"
+                      : "text-[var(--muted-foreground)]"
+                }`}
+              >
                 {note.length}/{MAX_NOTE_LENGTH}
               </p>
             </div>

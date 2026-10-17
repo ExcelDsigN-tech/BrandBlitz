@@ -35,7 +35,15 @@ vi.mock("../db/queries/brands", () => ({
   deleteBrand: vi.fn(),
   getBrandChallengeStats: vi.fn(),
 }));
-vi.mock("../db/queries/analytics", () => ({ getBrandAnalytics: vi.fn() }));
+vi.mock("../db/queries/analytics", () => ({
+  getBrandAnalytics: vi.fn(),
+  getBrandBenchmark: vi.fn(),
+  BUCKET_LABELS: {
+    small: "small (1–4 challenges)",
+    medium: "medium (5–19 challenges)",
+    large: "large (20+ challenges)",
+  },
+}));
 vi.mock("../db/queries/challenges", () => ({
   createChallenge: vi.fn(),
   insertChallengeQuestions: vi.fn(),

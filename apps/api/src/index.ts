@@ -1,4 +1,3 @@
-import "dotenv/config";
 // Sentry must be initialised before any other imports that use it.
 import { initSentry } from "./lib/sentry";
 void initSentry();
@@ -8,6 +7,7 @@ import cors from "cors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
+import healthRoutes from "./routes/health";
 import { errorHandler } from "./middleware/error";
 import { referralAttributionMiddleware } from "./middleware/referral-attribution";
 import { apiLimiter } from "./middleware/rate-limit";
@@ -22,6 +22,7 @@ import { leaderboardRefreshQueue } from "./queues/leaderboard-refresh.queue";
 import { logger } from "./lib/logger";
 import { config } from "./lib/config";
 import { PERMISSIONS_POLICY_HEADER } from "@brandblitz/config";
+import { handleChatUpgrade, resetChatRooms } from "./routes/challenges.chat";
 
 const app = express();
 const PORT = config.PORT;
@@ -158,17 +159,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(apiLimiter);
 
 // ── Health check (before auth middleware) ──────────────────────────────────
-app.get("/health", (_req, res) => {
-  if (isShuttingDown) {
-    res.status(503).json({ status: "shutting_down" });
-    return;
-  }
-  res.json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
-});
+app.use(
+  "/health",
+  (_req, res, next) => {
+    if (isShuttingDown) {
+      res.status(503).json({ status: "shutting_down" });
+      return;
+    }
+    next();
+  },
+  healthRoutes
+);
 
 // ── API Routes ─────────────────────────────────────────────────────────────
 registerRoutes(app);
@@ -200,6 +201,15 @@ async function start(): Promise<void> {
     logger.info(`API running on port ${PORT}`, { env: config.NODE_ENV });
   });
 
+  server.on("upgrade", (req, socket, head) => {
+    void handleChatUpgrade(req, socket, head).catch((err) => {
+      logger.error("Error during WebSocket upgrade", { err });
+      if (socket.writable) {
+        socket.destroy();
+      }
+    });
+  });
+
   // ── Graceful shutdown ──────────────────────────────────────────────────
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received — starting graceful shutdown`);
@@ -210,6 +220,7 @@ async function start(): Promise<void> {
         await payoutQueue.close();
         await leagueQueue.close();
         await leaderboardRefreshQueue.close();
+        resetChatRooms();
         await closeDb();
         await redis.disconnect();
         logger.info("Shutdown complete");

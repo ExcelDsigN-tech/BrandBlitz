@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { EmptyState } from "@/components/ui/empty-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatUsdc } from "@/lib/format";
 
 interface ReferredUser {
@@ -46,30 +47,81 @@ export default function ReferralsPage() {
     }
   }, [status, router]);
 
+  const loadReferralData = useCallback(async () => {
+    if (!apiToken) return;
+    setLoading(true);
+    try {
+      const api = createApiClient(apiToken);
+      const response = await api.get("/users/me/referrals");
+      setData(response.data);
+    } catch (error) {
+      console.error("Failed to load referral data", error);
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }, [apiToken]);
+
   useEffect(() => {
-    if (status !== "authenticated" || !apiToken) return;
-
-    const loadReferralData = async () => {
-      try {
-        const api = createApiClient(apiToken);
-        const response = await api.get("/users/me/referrals");
-        setData(response.data);
-      } catch (error) {
-        console.error("Failed to load referral data", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadReferralData();
-  }, [status, apiToken]);
+    if (status === "authenticated" && apiToken) {
+      void loadReferralData();
+    }
+  }, [status, apiToken, loadReferralData]);
 
   if (status !== "authenticated") return null;
 
   if (loading) {
     return (
       <main className="mx-auto max-w-2xl px-6 py-12">
-        <div className="text-center">Loading referral data...</div>
+        <div className="mb-8 space-y-2">
+          <Skeleton className="h-9 w-48" />
+          <Skeleton className="h-4 w-72" />
+        </div>
+
+        {/* Referral Link Skeleton */}
+        <Card className="mb-8">
+          <CardHeader>
+            <Skeleton className="h-6 w-44" />
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex gap-2">
+              <Skeleton className="h-10 flex-1" />
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-10 w-24" />
+            </div>
+            <Skeleton className="h-4 w-32" />
+          </CardContent>
+        </Card>
+
+        {/* Bonus Tracker Skeleton */}
+        <div className="mb-8 grid grid-cols-2 gap-4">
+          <Card>
+            <CardContent className="space-y-2 pt-6">
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-8 w-24" />
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="space-y-2 pt-6">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-8 w-24" />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Referred Users List Skeleton */}
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-6 w-40" />
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="space-y-4 p-6">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -80,6 +132,11 @@ export default function ReferralsPage() {
         <EmptyState
           title="Failed to load referral hub"
           description="We couldn't load your referral data. Please try again."
+          action={
+            <Button onClick={() => void loadReferralData()} variant="outline">
+              Try Again
+            </Button>
+          }
         />
       </main>
     );
@@ -101,7 +158,15 @@ export default function ReferralsPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Referral Hub</h1>
         <p className="text-sm text-[var(--muted-foreground)]">
-          Invite friends and earn bonuses
+          Invite friends and earn bonuses{" "}
+          <a
+            href="/docs/guides/referral-program"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[var(--foreground)]"
+          >
+            How the referral program works
+          </a>
         </p>
       </div>
 

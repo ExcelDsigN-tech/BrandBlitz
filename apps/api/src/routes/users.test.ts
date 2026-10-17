@@ -23,6 +23,7 @@ var mockRepairStreak = vi.fn();
 var mockQuery = vi.fn();
 var mockGetUserBadges = vi.fn();
 var mockEnsureUserReferralCode = vi.fn();
+var mockMarkOnboardingCompleted = vi.fn();
 
 vi.mock("../db", () => ({
   query: mockQuery,
@@ -44,6 +45,7 @@ vi.mock("../db/queries/users", () => ({
   updateUserWallet: mockUpdateUserWallet,
   markPhoneVerified: mockMarkPhoneVerified,
   searchUsersByUsername: mockSearchUsersByUsername,
+  markOnboardingCompleted: mockMarkOnboardingCompleted,
 }));
 
 vi.mock("../services/phone", () => ({
@@ -126,6 +128,7 @@ const userRecord = {
   last_play_day: "2026-04-24",
   streak_repairs_this_month: 1,
   streak_repair_available: true,
+  onboarding_completed: false,
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString(),
   display_name: "Test User",
@@ -157,6 +160,7 @@ beforeEach(() => {
   mockRedisDel.mockReset();
   mockGetStreak.mockReset();
   mockRepairStreak.mockReset();
+  mockMarkOnboardingCompleted.mockReset();
 });
 
 afterAll(() => {
@@ -241,11 +245,24 @@ describe("users routes integration", () => {
       last_play_day: userRecord.last_play_day,
       streak_repairs_this_month: userRecord.streak_repairs_this_month,
       streak_repair_available: userRecord.streak_repair_available,
+      onboarding_completed: userRecord.onboarding_completed,
       created_at: userRecord.created_at,
       updated_at: userRecord.updated_at,
     });
     expect(response.body.user.google_id).toBeUndefined();
     expect(response.body.user.phone_hash).toBeUndefined();
+  });
+
+  it("POST /users/me/onboarding/complete marks onboarding as done", async () => {
+    mockMarkOnboardingCompleted.mockResolvedValue(true);
+
+    const response = await request(app)
+      .post("/users/me/onboarding/complete")
+      .set("Authorization", `Bearer ${authToken()}`)
+      .expect(200);
+
+    expect(response.body).toEqual({ success: true, onboardingCompleted: true });
+    expect(mockMarkOnboardingCompleted).toHaveBeenCalledWith(userId);
   });
 
   it("PATCH /users/me/wallet rejects invalid Stellar addresses", async () => {
@@ -497,16 +514,14 @@ describe("users routes integration", () => {
         suspended_at: null,
       });
 
-      mockQuery
-        .mockResolvedValueOnce({ rows: [] })
-        .mockResolvedValueOnce({
-          rows: [
-            {
-              lifetime_earned_usdc: "100.0000000",
-              pending_usdc: "5.0000000",
-            },
-          ],
-        });
+      mockQuery.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({
+        rows: [
+          {
+            lifetime_earned_usdc: "100.0000000",
+            pending_usdc: "5.0000000",
+          },
+        ],
+      });
 
       const response = await request(app)
         .get("/users/me/earnings?status=pending")

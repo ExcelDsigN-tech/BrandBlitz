@@ -58,7 +58,15 @@ Considered alternatives:
 ## Consequences
 
 - The deposit-monitor service is now load-bearing: a stalled indexer
-  blocks every challenge launch. SLOs + alerting required.
+  blocks every challenge launch. SLOs + alerting required. **Implemented
+  (#959):** the SLO is indexer lag of 60s or less for 99% of 5-minute
+  windows over 28 days, defined in
+  [`docs/operations/deposit-monitor-slo.md`](../operations/deposit-monitor-slo.md).
+  The service exports `deposit_monitor_indexer_lag_seconds` on
+  `GET /metrics` and summarises it on `GET /health`
+  (`apps/deposit-monitor/src/metrics.ts`). Alert rules live in
+  `infra/prometheus/alerts/deposit-monitor.rules.yml`, and the runbook is
+  [`docs/runbooks/deposit-monitor-lag.md`](../runbooks/deposit-monitor-lag.md).
 - Settlement gas costs are paid by the platform's signer key, not
   the brand. Budget line item.
 - The escrow contract is a first-class deploy artifact; upgrades go
@@ -72,5 +80,8 @@ Considered alternatives:
 
 - `apps/api/src/services/escrow.ts`
 - `apps/deposit-monitor/`
+- `docs/operations/deposit-monitor-slo.md`
+- `infra/prometheus/alerts/deposit-monitor.rules.yml`
+- `docs/runbooks/deposit-monitor-lag.md`
 - `contracts/escrow/`
 - Closes #65.

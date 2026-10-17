@@ -21,11 +21,67 @@ function generateShareText(position?: number): string {
   return `${base} Join the waitlist:`;
 }
 
+const JOINED_STORAGE_KEY = "brandblitz:waitlist:joined";
+
+interface JoinedWaitlist {
+  email: string;
+  position: number | null;
+  ref: string;
+}
+
+function readJoinedWaitlist(): JoinedWaitlist | null {
+  try {
+    const raw = window.localStorage.getItem(JOINED_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<JoinedWaitlist>;
+    if (typeof parsed.email !== "string" || parsed.email.length === 0) return null;
+    return {
+      email: parsed.email,
+      position: typeof parsed.position === "number" ? parsed.position : null,
+      ref: typeof parsed.ref === "string" ? parsed.ref : "",
+    };
+  } catch {
+    return null;
+  }
+}
+
+function persistJoinedWaitlist(joined: JoinedWaitlist): void {
+  try {
+    window.localStorage.setItem(JOINED_STORAGE_KEY, JSON.stringify(joined));
+  } catch {
+    // localStorage can be unavailable (private mode / quota). The success view
+    // still works for this session; it just won't survive a refresh.
+  }
+}
+
+async function fetchWaitlistPosition(
+  api: ReturnType<typeof createApiClient>,
+  email: string
+): Promise<number | null> {
+  try {
+    const res = await api.get(`/waitlist/position/${encodeURIComponent(email)}`, {
+      skipErrorToast: true,
+    });
+    return typeof res.data.position === "number" ? res.data.position : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function WaitlistPage() {
   const [email, setEmail] = React.useState("");
   const [status, setStatus] = React.useState<"idle" | "submitting" | "success">("idle");
   const [position, setPosition] = React.useState<number | null>(null);
   const [ref, setRef] = React.useState<string>("");
+
+  React.useEffect(() => {
+    const joined = readJoinedWaitlist();
+    if (!joined) return;
+    setEmail(joined.email);
+    setPosition(joined.position);
+    setRef(joined.ref);
+    setStatus("success");
+  }, []);
 
   const shareText = generateShareText(position ?? undefined);
   const shareUrl = typeof window !== "undefined" ? window.location.origin : "";
@@ -39,13 +95,29 @@ export default function WaitlistPage() {
       return;
     }
 
+    const normalizedEmail = email.trim().toLowerCase();
+    const existing = readJoinedWaitlist();
+    if (existing && existing.email.toLowerCase() === normalizedEmail) {
+      setPosition(existing.position);
+      setRef(existing.ref);
+      setStatus("success");
+      toast.info("You are already on the waitlist!");
+      return;
+    }
+
     setStatus("submitting");
     try {
       const api = createApiClient();
       const res = await api.post("/waitlist", { email });
-      setPosition(res.data.position);
-      setRef(res.data.ref);
+      const joinedPosition =
+        typeof res.data.position === "number"
+          ? res.data.position
+          : await fetchWaitlistPosition(api, normalizedEmail);
+      const joinedRef = typeof res.data.ref === "string" ? res.data.ref : "";
+      setPosition(joinedPosition);
+      setRef(joinedRef);
       setStatus("success");
+      persistJoinedWaitlist({ email: normalizedEmail, position: joinedPosition, ref: joinedRef });
       if (res.data.message === "You are already on the waitlist.") {
         toast.info("You are already on the waitlist!");
       } else {

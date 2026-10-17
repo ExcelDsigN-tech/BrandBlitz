@@ -1,2 +1,4 @@
 pnpm --silent gitleaks:pre-commit
 
+# 2. Gitleaks — scan the staged diff for secrets.
+pnpm -s gitleaks:pre-commit

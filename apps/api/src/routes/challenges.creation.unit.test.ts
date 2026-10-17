@@ -38,8 +38,7 @@ vi.mock("../middleware/require-tos", () => ({
   },
 }));
 vi.mock("../middleware/rate-limit", () => ({
-  apiLimiter: (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
-    next(),
+  apiLimiter: (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
   questionPreviewLimiter: (
     _req: express.Request,
     _res: express.Response,
@@ -60,7 +59,15 @@ vi.mock("../db/queries/brands", () => ({
   deleteBrand: vi.fn(),
   getBrandChallengeStats: vi.fn(),
 }));
-vi.mock("../db/queries/analytics", () => ({ getBrandAnalytics: vi.fn() }));
+vi.mock("../db/queries/analytics", () => ({
+  getBrandAnalytics: vi.fn(),
+  getBrandBenchmark: vi.fn(),
+  BUCKET_LABELS: {
+    small: "small (1–4 challenges)",
+    medium: "medium (5–19 challenges)",
+    large: "large (20+ challenges)",
+  },
+}));
 vi.mock("../db/queries/challenges", () => ({
   createChallenge: mocks.createChallenge,
   insertChallengeQuestions: mocks.insertChallengeQuestions,

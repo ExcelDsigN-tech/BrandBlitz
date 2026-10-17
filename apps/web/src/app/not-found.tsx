@@ -20,9 +20,9 @@ export default function NotFound() {
         <p className="text-6xl font-extrabold text-[var(--primary)] mb-4" aria-hidden="true">
           404
         </p>
-        <h1 className="text-2xl font-bold mb-3">This page doesn&apos;t exist</h1>
+        <h1 className="text-2xl font-bold mb-3">Page not found</h1>
         <p className="text-[var(--muted-foreground)] mb-8 max-w-sm">
-          This challenge doesn&apos;t exist — try a live one from the home page.
+          We couldn&apos;t find what you were looking for. Try a live challenge from the home page instead.
         </p>
         <div className="flex flex-wrap gap-3 justify-center">
           <Link

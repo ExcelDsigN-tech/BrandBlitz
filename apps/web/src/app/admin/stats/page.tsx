@@ -7,7 +7,10 @@ import { createApiClient } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "@/lib/toast";
 import { QueueStatsCard, type QueueStats } from "./queue-stats-card";
+import { FailedJobsCard, type FailedJob } from "./failed-jobs-card";
+import { CohortBuilder } from "./cohort-builder";
 
 interface DauEntry {
   date: string;
@@ -173,9 +176,46 @@ export default function AdminStatsPage() {
   const [topBrands, setTopBrands] = useState<TopBrand[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [queueStats, setQueueStats] = useState<QueueStats>({});
+  const [failedJobs, setFailedJobs] = useState<FailedJob[]>([]);
+  const [retryingJobId, setRetryingJobId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [dateRange, setDateRange] = useState<DateRange>("30");
+
+  const loadFailedJobs = useCallback(async (token: string) => {
+    try {
+      const api = createApiClient(token);
+      const res = await api.get("/admin/queue-stats/failed");
+      setFailedJobs(res.data.jobs ?? []);
+    } catch {
+      // Failed-job listing is supplementary — don't fail the whole page for it.
+      setFailedJobs([]);
+    }
+  }, []);
+
+  const handleRetryJob = useCallback(
+    async (job: FailedJob) => {
+      if (!apiToken || retryingJobId) return;
+      setRetryingJobId(job.id);
+      try {
+        const api = createApiClient(apiToken);
+        await api.post(
+          `/admin/queue-stats/${encodeURIComponent(job.id)}/retry`,
+          { queue: job.queue },
+          { skipErrorToast: true }
+        );
+        toast.success(`Requeued job ${job.id}`);
+        await loadFailedJobs(apiToken);
+      } catch (err: any) {
+        const message =
+          err?.response?.data?.error ?? err?.response?.data?.message ?? "Retry failed.";
+        toast.error(message);
+      } finally {
+        setRetryingJobId(null);
+      }
+    },
+    [apiToken, retryingJobId, loadFailedJobs]
+  );
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -201,13 +241,14 @@ export default function AdminStatsPage() {
         setTopBrands(statsResponse.data.topBrands);
         setSummary(statsResponse.data.summary);
         setQueueStats(queueResponse.data.queues);
+        await loadFailedJobs(apiToken);
       } catch {
         setError(true);
       } finally {
         setLoading(false);
       }
     },
-    [apiToken]
+    [apiToken, loadFailedJobs]
   );
 
   useEffect(() => {
@@ -348,6 +389,12 @@ export default function AdminStatsPage() {
           </Card>
 
           <QueueStatsCard queues={queueStats} />
+
+          <FailedJobsCard
+            jobs={failedJobs}
+            retryingJobId={retryingJobId}
+            onRetry={(job) => void handleRetryJob(job)}
+          />
         </>
       )}
     </div>

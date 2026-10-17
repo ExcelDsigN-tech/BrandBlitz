@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   getTopSessionsPerChallenge: vi.fn(),
   getGlobalLeaderboardFromView: vi.fn(),
   getLeaderboard: vi.fn(),
+  getLeaderboardForCsvExport: vi.fn(),
   redisGet: vi.fn(),
   redisSet: vi.fn(),
   redisDel: vi.fn(),
@@ -27,6 +28,10 @@ vi.mock("../db/queries/sessions", () => ({
   getLeaderboard: (...args: unknown[]) => {
     mocks.dbQueryCount.value++;
     return mocks.getLeaderboard(...args);
+  },
+  getLeaderboardForCsvExport: (...args: unknown[]) => {
+    mocks.dbQueryCount.value++;
+    return mocks.getLeaderboardForCsvExport(...args);
   },
   getTopSessionsPerChallenge: (...args: unknown[]) => {
     mocks.dbQueryCount.value++;
@@ -62,41 +67,76 @@ const CHALLENGES = [{ id: "challenge-aaa" }, { id: "challenge-bbb" }];
 // Shape returned by getGlobalLeaderboardFromView (pre-computed rank from the MV)
 const VIEW_ROWS = [
   {
-    challenge_id: "challenge-aaa", rank: 1,
-    user_id: "u1", username: "alice", display_name: "Alice", league: null,
-    avatar_url: null, total_score: 300, total_earned_usdc: "0.0000000",
+    challenge_id: "challenge-aaa",
+    rank: 1,
+    user_id: "u1",
+    username: "alice",
+    display_name: "Alice",
+    league: null,
+    avatar_url: null,
+    total_score: 300,
+    total_earned_usdc: "0.0000000",
   },
   {
-    challenge_id: "challenge-aaa", rank: 2,
-    user_id: "u2", username: "bob", display_name: "Bob", league: null,
-    avatar_url: null, total_score: 200, total_earned_usdc: "0.0000000",
+    challenge_id: "challenge-aaa",
+    rank: 2,
+    user_id: "u2",
+    username: "bob",
+    display_name: "Bob",
+    league: null,
+    avatar_url: null,
+    total_score: 200,
+    total_earned_usdc: "0.0000000",
   },
   {
-    challenge_id: "challenge-bbb", rank: 1,
-    user_id: "u3", username: "carol", display_name: "Carol", league: "gold" as const,
-    avatar_url: "https://cdn.example.com/carol.png", total_score: 400, total_earned_usdc: "1.0000000",
+    challenge_id: "challenge-bbb",
+    rank: 1,
+    user_id: "u3",
+    username: "carol",
+    display_name: "Carol",
+    league: "gold" as const,
+    avatar_url: "https://cdn.example.com/carol.png",
+    total_score: 400,
+    total_earned_usdc: "1.0000000",
   },
-
 ];
 
 // Legacy shape still used by the SSE stream route
 const TOP_SESSIONS = [
   {
-    id: "s1", user_id: "u1", challenge_id: "challenge-aaa",
-    username: "alice", display_name: "Alice", league: null,
-    avatar_url: null, total_score: 300, completed_at: "2026-01-01T01:00:00Z",
+    id: "s1",
+    user_id: "u1",
+    challenge_id: "challenge-aaa",
+    username: "alice",
+    display_name: "Alice",
+    league: null,
+    avatar_url: null,
+    total_score: 300,
+    completed_at: "2026-01-01T01:00:00Z",
     total_earned_usdc: "0.0000000",
   },
   {
-    id: "s2", user_id: "u2", challenge_id: "challenge-aaa",
-    username: "bob", display_name: "Bob", league: null,
-    avatar_url: null, total_score: 200, completed_at: "2026-01-01T02:00:00Z",
+    id: "s2",
+    user_id: "u2",
+    challenge_id: "challenge-aaa",
+    username: "bob",
+    display_name: "Bob",
+    league: null,
+    avatar_url: null,
+    total_score: 200,
+    completed_at: "2026-01-01T02:00:00Z",
     total_earned_usdc: "0.0000000",
   },
   {
-    id: "s3", user_id: "u3", challenge_id: "challenge-bbb",
-    username: "carol", display_name: "Carol", league: "gold" as const,
-    avatar_url: "https://cdn.example.com/carol.png", total_score: 400, completed_at: "2026-01-01T03:00:00Z",
+    id: "s3",
+    user_id: "u3",
+    challenge_id: "challenge-bbb",
+    username: "carol",
+    display_name: "Carol",
+    league: "gold" as const,
+    avatar_url: "https://cdn.example.com/carol.png",
+    total_score: 400,
+    completed_at: "2026-01-01T03:00:00Z",
     total_earned_usdc: "1.0000000",
   },
 ];
@@ -193,8 +233,24 @@ describe("GET /leaderboard/global", () => {
 
   it("returns the cached payload without hitting the DB on a cache hit", async () => {
     const cachedPayload = {
-      leaderboard: [{ rank: 1, challengeId: "challenge-aaa", username: "cached", avatarUrl: null, totalScore: 999 }],
-      data: [{ rank: 1, challengeId: "challenge-aaa", username: "cached", avatarUrl: null, totalScore: 999 }],
+      leaderboard: [
+        {
+          rank: 1,
+          challengeId: "challenge-aaa",
+          username: "cached",
+          avatarUrl: null,
+          totalScore: 999,
+        },
+      ],
+      data: [
+        {
+          rank: 1,
+          challengeId: "challenge-aaa",
+          username: "cached",
+          avatarUrl: null,
+          totalScore: 999,
+        },
+      ],
       cachedAt: "2026-01-01T00:00:00.000Z",
     };
     mocks.redisGet.mockResolvedValue(JSON.stringify(cachedPayload));
@@ -217,18 +273,14 @@ describe("GET /leaderboard/global", () => {
   });
 
   it("accepts allowlisted sort values", async () => {
-    const res = await request(createApp())
-      .get("/leaderboard/global")
-      .query({ sort_by: "score" });
+    const res = await request(createApp()).get("/leaderboard/global").query({ sort_by: "score" });
 
     expect(res.status).toBe(200);
     expect(mocks.getGlobalLeaderboardFromView).toHaveBeenCalled();
   });
 
   it("rejects invalid sort values", async () => {
-    const res = await request(createApp())
-      .get("/leaderboard/global")
-      .query({ sort_by: "email" });
+    const res = await request(createApp()).get("/leaderboard/global").query({ sort_by: "email" });
 
     expect(res.status).toBe(400);
     expect(res.body).toMatchObject({
@@ -309,8 +361,28 @@ describe("GET /leaderboard/:challengeId", () => {
     mocks.dbQueryCount.value = 0;
     mocks.getLeaderboard.mockResolvedValue({
       sessions: [
-        { id: "s1", user_id: "u1", challenge_id: "c1", username: "alice", avatar_url: null, total_score: 500, display_name: "Alice", league: null, total_earned_usdc: "0" },
-        { id: "s2", user_id: "u2", challenge_id: "c1", username: "bob",   avatar_url: null, total_score: 400, display_name: "Bob", league: null, total_earned_usdc: "0" },
+        {
+          id: "s1",
+          user_id: "u1",
+          challenge_id: "c1",
+          username: "alice",
+          avatar_url: null,
+          total_score: 500,
+          display_name: "Alice",
+          league: null,
+          total_earned_usdc: "0",
+        },
+        {
+          id: "s2",
+          user_id: "u2",
+          challenge_id: "c1",
+          username: "bob",
+          avatar_url: null,
+          total_score: 400,
+          display_name: "Bob",
+          league: null,
+          total_earned_usdc: "0",
+        },
       ],
       nextCursor: null,
     });
@@ -322,13 +394,28 @@ describe("GET /leaderboard/:challengeId", () => {
     const res = await request(createApp()).get("/leaderboard/c1");
 
     expect(res.status).toBe(200);
-    expect(mocks.getLeaderboard).toHaveBeenCalledWith("c1", expect.any(Number), expect.any(Number), "score");
+    expect(mocks.getLeaderboard).toHaveBeenCalledWith(
+      "c1",
+      expect.any(Number),
+      expect.any(Number),
+      "score"
+    );
   });
 
   it("filters out banned users from leaderboard", async () => {
     mocks.getLeaderboard.mockResolvedValue({
       sessions: [
-        { id: "s1", user_id: "u1", challenge_id: "c1", username: "alice", display_name: "Alice", avatar_url: null, total_score: 500, league: null, total_earned_usdc: "0" },
+        {
+          id: "s1",
+          user_id: "u1",
+          challenge_id: "c1",
+          username: "alice",
+          display_name: "Alice",
+          avatar_url: null,
+          total_score: 500,
+          league: null,
+          total_earned_usdc: "0",
+        },
       ],
       nextCursor: null,
     });
@@ -337,7 +424,12 @@ describe("GET /leaderboard/:challengeId", () => {
 
     expect(res.status).toBe(200);
     expect(res.body.sessions.length).toBe(1);
-    expect(mocks.getLeaderboard).toHaveBeenCalledWith("c1", expect.any(Number), expect.any(Number), "score");
+    expect(mocks.getLeaderboard).toHaveBeenCalledWith(
+      "c1",
+      expect.any(Number),
+      expect.any(Number),
+      "score"
+    );
   });
 
   it("returns 404 for non-existent challengeId", async () => {
@@ -352,9 +444,39 @@ describe("GET /leaderboard/:challengeId", () => {
   it("returns rank positions contiguous starting from 1", async () => {
     mocks.getLeaderboard.mockResolvedValue({
       sessions: [
-        { id: "s1", user_id: "u1", challenge_id: "c1", username: "alice", display_name: "Alice", avatar_url: null, total_score: 500, league: null, total_earned_usdc: "0" },
-        { id: "s2", user_id: "u2", challenge_id: "c1", username: "bob", display_name: "Bob", avatar_url: null, total_score: 400, league: null, total_earned_usdc: "0" },
-        { id: "s3", user_id: "u3", challenge_id: "c1", username: "carol", display_name: "Carol", avatar_url: null, total_score: 300, league: null, total_earned_usdc: "0" },
+        {
+          id: "s1",
+          user_id: "u1",
+          challenge_id: "c1",
+          username: "alice",
+          display_name: "Alice",
+          avatar_url: null,
+          total_score: 500,
+          league: null,
+          total_earned_usdc: "0",
+        },
+        {
+          id: "s2",
+          user_id: "u2",
+          challenge_id: "c1",
+          username: "bob",
+          display_name: "Bob",
+          avatar_url: null,
+          total_score: 400,
+          league: null,
+          total_earned_usdc: "0",
+        },
+        {
+          id: "s3",
+          user_id: "u3",
+          challenge_id: "c1",
+          username: "carol",
+          display_name: "Carol",
+          avatar_url: null,
+          total_score: 300,
+          league: null,
+          total_earned_usdc: "0",
+        },
       ],
       nextCursor: null,
     });
@@ -370,9 +492,39 @@ describe("GET /leaderboard/:challengeId", () => {
   it("provides stable ordering for tied scores (by userId as tiebreaker)", async () => {
     mocks.getLeaderboard.mockResolvedValue({
       sessions: [
-        { id: "s1", user_id: "u1", challenge_id: "c1", username: "alice", display_name: "Alice", avatar_url: null, total_score: 500, league: null, total_earned_usdc: "0" },
-        { id: "s2", user_id: "u2", challenge_id: "c1", username: "bob", display_name: "Bob", avatar_url: null, total_score: 500, league: null, total_earned_usdc: "0" },
-        { id: "s3", user_id: "u3", challenge_id: "c1", username: "carol", display_name: "Carol", avatar_url: null, total_score: 500, league: null, total_earned_usdc: "0" },
+        {
+          id: "s1",
+          user_id: "u1",
+          challenge_id: "c1",
+          username: "alice",
+          display_name: "Alice",
+          avatar_url: null,
+          total_score: 500,
+          league: null,
+          total_earned_usdc: "0",
+        },
+        {
+          id: "s2",
+          user_id: "u2",
+          challenge_id: "c1",
+          username: "bob",
+          display_name: "Bob",
+          avatar_url: null,
+          total_score: 500,
+          league: null,
+          total_earned_usdc: "0",
+        },
+        {
+          id: "s3",
+          user_id: "u3",
+          challenge_id: "c1",
+          username: "carol",
+          display_name: "Carol",
+          avatar_url: null,
+          total_score: 500,
+          league: null,
+          total_earned_usdc: "0",
+        },
       ],
       nextCursor: null,
     });
@@ -403,8 +555,30 @@ describe("GET /leaderboard/:challengeId", () => {
 
   it("returns cached result without DB query on cache hit", async () => {
     const cachedPayload = {
-      sessions: [{ rank: 1, userId: "u1", username: "cached", displayName: "Cached", league: null, avatarUrl: null, totalScore: 999, totalEarned: "0" }],
-      data: [{ rank: 1, userId: "u1", username: "cached", displayName: "Cached", league: null, avatarUrl: null, totalScore: 999, totalEarned: "0" }],
+      sessions: [
+        {
+          rank: 1,
+          userId: "u1",
+          username: "cached",
+          displayName: "Cached",
+          league: null,
+          avatarUrl: null,
+          totalScore: 999,
+          totalEarned: "0",
+        },
+      ],
+      data: [
+        {
+          rank: 1,
+          userId: "u1",
+          username: "cached",
+          displayName: "Cached",
+          league: null,
+          avatarUrl: null,
+          totalScore: 999,
+          totalEarned: "0",
+        },
+      ],
       nextCursor: null,
     };
     mocks.redisGet.mockResolvedValue(JSON.stringify(cachedPayload));
@@ -417,9 +591,7 @@ describe("GET /leaderboard/:challengeId", () => {
   });
 
   it("returns sessions with rank starting at offset+1", async () => {
-    const res = await request(createApp())
-      .get("/leaderboard/c1")
-      .query({ offset: 5 });
+    const res = await request(createApp()).get("/leaderboard/c1").query({ offset: 5 });
 
     expect(res.status).toBe(200);
     expect(res.body.sessions[0].rank).toBe(6);
@@ -435,9 +607,7 @@ describe("GET /leaderboard/:challengeId", () => {
   });
 
   it("passes valid sort values to the leaderboard query", async () => {
-    await request(createApp())
-      .get("/leaderboard/c1")
-      .query({ limit: 5, sort_by: "created_at" });
+    await request(createApp()).get("/leaderboard/c1").query({ limit: 5, sort_by: "created_at" });
 
     expect(mocks.getLeaderboard).toHaveBeenCalledWith("c1", 6, 0, "created_at");
   });
@@ -472,5 +642,42 @@ describe("GET /leaderboard/:challengeId", () => {
 
     expect(res.status).toBe(200);
     expect(mocks.dbQueryCount.value).toBe(1);
+  });
+
+  describe("GET /leaderboard/:challengeId/export.csv", () => {
+    it("streams CSV with headers and correct user rankings", async () => {
+      mocks.getLeaderboardForCsvExport.mockResolvedValueOnce({
+        sessions: [
+          {
+            user_id: "u1",
+            username: "alice@example.com",
+            display_name: "Alice",
+            total_score: 450,
+            completed_at: "2026-08-24T12:00:00Z",
+            payout_amount_usdc: "50.0000000",
+          },
+          {
+            user_id: "u2",
+            username: "bob@example.com",
+            display_name: "Bob",
+            total_score: 300,
+            completed_at: "2026-08-24T12:05:00Z",
+            payout_amount_usdc: "25.0000000",
+          },
+        ],
+        nextCursor: null,
+      });
+
+      const res = await request(createApp()).get("/leaderboard/c-123/export.csv");
+
+      expect(res.status).toBe(200);
+      expect(res.headers["content-type"]).toContain("text/csv");
+      expect(res.headers["content-disposition"]).toContain(
+        'attachment; filename="leaderboard-c-123.csv"'
+      );
+      expect(res.text).toContain("rank,username,score,payout_amount_usdc");
+      expect(res.text).toContain("1,alice@example.com,450,50.0000000");
+      expect(res.text).toContain("2,bob@example.com,300,25.0000000");
+    });
   });
 });

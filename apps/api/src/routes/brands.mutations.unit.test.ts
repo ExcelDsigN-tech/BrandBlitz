@@ -37,8 +37,7 @@ vi.mock("../middleware/require-tos", () => ({
   },
 }));
 vi.mock("../middleware/rate-limit", () => ({
-  apiLimiter: (_req: express.Request, _res: express.Response, next: express.NextFunction) =>
-    next(),
+  apiLimiter: (_req: express.Request, _res: express.Response, next: express.NextFunction) => next(),
   questionPreviewLimiter: (
     _req: express.Request,
     _res: express.Response,
@@ -59,7 +58,15 @@ vi.mock("../db/queries/brands", () => ({
   deleteBrand: mocks.deleteBrand,
   getBrandChallengeStats: vi.fn(),
 }));
-vi.mock("../db/queries/analytics", () => ({ getBrandAnalytics: vi.fn() }));
+vi.mock("../db/queries/analytics", () => ({
+  getBrandAnalytics: vi.fn(),
+  getBrandBenchmark: vi.fn(),
+  BUCKET_LABELS: {
+    small: "small (1–4 challenges)",
+    medium: "medium (5–19 challenges)",
+    large: "large (20+ challenges)",
+  },
+}));
 vi.mock("../db/queries/challenges", () => ({
   createChallenge: vi.fn(),
   insertChallengeQuestions: vi.fn(),
@@ -135,9 +142,7 @@ describe("brand mutation and distractor routes", () => {
   it("prevents a non-owner from patching a brand", async () => {
     mocks.authUser = { sub: "other-user", role: "user" };
 
-    const response = await request(createApp())
-      .patch("/brands/brand-1")
-      .send({ name: "Hijacked" });
+    const response = await request(createApp()).patch("/brands/brand-1").send({ name: "Hijacked" });
 
     expect(response.status).toBe(403);
     expect(mocks.updateBrand).not.toHaveBeenCalled();
@@ -155,9 +160,7 @@ describe("brand mutation and distractor routes", () => {
     const updated = { ...brand, name: "Updated" };
     mocks.updateBrand.mockResolvedValue(updated);
 
-    const response = await request(createApp())
-      .patch("/brands/brand-1")
-      .send({ name: "Updated" });
+    const response = await request(createApp()).patch("/brands/brand-1").send({ name: "Updated" });
 
     expect(response.status).toBe(200);
     expect(mocks.updateBrand).toHaveBeenCalledWith("brand-1", owner.sub, {

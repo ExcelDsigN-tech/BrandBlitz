@@ -3,14 +3,20 @@ import { z } from "zod";
 import { getActiveChallenges } from "../db/queries/challenges";
 import {
   getLeaderboard,
+  getLeaderboardForCsvExport,
   getTopSessionsPerChallenge,
   getGlobalLeaderboardFromView,
   LEADERBOARD_SORTS,
+  LEADERBOARD_WINDOWS,
   type LeaderboardSort,
+  type LeaderboardWindow,
 } from "../db/queries/sessions";
+import { getReferralNetworkUserIds } from "../db/queries/referrals";
 import { withCoalescing } from "../lib/cache";
 import { CursorQuerySchema } from "../db/pagination";
 import { createError } from "../middleware/error";
+import { optionalAuth } from "../middleware/authenticate";
+import { getChallengeTeamLeaderboard } from "../db/queries/challenge-teams";
 
 const router = Router();
 
@@ -19,6 +25,25 @@ const LEADERBOARD_CACHE_TTL_SEC = 30;
 // Keep leaderboard ORDER BY clauses static or selected from this allowlist only.
 // User query params must never be concatenated directly into SQL strings.
 const LeaderboardSortSchema = z.enum(LEADERBOARD_SORTS).default("score");
+
+// Time-window filter for a challenge's leaderboard (#1006).
+const LeaderboardWindowSchema = z.enum(LEADERBOARD_WINDOWS).default("all-time");
+
+function parseLeaderboardWindow(query: unknown): LeaderboardWindow {
+  const raw =
+    typeof query === "object" && query !== null
+      ? (query as Record<string, unknown>).window
+      : undefined;
+  const parsed = LeaderboardWindowSchema.safeParse(raw);
+  if (!parsed.success) {
+    throw createError(
+      `Invalid leaderboard window. Allowed values: ${LEADERBOARD_WINDOWS.join(", ")}`,
+      400,
+      "INVALID_WINDOW"
+    );
+  }
+  return parsed.data;
+}
 
 function parseLeaderboardSort(query: unknown): LeaderboardSort {
   const raw =
@@ -134,6 +159,8 @@ router.get("/global", async (req, res) => {
   const sortBy = parseLeaderboardSort(req.query);
   const { limit } = CursorQuerySchema.parse(req.query);
 
+  res.setHeader("Cache-Control", "public, max-age=60, s-maxage=300, stale-while-revalidate=60");
+
   const response = await withCoalescing(`leaderboard:global:${sortBy}:${limit}`, 300, async () => {
     const { challenges } = await getActiveChallenges(10);
     const challengeIds = challenges.map((c) => c.id);
@@ -162,24 +189,120 @@ router.get("/global", async (req, res) => {
   res.json(response);
 });
 
+function escapeCsv(val: string | number | null | undefined): string {
+  if (val === null || val === undefined) return '""';
+  const str = String(val);
+  if (str.includes(",") || str.includes('"') || str.includes("\n") || str.includes("\r")) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
+/**
+ * GET /leaderboard/:challengeId/export.csv
+ * Export challenge leaderboard standings as CSV stream.
+ */
+router.get("/:challengeId/export.csv", optionalAuth, async (req, res, next) => {
+  try {
+    const { challengeId } = req.params;
+
+    res.setHeader("Content-Type", "text/csv; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="leaderboard-${challengeId}.csv"`);
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+
+    res.write("rank,username,score,payout_amount_usdc\n");
+
+    const batchSize = 500;
+    let cursor: string | undefined = undefined;
+    let rankCounter = 1;
+    let hasMore = true;
+
+    while (hasMore) {
+      const result = await getLeaderboardForCsvExport(challengeId, batchSize, cursor);
+      if (!result.sessions || result.sessions.length === 0) {
+        break;
+      }
+
+      for (const s of result.sessions) {
+        const rank = rankCounter++;
+        const username = escapeCsv(s.username || s.display_name || "Anonymous");
+        const score = s.total_score;
+        const payout = escapeCsv(s.payout_amount_usdc || "0");
+
+        res.write(`${rank},${username},${score},${payout}\n`);
+      }
+
+      if (!result.nextCursor || result.sessions.length < batchSize) {
+        hasMore = false;
+      } else {
+        cursor = result.nextCursor;
+      }
+    }
+
+    res.end();
+  } catch (err) {
+    next(err);
+  }
+});
+
 /**
  * GET /leaderboard/:challengeId
  * Paginated leaderboard for a challenge. Supports keyset cursor pagination.
+ *
+ * Query params:
+ *  - scope: "global" (default) | "friends" — filter to referral network
+ *  - window: "daily" | "weekly" | "all-time" (default) — filter to sessions
+ *    completed within that window (#1006)
  */
-router.get("/:challengeId", async (req, res) => {
+router.get("/:challengeId", optionalAuth, async (req, res) => {
   const sortBy = parseLeaderboardSort(req.query);
+  const window = parseLeaderboardWindow(req.query);
   const { limit, cursor, offset } = CursorQuerySchema.parse(req.query);
+  const scopeRaw = typeof req.query.scope === "string" ? req.query.scope : undefined;
+  const viewRaw = typeof req.query.view === "string" ? req.query.view : undefined;
 
-  // Emit deprecation header if legacy offset is used
-  if (offset !== undefined) {
-    res.setHeader("Deprecation", "offset");
-    res.setHeader("Link", '<https://docs.api.brandblitz.com/pagination>; rel="deprecation"; type="text/html"');
+  if (scopeRaw === "team" || scopeRaw === "teams" || viewRaw === "team" || viewRaw === "teams") {
+    const teams = await getChallengeTeamLeaderboard(req.params.challengeId, limit);
+    res.json({
+      teams,
+      leaderboard: teams,
+      data: teams,
+      scope: "teams",
+      window,
+    });
+    return;
   }
 
-  const cacheKey = `leaderboard:${sortBy}:${req.params.challengeId}:${limit}:${cursor ?? ""}`;
+  const scope = scopeRaw === "friends" ? "friends" : "global";
+  const userId = req.user?.sub;
+
+  if (offset !== undefined) {
+    res.setHeader("Deprecation", "offset");
+    res.setHeader(
+      "Link",
+      '<https://docs.api.brandblitz.com/pagination>; rel="deprecation"; type="text/html"'
+    );
+  }
+
+  const friendUserIds: string[] = [];
+  if (scope === "friends" && userId) {
+    const ids = await getReferralNetworkUserIds(userId);
+    friendUserIds.push(...ids);
+  }
+
+  const scopeKey = scope === "friends" ? `friends:${userId ?? "anon"}` : "global";
+  const cacheKey = `leaderboard:${sortBy}:${window}:${req.params.challengeId}:${limit}:${cursor ?? ""}:${scopeKey}`;
 
   const responseBody = await withCoalescing(cacheKey, LEADERBOARD_CACHE_TTL_SEC, async () => {
-    const result = await getLeaderboard(req.params.challengeId, limit, cursor, sortBy);
+    const scopeFriendIds = scope === "friends" ? friendUserIds : undefined;
+    const result = await getLeaderboard(
+      req.params.challengeId,
+      limit,
+      cursor,
+      sortBy,
+      scopeFriendIds,
+      window
+    );
 
     const mappedSessions = result.sessions.map((s, i) => ({
       rank: i + 1,
@@ -196,10 +319,26 @@ router.get("/:challengeId", async (req, res) => {
       sessions: mappedSessions,
       data: mappedSessions,
       nextCursor: result.nextCursor,
+      scope,
+      window,
     };
   });
 
   res.json(responseBody);
+});
+
+/**
+ * GET /leaderboard/:challengeId/teams
+ * Explicit endpoint for challenge team leaderboard standings (#1002).
+ */
+router.get("/:challengeId/teams", optionalAuth, async (req, res) => {
+  const { limit } = CursorQuerySchema.parse(req.query);
+  const teams = await getChallengeTeamLeaderboard(req.params.challengeId, limit);
+  res.json({
+    teams,
+    leaderboard: teams,
+    data: teams,
+  });
 });
 
 export default router;

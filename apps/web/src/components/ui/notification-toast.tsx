@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 
-export type NotificationType = "payout_received" | "badge_earned" | "streak_milestone";
+export type NotificationType = "payout_received" | "badge_earned" | "streak_milestone" | "rank_overtaken";
 
 export interface Notification {
   id: string;
@@ -21,6 +21,7 @@ const ICONS: Record<NotificationType, string> = {
   payout_received: "💸",
   badge_earned: "🏅",
   streak_milestone: "🔥",
+  rank_overtaken: "📉",
 };
 
 function toastSummary(n: Notification): string {
@@ -36,6 +37,13 @@ function toastSummary(n: Notification): string {
     case "streak_milestone": {
       const days = n.payload.milestone as number | undefined;
       return days ? `${days}-day streak milestone reached!` : "Streak milestone reached!";
+    }
+    case "rank_overtaken": {
+      const rank = n.payload.new_rank as number | undefined;
+      const name = n.payload.challenge_name as string | undefined;
+      if (rank && name) return `You dropped to #${rank} on ${name}`;
+      if (rank) return `You dropped to rank #${rank}`;
+      return "You've been overtaken on the leaderboard!";
     }
   }
 }

@@ -86,6 +86,18 @@ export default function EarningsPage() {
         <h1 className="text-2xl font-bold">Earnings History</h1>
       </div>
 
+      <p className="-mt-4 mb-8 text-xs text-[var(--muted-foreground)]">
+        Only sessions with zero fraud flags share in a challenge&apos;s prize pool.{" "}
+        <Link
+          href="/docs/guides/fair-play-for-players"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-[var(--foreground)]"
+        >
+          How fair play affects payouts
+        </Link>
+      </p>
+
       {/* Cumulative summary */}
       <Card className="mb-8">
         <CardHeader>

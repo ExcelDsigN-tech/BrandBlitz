@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { generateChallengeQuestions } from "./questions";
+import { generateChallengeQuestions, generateQuestionPreview } from "./questions";
 import type { Brand } from "../db/queries/brands";
 
 function makeBrand(overrides: Partial<Brand> = {}): Brand {
@@ -16,7 +16,6 @@ function makeBrand(overrides: Partial<Brand> = {}): Brand {
     product_image_keys: ["img1.png", "img2.png"],
     question_template: null,
     created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
     deleted_at: null,
     ...overrides,
   };
@@ -174,5 +173,114 @@ describe("Questions Generation Engine", () => {
     result.forEach((q) => {
       expect(q.challenge_id).toBe("chal-xyz");
     });
+  });
+
+  // -------------------------
+  // OUTPUT SHAPE COMPLETENESS (#396)
+  // -------------------------
+  it("returns fully-populated question drafts with no missing fields", () => {
+    const result = generateChallengeQuestions("challenge-1", makeBrand(), distractorPool);
+
+    result.forEach((q) => {
+      expect(q.question_text).toEqual(expect.any(String));
+      expect(q.question_text.length).toBeGreaterThan(0);
+      expect(q.correct_answer).toEqual(expect.any(String));
+      expect(q.option_a).toEqual(expect.any(String));
+      expect(q.option_b).toEqual(expect.any(String));
+      expect(q.option_c).toEqual(expect.any(String));
+      expect(q.option_d).toEqual(expect.any(String));
+      expect(["A", "B", "C", "D"]).toContain(q.correct_option);
+    });
+  });
+
+  // -------------------------
+  // MALFORMED / BOUNDARY BRAND INPUT (#396)
+  //
+  // generateChallengeQuestions is a pure, deterministic function with no
+  // required-field validation of its own — the brand fields it reads
+  // (name, tagline, usp, description length) are validated upstream by the
+  // Zod schema in routes/brands.ts before a Brand ever reaches this service.
+  // These tests document (and lock in) how the generator actually behaves
+  // when handed boundary-case input, so a regression here is caught even
+  // though no exception is expected.
+  // -------------------------
+  it("does not throw for an empty-string brand name and still returns 3 well-formed questions", () => {
+    const brand = makeBrand({ name: "" });
+
+    expect(() => generateChallengeQuestions("challenge-1", brand, distractorPool)).not.toThrow();
+
+    const result = generateChallengeQuestions("challenge-1", brand, distractorPool);
+    expect(result).toHaveLength(3);
+    result.forEach((q) => {
+      expect([q.option_a, q.option_b, q.option_c, q.option_d]).not.toContain(undefined);
+    });
+  });
+
+  it("does not throw for a very long usp and includes it verbatim in the round 2 question text", () => {
+    const longUsp = "A".repeat(5000);
+    const brand = makeBrand({ usp: longUsp });
+
+    expect(() => generateChallengeQuestions("challenge-1", brand, distractorPool)).not.toThrow();
+
+    const result = generateChallengeQuestions("challenge-1", brand, distractorPool);
+    const round2 = result.find((q) => q.round === 2);
+    expect(round2?.question_text).toContain(longUsp);
+  });
+
+  it("is a synchronous, side-effect-free function — no network or async work is possible", () => {
+    const result = generateChallengeQuestions("challenge-1", makeBrand(), distractorPool);
+    // A pure/sync function returns a value directly, never a Promise — there
+    // is no AI client or network call in this service to mock out.
+    expect(result).not.toBeInstanceOf(Promise);
+    expect(Array.isArray(result)).toBe(true);
+  });
+});
+
+describe("Question Preview Generation (generateQuestionPreview) — #396", () => {
+  it("returns preview objects exposing text, options, correctIndex, and explanation", () => {
+    const result = generateQuestionPreview(makeBrand(), distractorPool, 3);
+
+    expect(result).toHaveLength(3);
+    result.forEach((p) => {
+      expect(p.text).toEqual(expect.any(String));
+      expect(p.options).toHaveLength(4);
+      expect(p.correctIndex).toBeGreaterThanOrEqual(0);
+      expect(p.correctIndex).toBeLessThan(4);
+      expect(p.explanation).toEqual(expect.any(String));
+    });
+  });
+
+  it("correctIndex always points at the option named in the explanation (internal consistency)", () => {
+    const result = generateQuestionPreview(makeBrand(), distractorPool, 3);
+
+    result.forEach((p) => {
+      expect(p.explanation).toBe(`The correct answer is "${p.options[p.correctIndex]}".`);
+    });
+  });
+
+  it("cycles through the 3 underlying rounds when count exceeds 3", () => {
+    const result = generateQuestionPreview(makeBrand(), distractorPool, 5);
+
+    expect(result).toHaveLength(5);
+    // index 3 wraps back to round index 0, index 4 wraps to round index 1
+    expect(result[3].text).toBe(result[0].text);
+    expect(result[4].text).toBe(result[1].text);
+  });
+
+  it("returns exactly `count` items when count is fewer than the 3 underlying rounds", () => {
+    const result = generateQuestionPreview(makeBrand(), distractorPool, 1);
+    expect(result).toHaveLength(1);
+  });
+
+  it("never returns an empty array, even for a brand with only a name (sparse data still fills 3 rounds)", () => {
+    const sparseBrand = makeBrand({ tagline: null, usp: null, product_image_keys: [] });
+    const result = generateQuestionPreview(sparseBrand, distractorPool, 3);
+    expect(result).toHaveLength(3);
+  });
+
+  it("is a synchronous function — no network or AI client call is made", () => {
+    const result = generateQuestionPreview(makeBrand(), distractorPool, 3);
+    expect(result).not.toBeInstanceOf(Promise);
+    expect(Array.isArray(result)).toBe(true);
   });
 });

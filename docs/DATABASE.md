@@ -292,10 +292,24 @@ This document explains the canonical BrandBlitz schema, the current table relati
 
 ## audit_log
 
-- Purpose: an append-only audit trail is not currently defined in the repository schema.
-- Expected semantics: store immutable action records for security and compliance.
-- Soft delete: not applicable; audit logs should remain immutable.
-- Retention: can be governed by policy, but the schema should preserve history first.
+- Purpose: append-only audit trail of admin and system actions.
+- Key columns
+  - `id`: PK
+  - `actor_id`: FK to `users(id)` with `ON DELETE SET NULL` (null for system actions)
+  - `action`: action identifier
+  - `entity`: entity type the action applies to
+  - `entity_key`: optional identifier of the affected entity
+  - `before` / `after`: JSONB snapshots of the row before and after the change
+  - `created_at`: timestamp the action was recorded
+- Indexes
+  - `idx_audit_log_actor_id`
+  - `idx_audit_log_entity`
+  - `idx_audit_log_entity_key` (added in `apps/api/migrations/0015_idx_audit_log_entity_key.sql`)
+  - `idx_audit_log_created_at`
+- FK semantics: `actor_id` is set to `NULL` if the acting user is deleted.
+- Soft delete: not implemented; rows are immutable.
+- Retention: append-only; rows are never deleted.
+- Domain owner: security / compliance.
 
 ## legal_documents
 
@@ -313,10 +327,12 @@ This document explains the canonical BrandBlitz schema, the current table relati
 
 ## archive tables
 
-- Purpose: archive tables are not currently present in this schema.
-- Expected usage: store historical or deleted rows outside the primary transactional tables.
-- Recommended semantics: preserve original row data, timestamps, and provenance.
-- Soft delete / retention: archive tables usually exist to preserve data after live purge.
+- Tables: `challenges_archive` and `game_sessions_archive`, created in `apps/api/migrations/0007-archive-tables.sql`.
+- Purpose: preserve historical rows moved out of the primary transactional tables after live purge.
+- Schema: each is created with `CREATE TABLE ... (LIKE <live_table> INCLUDING ALL)`, so columns, defaults, constraints, and indexes mirror `challenges` and `game_sessions`.
+- Population: the monthly `archive` BullMQ job (`apps/api/src/queues/archive.queue.ts`) moves settled challenges ended more than 90 days ago, and their game sessions, into these tables and deletes the live rows in a single transaction.
+- Soft delete / retention: archive tables have no soft-delete marker; archived rows are retained indefinitely for historical reads.
+- Domain owner: challenge lifecycle / gameplay state.
 
 ---
 
