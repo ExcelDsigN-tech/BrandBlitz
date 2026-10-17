@@ -208,3 +208,91 @@ fn test_deposit_after_settled_fails() {
         Err(Ok(ContractError::AlreadySettled))
     );
 }
+
+#[test]
+fn test_memo_before_initialize() {
+    let (env, _, _, _, _, client) = setup();
+    // Pre-initialization view call returns graceful empty string without panicking
+    assert_eq!(client.memo(), String::from_str(&env, ""));
+}
+
+#[test]
+fn test_memo_after_initialize() {
+    let (env, admin, _, token, _, client) = setup();
+    let memo = String::from_str(&env, "BLITZ-MEMO-CHECK");
+    client.initialize(&admin, &token, &memo);
+    assert_eq!(client.memo(), memo);
+}
+
+#[test]
+fn test_auth_failure_surfaces_as_host_trap() {
+    let (env, admin, brand, token, _, client) = setup();
+    let winner = Address::generate(&env);
+    client.initialize(&admin, &token, &String::from_str(&env, "BLITZ-AUTH-TRAP"));
+    client.deposit(&brand, &100_0000000_i128);
+
+    let recipients = vec![&env, (winner.clone(), 100_0000000_i128)];
+
+    // soroban-sdk require_auth failure surfaces as a host trap / panic (is_err()),
+    // NOT as a typed Ok(Err(ContractError)).
+    env.mock_auths(&[]);
+    let res = client.try_settle(&recipients);
+    assert!(res.is_err());
+    assert!(!matches!(res, Ok(Err(_))));
+}
+
+#[test]
+fn test_deposit_second_depositor_fails() {
+    let (env, admin, brand, token, _, client) = setup();
+    let brand2 = Address::generate(&env);
+    let sac = token::StellarAssetClient::new(&env, &token);
+    sac.mint(&brand2, &500_0000000_i128);
+
+    client.initialize(&admin, &token, &String::from_str(&env, "BLITZ-MULTI-DEP"));
+    client.deposit(&brand, &100_0000000_i128);
+
+    // Subsequent top-up deposit from the same depositor succeeds
+    client.deposit(&brand, &50_0000000_i128);
+    assert_eq!(client.balance(), 150_0000000_i128);
+
+    // Deposit from a different depositor fails with DepositorMismatch
+    assert_eq!(
+        client.try_deposit(&brand2, &50_0000000_i128),
+        Err(Ok(ContractError::DepositorMismatch))
+    );
+}
+
+#[test]
+fn test_settle_empty_recipients_fails() {
+    let (env, admin, brand, token, _, client) = setup();
+    client.initialize(&admin, &token, &String::from_str(&env, "BLITZ-EMPTY-SETTLE"));
+    client.deposit(&brand, &100_0000000_i128);
+
+    let empty_recipients = vec![&env];
+    assert_eq!(
+        client.try_settle(&empty_recipients),
+        Err(Ok(ContractError::NoRecipients))
+    );
+    // Contract must not be marked settled, balance must remain untouched
+    assert!(!client.is_settled());
+    assert_eq!(client.balance(), 100_0000000_i128);
+}
+
+#[test]
+fn test_settle_partial_recipients_fails() {
+    let (env, admin, brand, token, _, client) = setup();
+    let winner = Address::generate(&env);
+    client.initialize(&admin, &token, &String::from_str(&env, "BLITZ-PARTIAL-SETTLE"));
+    client.deposit(&brand, &100_0000000_i128);
+
+    // Partial distribution (60 out of 100) must fail with UndistributedBalance
+    let recipients = vec![&env, (winner.clone(), 60_0000000_i128)];
+    assert_eq!(
+        client.try_settle(&recipients),
+        Err(Ok(ContractError::UndistributedBalance))
+    );
+    // Contract must not be marked settled, balance must remain untouched
+    assert!(!client.is_settled());
+    assert_eq!(client.balance(), 100_0000000_i128);
+}
+

@@ -223,6 +223,42 @@ export class EscrowClient {
   }
 
   /**
+   * Refund the full balance back to the depositor.
+   * Called by admin for cancelled challenges.
+   *
+   * @param signerSecret - Admin hot-wallet secret key for signing
+   */
+  async refund(signerSecret: string): Promise<string> {
+    const signer = Keypair.fromSecret(signerSecret);
+    const account = await this.horizonServer.loadAccount(signer.publicKey());
+
+    const tx = new TransactionBuilder(account, {
+      fee: "100000",
+      networkPassphrase: this.networkPassphrase,
+    })
+      .addOperation(
+        Operation.invokeHostFunction({
+          func: this.contract.call("refund"),
+          auth: [],
+        })
+      )
+      .setTimeout(300)
+      .build();
+
+    tx.sign(signer);
+    const result = await withRetry(
+      () => this.sorobanServer.sendTransaction(tx),
+      { maxAttempts: 5, baseDelayMs: 250, maxDelayMs: 30_000 }
+    );
+
+    if (result.status === "ERROR") {
+      throw new Error(`Refund failed: ${result.error_details}`);
+    }
+
+    return result.hash;
+  }
+
+  /**
    * View: Get the current escrowed balance.
    */
   async getBalance(): Promise<bigint> {
@@ -261,6 +297,26 @@ export class EscrowClient {
     }
 
     return scValToNative(result.val) as boolean;
+  }
+
+  /**
+   * View: Get the challenge memo string (returns empty string if uninitialized).
+   */
+  async getMemo(): Promise<string> {
+    const result = await withRetry(
+      () =>
+        this.sorobanServer.getContractData(
+          this.contract.address().contractId(),
+          xdr.ScVal.scValTypeSymbol(Buffer.from("memo"))
+        ),
+      { maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 5_000 }
+    );
+
+    if (!result) {
+      return "";
+    }
+
+    return scValToNative(result.val) as string;
   }
 
   /**
