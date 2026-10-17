@@ -80,7 +80,7 @@ jobs:
             cd "${{ secrets.PROD_APP_DIR }}"
             export APP_VERSION="${{ steps.tags.outputs.tag }}"
             export IMAGE_REGISTRY="${{ secrets.IMAGE_REGISTRY }}"
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web deposit-monitor
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
             BASE_URL="${{ secrets.PROD_BASE_URL }}"
@@ -101,7 +101,7 @@ jobs:
             cd "${{ secrets.PROD_APP_DIR }}"
             export APP_VERSION="${{ steps.tags.outputs.prev_tag }}"
             export IMAGE_REGISTRY="${{ secrets.IMAGE_REGISTRY }}"
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web deposit-monitor
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
       - name: Notify Slack (success)

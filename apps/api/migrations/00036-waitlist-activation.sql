@@ -1,4 +1,4 @@
--- Migration 00035: waitlist activation
+-- Migration 00036: waitlist activation
 -- Track when a waitlist entry is let in so the API can report live queue
 -- position and estimate wait time from recent activation throughput (#1046).
 

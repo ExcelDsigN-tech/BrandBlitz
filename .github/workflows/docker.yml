@@ -27,7 +27,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        app: [api, web]
+        app: [api, web, deposit-monitor]
 
     steps:
       - uses: actions/checkout@v4
