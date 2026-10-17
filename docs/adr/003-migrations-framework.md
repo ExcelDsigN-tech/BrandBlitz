@@ -20,7 +20,7 @@ re-litigate the decision.
 ## Decision
 
 `apps/api/scripts/migrate.ts` runs versioned SQL files from
-`migrations/` against the configured database.
+`apps/api/migrations/` against the configured database.
 
 - Each migration is a numbered `.sql` file (`NNNN_<slug>.sql`).
 - Up-direction only by default — Postgres-shaped, write-only.
@@ -76,5 +76,11 @@ Considered alternatives:
 ## References
 
 - `apps/api/scripts/migrate.ts`
-- `migrations/`
+- `apps/api/migrations/` — canonical migration directory read by the migration runner
 - Closes #68.
+
+## Migration Directory Clarification
+
+The migration runner reads **only** from `apps/api/migrations/`. A legacy `migrations/` directory exists at the repository root (39 files with 3-digit prefixes) but is **not used** by `pnpm migrate`, `pnpm migrate:dryrun`, or `pnpm migrate:down`. The root directory predates the current migration framework and is retained as a historical record.
+
+**For contributors**: Always add new migrations to `apps/api/migrations/`, not the root `migrations/` directory.
