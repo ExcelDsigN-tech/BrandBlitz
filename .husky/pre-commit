@@ -1,2 +1,2 @@
-pnpm -s gitleaks:pre-commit
+pnpm --silent gitleaks:pre-commit
 
