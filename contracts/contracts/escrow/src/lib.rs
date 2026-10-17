@@ -1,3 +1,11 @@
+//! BrandBlitz escrow contract.
+//!
+//! Every accumulation of admin- or depositor-supplied `i128` values uses
+//! explicit `checked_add` and returns [`ContractError::BalanceOverflow`] on
+//! overflow instead of relying on the `overflow-checks = true` release profile.
+//! This keeps an overflow a typed contract error that callers can handle and
+//! stays correct if a future build profile disables overflow checks.
+
 #![no_std]
 
 use soroban_sdk::{
@@ -16,6 +24,7 @@ pub enum ContractError {
     InsufficientBalance = 5,
     NothingToRefund = 6,
     Unauthorized = 7,
+    BalanceOverflow = 8,
 }
 
 /// Storage keys
@@ -91,9 +100,12 @@ impl EscrowContract {
         );
 
         let current: i128 = env.storage().instance().get(&DataKey::Balance).unwrap_or(0);
+        let new_balance = current
+            .checked_add(amount)
+            .ok_or(ContractError::BalanceOverflow)?;
         env.storage()
             .instance()
-            .set(&DataKey::Balance, &(current + amount));
+            .set(&DataKey::Balance, &new_balance);
         env.storage()
             .instance()
             .set(&DataKey::Depositor, &depositor);
@@ -136,7 +148,9 @@ impl EscrowContract {
             if amount <= 0 {
                 return Err(ContractError::InvalidAmount);
             }
-            total_distributed += amount;
+            total_distributed = total_distributed
+                .checked_add(amount)
+                .ok_or(ContractError::BalanceOverflow)?;
             if total_distributed > balance {
                 return Err(ContractError::InsufficientBalance);
             }
