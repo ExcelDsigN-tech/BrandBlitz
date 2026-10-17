@@ -12,10 +12,10 @@ Protected by `waitlistLimiter`: **5 requests per hour per IP**. Exceeding this r
 
 ### Request Body
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| `email` | string (max 254) | Yes | Valid email address. Normalised to lowercase and trimmed before storage. |
-| `referral_code` | string (max 64) | No | Referral code from another user's invite link |
+| Field           | Type             | Required | Description                                                              |
+| --------------- | ---------------- | -------- | ------------------------------------------------------------------------ |
+| `email`         | string (max 254) | Yes      | Valid email address. Normalised to lowercase and trimmed before storage. |
+| `referral_code` | string (max 64)  | No       | Referral code from another user's invite link                            |
 
 ### Example Request
 
@@ -41,10 +41,10 @@ curl -X POST https://api.brandblitz.io/waitlist \
 
 ### Error Responses
 
-| Status | Body | Trigger |
-|---|---|---|
-| `422` | `{ "error": "Invalid email address", "code": "INVALID_EMAIL" }` | Malformed email (fails Zod validation) |
-| `429` | `{ "error": "Too many signup attempts, please try again later" }` | Rate limit exceeded (5 req/hr/IP) |
+| Status | Body                                                              | Trigger                                |
+| ------ | ----------------------------------------------------------------- | -------------------------------------- |
+| `422`  | `{ "error": "Invalid email address", "code": "INVALID_EMAIL" }`   | Malformed email (fails Zod validation) |
+| `429`  | `{ "error": "Too many signup attempts, please try again later" }` | Rate limit exceeded (5 req/hr/IP)      |
 
 ---
 
@@ -58,8 +58,8 @@ Protected by `apiLimiter`: dynamic rate limit per user/IP over a 15-minute windo
 
 ### Path Parameters
 
-| Param | Type | Description |
-|---|---|---|
+| Param   | Type   | Description               |
+| ------- | ------ | ------------------------- |
 | `email` | string | The email used to sign up |
 
 ### Example Request
@@ -78,10 +78,10 @@ curl https://api.brandblitz.io/waitlist/position/alex@example.com
 
 ### Error Responses
 
-| Status | Body | Trigger |
-|---|---|---|
-| `404` | `{ "error": "Email not found on waitlist" }` | Email not in database |
-| `429` | `{ "error": "Too many requests, please try again later" }` | Rate limit exceeded |
+| Status | Body                                                       | Trigger               |
+| ------ | ---------------------------------------------------------- | --------------------- |
+| `404`  | `{ "error": "Email not found on waitlist" }`               | Email not in database |
+| `429`  | `{ "error": "Too many requests, please try again later" }` | Rate limit exceeded   |
 
 ---
 

@@ -351,3 +351,6 @@ postgresql://brandblitz:brandblitz_dev@127.0.0.1:5432/brandblitz?sslmode=disable
 ```
 
 CI asserts that the generated diagram matches `docs/db/er.svg`.
+The tbls generator is pinned to `v1.94.5` in both `package.json` and
+`.github/workflows/db-dual-path.yml`; intentionally bump both pins together
+when changing the renderer, then verify the generated SVG diff.

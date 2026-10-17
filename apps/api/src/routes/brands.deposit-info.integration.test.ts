@@ -2,7 +2,11 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { query } from "../db";
 import { createBrand, getBrandById } from "../db/queries/brands";
-import { createChallenge, getChallengeByIdAny, updateChallengeStatus } from "../db/queries/challenges";
+import {
+  createChallenge,
+  getChallengeByIdAny,
+  updateChallengeStatus,
+} from "../db/queries/challenges";
 import { getAccountUsdcBalance } from "@brandblitz/stellar";
 import * as stellarClient from "@brandblitz/stellar";
 
@@ -64,12 +68,12 @@ describe("Deposit Info Endpoint Integration Tests", () => {
 
       // Call deposit-info endpoint (simulated via direct function call)
       const balance = await getAccountUsdcBalance("GDUMMYADDRESS", "testnet");
-      
+
       expect(balance).toBe(1000000000n);
-      
+
       // Verify the mock was called
       expect(stellarClient.getAccountUsdcBalance).toHaveBeenCalledWith("GDUMMYADDRESS", "testnet");
-      
+
       vi.restoreAllMocks();
     });
 
@@ -77,17 +81,21 @@ describe("Deposit Info Endpoint Integration Tests", () => {
       vi.spyOn(stellarClient, "getAccountUsdcBalance").mockResolvedValue(0n);
 
       const balance = await getAccountUsdcBalance("GDUMMYADDRESS", "testnet");
-      
+
       expect(balance).toBe(0n);
-      
+
       vi.restoreAllMocks();
     });
 
     it("should handle Stellar client errors gracefully", async () => {
-      vi.spyOn(stellarClient, "getAccountUsdcBalance").mockRejectedValue(new Error("Network error"));
+      vi.spyOn(stellarClient, "getAccountUsdcBalance").mockRejectedValue(
+        new Error("Network error")
+      );
 
-      await expect(getAccountUsdcBalance("GDUMMYADDRESS", "testnet")).rejects.toThrow("Network error");
-      
+      await expect(getAccountUsdcBalance("GDUMMYADDRESS", "testnet")).rejects.toThrow(
+        "Network error"
+      );
+
       vi.restoreAllMocks();
     });
   });
@@ -95,7 +103,7 @@ describe("Deposit Info Endpoint Integration Tests", () => {
   describe("deposit-info endpoint validation", () => {
     it("should return 404 for non-existent challenge", async () => {
       const nonExistentChallengeId = randomUUID();
-      
+
       // Simulate the endpoint logic
       const challenge = await getChallengeByIdAny(nonExistentChallengeId);
       expect(challenge).toBeNull();
@@ -122,7 +130,7 @@ describe("Deposit Info Endpoint Integration Tests", () => {
     it("should return 400 when challenge is not in pending_deposit state", async () => {
       // Update challenge to active state
       await updateChallengeStatus(testChallengeId, "active");
-      
+
       const challenge = await getChallengeByIdAny(testChallengeId);
       expect(challenge?.status).toBe("active");
 
@@ -133,7 +141,7 @@ describe("Deposit Info Endpoint Integration Tests", () => {
     it("should include required fields in deposit info response", async () => {
       const challenge = await getChallengeByIdAny(testChallengeId);
       expect(challenge).not.toBeNull();
-      
+
       // Verify challenge has required fields
       expect(challenge?.pool_amount_usdc).toBeDefined();
       expect(challenge?.id).toBeDefined();
@@ -144,18 +152,21 @@ describe("Deposit Info Endpoint Integration Tests", () => {
     it("should validate Stellar address format (G... format)", () => {
       const validAddress = "GDUMMYADDRESS1234567890123456789012345678901234567890";
       const invalidAddress = "INVALIDADDRESS";
-      
+
       // Stellar addresses should be 56 characters starting with G
       expect(validAddress).toMatch(/^G[A-Z0-9]{55}$/);
       expect(invalidAddress).not.toMatch(/^G[A-Z0-9]{55}$/);
     });
 
     it("should handle non-existent escrow account gracefully", async () => {
-      vi.spyOn(stellarClient, "getAccountUsdcBalance").mockRejectedValue(new Error("Account not found"));
+      vi.spyOn(stellarClient, "getAccountUsdcBalance").mockRejectedValue(
+        new Error("Account not found")
+      );
 
-      await expect(getAccountUsdcBalance("GNONEXISTENT1234567890123456789012345678901234567890", "testnet"))
-        .rejects.toThrow("Account not found");
-      
+      await expect(
+        getAccountUsdcBalance("GNONEXISTENT1234567890123456789012345678901234567890", "testnet")
+      ).rejects.toThrow("Account not found");
+
       vi.restoreAllMocks();
     });
   });
@@ -192,10 +203,10 @@ describe("Deposit Info Endpoint Integration Tests", () => {
     it("should handle USDC stroop conversion correctly", () => {
       // Test stroop to USDC conversion (1 USDC = 10^7 stroops)
       const stroopsPerUsdc = 10000000n;
-      
+
       const usdcAmount = "100.00";
       const expectedStroops = BigInt(Math.round(parseFloat(usdcAmount) * 10000000));
-      
+
       expect(expectedStroops).toBe(1000000000n);
       expect(expectedStroops / stroopsPerUsdc).toBe(100n);
     });
@@ -203,7 +214,7 @@ describe("Deposit Info Endpoint Integration Tests", () => {
     it("should handle fractional USDC amounts correctly", () => {
       const fractionalAmount = "50.50";
       const expectedStroops = BigInt(Math.round(parseFloat(fractionalAmount) * 10000000));
-      
+
       expect(expectedStroops).toBe(505000000n);
     });
 
@@ -211,11 +222,12 @@ describe("Deposit Info Endpoint Integration Tests", () => {
       const expectedBalance = 1000000000n; // 100 USDC
       const actualBalance = 1000000000n; // Exact match
       const tolerance = 100n; // 0.00001 USDC tolerance
-      
-      const difference = actualBalance > expectedBalance 
-        ? actualBalance - expectedBalance 
-        : expectedBalance - actualBalance;
-      
+
+      const difference =
+        actualBalance > expectedBalance
+          ? actualBalance - expectedBalance
+          : expectedBalance - actualBalance;
+
       expect(difference).toBeLessThanOrEqual(tolerance);
     });
   });
@@ -260,7 +272,7 @@ describe("Live Testnet Integration Tests", () => {
         challengeId: randomUUID(),
         poolAmountUsdc: "10.00",
         endsAt: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
- });
+      });
       testChallengeId = challenge.id;
     });
 
@@ -272,11 +284,12 @@ describe("Live Testnet Integration Tests", () => {
 
     it("should query actual Stellar testnet balance", async () => {
       // Use a known testnet address (this would be a real testnet address in production)
-      const testnetAddress = process.env.TEST_STELLAR_ADDRESS || "GDUMMYADDRESS1234567890123456789012345678901234567890";
-      
+      const testnetAddress =
+        process.env.TEST_STELLAR_ADDRESS || "GDUMMYADDRESS1234567890123456789012345678901234567890";
+
       try {
         const balance = await getAccountUsdcBalance(testnetAddress, "testnet");
-        
+
         // Balance should be a bigint
         expect(typeof balance).toBe("bigint");
         expect(balance).toBeGreaterThanOrEqual(0n);
@@ -288,9 +301,8 @@ describe("Live Testnet Integration Tests", () => {
 
     it("should handle network errors gracefully", async () => {
       const invalidAddress = "GINVALIDADDRESS1234567890123456789012345678901234567890";
-      
-      await expect(getAccountUsdcBalance(invalidAddress, "testnet"))
-        .rejects.toThrow();
+
+      await expect(getAccountUsdcBalance(invalidAddress, "testnet")).rejects.toThrow();
     });
   });
 });

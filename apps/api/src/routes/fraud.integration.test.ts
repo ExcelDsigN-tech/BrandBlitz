@@ -42,16 +42,16 @@ const describeIntegration = originalDatabaseUrl ? describe : describe.skip;
 async function startServer(): Promise<{ server: Server; baseUrl: string }> {
   const app = express();
   app.use(express.json());
-  
+
   app.set("trust proxy", true);
   app.use((req, res, next) => {
     req.ip = "192.168.1.1";
-    Object.defineProperty(req, 'ip', { value: "192.168.1.1" });
+    Object.defineProperty(req, "ip", { value: "192.168.1.1" });
     next();
   });
-  
+
   app.use("/sessions", sessionsRoutes);
-  
+
   app.use(errorHandler);
 
   const server = app.listen(0);
@@ -72,7 +72,7 @@ describeIntegration("Fraud Detection - Multi-Account Fingerprint", () => {
 
   beforeAll(async () => {
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
-    
+
     await query(`
       CREATE TABLE users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -215,7 +215,10 @@ describeIntegration("Fraud Detection - Multi-Account Fingerprint", () => {
     expect(body3.error).toBe("Session rejected due to fingerprint collision");
 
     // Verify fraud flag is recorded in the database
-    const flags = await query(`SELECT * FROM fraud_flags WHERE user_id = $1 AND flag_type = 'multi_account_fingerprint'`, [users[2]]);
+    const flags = await query(
+      `SELECT * FROM fraud_flags WHERE user_id = $1 AND flag_type = 'multi_account_fingerprint'`,
+      [users[2]]
+    );
     expect(flags.rows.length).toBeGreaterThan(0);
     expect(flags.rows[0].details.accountCount).toBeGreaterThanOrEqual(3);
   });

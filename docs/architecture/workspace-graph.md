@@ -21,18 +21,18 @@ Turborepo build ordering in [`turbo.json`](../../turbo.json):
 ```
 
 This means a package build runs before any app that depends on it. The graph below
-shows *which* apps depend on *which* packages.
+shows _which_ apps depend on _which_ packages.
 
 ## Internal `@brandblitz/*` dependencies
 
-| Workspace | Internal dependencies (`@brandblitz/*`) | What it imports | Source |
-|---|---|---|---|
-| **`apps/api`** (`@brandblitz/api`) | `@brandblitz/config`, `@brandblitz/stellar`, `@brandblitz/storage` | Config constants (`PERMISSIONS_POLICY_HEADER`), Stellar SDK helpers (`payout`, `deposit`, `muxed accounts`), S3/MinIO storage + image optimisation | [`apps/api/package.json`](../../apps/api/package.json) |
-| **`apps/web`** (`@brandblitz/web`) | `@brandblitz/config` | Shared config (Permissions-Policy header, etc.) | [`apps/web/package.json`](../../apps/web/package.json) |
-| **`apps/deposit-monitor`** (`@brandblitz/deposit-monitor`) | `@brandblitz/stellar` | Stellar deposit detection (`getEvents`) via Soroban RPC | [`apps/deposit-monitor/package.json`](../../apps/deposit-monitor/package.json) |
-| **`packages/stellar`** (`@brandblitz/stellar`) | *(none)* — leaf package | Exports Horizon/Soroban clients, payout, deposit, accounts, constants | [`packages/stellar/package.json`](../../packages/stellar/package.json) |
-| **`packages/storage`** (`@brandblitz/storage`) | *(none)* — leaf package | S3 client + `sharp` WebP optimisation | [`packages/storage/package.json`](../../packages/storage/package.json) |
-| **`packages/config`** (`@brandblitz/config`) | *(none)* — leaf package | Shared constants, no external package deps | [`packages/config/package.json`](../../packages/config/package.json) |
+| Workspace                                                  | Internal dependencies (`@brandblitz/*`)                            | What it imports                                                                                                                                    | Source                                                                         |
+| ---------------------------------------------------------- | ------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| **`apps/api`** (`@brandblitz/api`)                         | `@brandblitz/config`, `@brandblitz/stellar`, `@brandblitz/storage` | Config constants (`PERMISSIONS_POLICY_HEADER`), Stellar SDK helpers (`payout`, `deposit`, `muxed accounts`), S3/MinIO storage + image optimisation | [`apps/api/package.json`](../../apps/api/package.json)                         |
+| **`apps/web`** (`@brandblitz/web`)                         | `@brandblitz/config`                                               | Shared config (Permissions-Policy header, etc.)                                                                                                    | [`apps/web/package.json`](../../apps/web/package.json)                         |
+| **`apps/deposit-monitor`** (`@brandblitz/deposit-monitor`) | `@brandblitz/stellar`                                              | Stellar deposit detection (`getEvents`) via Soroban RPC                                                                                            | [`apps/deposit-monitor/package.json`](../../apps/deposit-monitor/package.json) |
+| **`packages/stellar`** (`@brandblitz/stellar`)             | _(none)_ — leaf package                                            | Exports Horizon/Soroban clients, payout, deposit, accounts, constants                                                                              | [`packages/stellar/package.json`](../../packages/stellar/package.json)         |
+| **`packages/storage`** (`@brandblitz/storage`)             | _(none)_ — leaf package                                            | S3 client + `sharp` WebP optimisation                                                                                                              | [`packages/storage/package.json`](../../packages/storage/package.json)         |
+| **`packages/config`** (`@brandblitz/config`)               | _(none)_ — leaf package                                            | Shared constants, no external package deps                                                                                                         | [`packages/config/package.json`](../../packages/config/package.json)           |
 
 > **Verified 2026-09-23:** table generated manually against `apps/*/package.json` and
 > `packages/*/package.json`; no other `@brandblitz/*` dependencies exist.

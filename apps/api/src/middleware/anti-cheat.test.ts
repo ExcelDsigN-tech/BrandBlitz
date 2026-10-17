@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { validateReactionTime, validateDeviceFingerprint, enforceOneSessionPerChallenge, BOT_REACTION_THRESHOLD_MS, MIN_HUMAN_REACTION_MS, validateRoundScore, assertValidTotalScore } from "./anti-cheat";
+import {
+  validateReactionTime,
+  validateDeviceFingerprint,
+  enforceOneSessionPerChallenge,
+  BOT_REACTION_THRESHOLD_MS,
+  MIN_HUMAN_REACTION_MS,
+  validateRoundScore,
+  assertValidTotalScore,
+} from "./anti-cheat";
 import * as fraudQueries from "../db/queries/fraud-flags";
 import { metrics } from "../lib/metrics";
 import * as sessionQueries from "../db/queries/sessions";
@@ -20,7 +28,7 @@ vi.mock("../lib/redis", () => ({
   },
 }));
 vi.mock("../lib/metrics", () => ({
-  metrics: { inc: vi.fn() }
+  metrics: { inc: vi.fn() },
 }));
 vi.mock("../lib/fingerprint", () => ({
   computeFingerprint: vi.fn().mockReturnValue("test-fingerprint-hash"),
@@ -68,7 +76,7 @@ describe("anti-cheat middleware", () => {
         "x-device-id": "device-abc",
       },
       ip: "1.2.3.4",
-      sessionId: "session-1"
+      sessionId: "session-1",
     };
     res = {};
     next = vi.fn();
@@ -82,7 +90,7 @@ describe("anti-cheat middleware", () => {
   describe("detectClockSkew", () => {
     it("allows request with no client timestamp", async () => {
       const { detectClockSkew } = await import("./anti-cheat");
-      
+
       await detectClockSkew(req, res, next);
 
       expect(next).toHaveBeenCalled();
@@ -179,11 +187,14 @@ describe("anti-cheat middleware", () => {
 
       await expect(validateReactionTime(req, res, next)).rejects.toMatchObject({
         statusCode: 403,
-        code: "REACTION_IMPOSSIBLE"
+        code: "REACTION_IMPOSSIBLE",
       });
 
       expect(fraudQueries.createFraudFlag).toHaveBeenCalled();
-      expect(metrics.inc).toHaveBeenCalledWith("antiCheat.flags_total", expect.objectContaining({ severity: "critical" }));
+      expect(metrics.inc).toHaveBeenCalledWith(
+        "antiCheat.flags_total",
+        expect.objectContaining({ severity: "critical" })
+      );
     });
 
     it("flags but allows if reaction time is between bot and human minimum", async () => {
@@ -193,7 +204,10 @@ describe("anti-cheat middleware", () => {
 
       expect(next).toHaveBeenCalled();
       expect(fraudQueries.createFraudFlag).toHaveBeenCalled();
-      expect(metrics.inc).toHaveBeenCalledWith("antiCheat.flags_total", expect.objectContaining({ severity: "warning" }));
+      expect(metrics.inc).toHaveBeenCalledWith(
+        "antiCheat.flags_total",
+        expect.objectContaining({ severity: "warning" })
+      );
     });
 
     it("flags with info severity if reaction time is above maximum", async () => {
@@ -203,7 +217,10 @@ describe("anti-cheat middleware", () => {
 
       expect(next).toHaveBeenCalled();
       expect(fraudQueries.createFraudFlag).toHaveBeenCalled();
-      expect(metrics.inc).toHaveBeenCalledWith("antiCheat.flags_total", expect.objectContaining({ severity: "info" }));
+      expect(metrics.inc).toHaveBeenCalledWith(
+        "antiCheat.flags_total",
+        expect.objectContaining({ severity: "info" })
+      );
     });
   });
 
@@ -223,7 +240,10 @@ describe("anti-cheat middleware", () => {
       await validateDeviceFingerprint(req, res, next);
 
       expect(next).toHaveBeenCalled();
-      expect(metrics.inc).not.toHaveBeenCalledWith("antiCheat.fingerprint_collision_total", expect.anything());
+      expect(metrics.inc).not.toHaveBeenCalledWith(
+        "antiCheat.fingerprint_collision_total",
+        expect.anything()
+      );
     });
 
     it("rejects with 403 FINGERPRINT_COLLISION when fingerprint has >=3 accounts", async () => {

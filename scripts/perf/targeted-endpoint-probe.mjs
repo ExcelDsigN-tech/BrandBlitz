@@ -32,7 +32,7 @@ async function run(level) {
       next += 1;
       if (ratePerMinute > 0 && requestNumber > 0) {
         await new Promise((resolve) =>
-          setTimeout(resolve, (requestNumber * 60_000) / ratePerMinute),
+          setTimeout(resolve, (requestNumber * 60_000) / ratePerMinute)
         );
       }
       const start = performance.now();
@@ -72,4 +72,13 @@ async function run(level) {
   };
 }
 
-console.log(JSON.stringify({ endpoint: `${method} ${new URL(path, baseUrl)}`, results: await Promise.all(concurrency.map(run)) }, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      endpoint: `${method} ${new URL(path, baseUrl)}`,
+      results: await Promise.all(concurrency.map(run)),
+    },
+    null,
+    2
+  )
+);

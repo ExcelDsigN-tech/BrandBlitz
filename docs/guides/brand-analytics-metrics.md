@@ -75,11 +75,11 @@ Benchmarks: interactive ad formats typically see steep drop-off after the first 
 
 Each bar is one round's question ("Round 1 — Tagline recognition", etc.) showing:
 
-| Field | Meaning |
-|---|---|
-| `totalAttempts` | Answers submitted by players in **completed sessions** |
-| `correctAttempts` | Answers that earned points (`score > 0`) |
-| `accuracy` | `round(correctAttempts / totalAttempts × 100)` |
+| Field             | Meaning                                                |
+| ----------------- | ------------------------------------------------------ |
+| `totalAttempts`   | Answers submitted by players in **completed sessions** |
+| `correctAttempts` | Answers that earned points (`score > 0`)               |
+| `accuracy`        | `round(correctAttempts / totalAttempts × 100)`         |
 
 Color coding: **green** ≥ 80%, **yellow** ≥ 50%, **red** < 50%.
 
@@ -97,7 +97,7 @@ Note: attempts from incomplete sessions are excluded, so this reflects players w
 
 **What it measures:** the average prize-pool cost of one player session across the selected date range — your effective cost-per-engagement.
 
-The card averages the daily *cost per session* values over the window:
+The card averages the daily _cost per session_ values over the window:
 
 ```
 avgCostPerSession = mean(daily costPerSession)

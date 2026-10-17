@@ -11,11 +11,29 @@ export const ACCESS_TOKEN_TTL = "15m";
 export const REFRESH_TOKEN_TTL = "30d";
 const REFRESH_TTL_SECONDS = 30 * 24 * 60 * 60;
 
-export interface AccessPayload { sub: string; email: string; role: string; jti: string; iat: number; exp: number; }
-export interface RefreshPayload { sub: string; email: string; type: "refresh"; jti: string; iat: number; exp: number; }
+export interface AccessPayload {
+  sub: string;
+  email: string;
+  role: string;
+  jti: string;
+  iat: number;
+  exp: number;
+}
+export interface RefreshPayload {
+  sub: string;
+  email: string;
+  type: "refresh";
+  jti: string;
+  iat: number;
+  exp: number;
+}
 
-function accessSecret() { return config.JWT_SECRET; }
-function refreshSecret() { return config.JWT_REFRESH_SECRET ?? config.JWT_SECRET; }
+function accessSecret() {
+  return config.JWT_SECRET;
+}
+function refreshSecret() {
+  return config.JWT_REFRESH_SECRET ?? config.JWT_SECRET;
+}
 
 /**
  * Returns the previous JWT secret (set as JWT_SECRET_PREVIOUS) that is still
@@ -50,7 +68,11 @@ export function signAccessToken(user: { id: string; email: string; role?: string
 }
 
 export function signRefreshToken(user: { id: string; email: string }): string {
-  return jwt.sign({ sub: user.id, email: user.email, type: "refresh", jti: randomUUID() }, refreshSecret(), { expiresIn: REFRESH_TOKEN_TTL });
+  return jwt.sign(
+    { sub: user.id, email: user.email, type: "refresh", jti: randomUUID() },
+    refreshSecret(),
+    { expiresIn: REFRESH_TOKEN_TTL }
+  );
 }
 
 /**

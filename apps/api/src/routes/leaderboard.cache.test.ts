@@ -65,7 +65,19 @@ describe("leaderboard cache", () => {
 
   it("returns cached response and does not call DB on cache HIT", async () => {
     const cached = {
-      sessions: [{ rank: 1, userId: "u1", username: "alice", displayName: "Alice", league: "gold", avatarUrl: null, totalScore: 300, totalEarned: "1.0", endedAt: null }],
+      sessions: [
+        {
+          rank: 1,
+          userId: "u1",
+          username: "alice",
+          displayName: "Alice",
+          league: "gold",
+          avatarUrl: null,
+          totalScore: 300,
+          totalEarned: "1.0",
+          endedAt: null,
+        },
+      ],
       data: [],
       nextCursor: null,
     };

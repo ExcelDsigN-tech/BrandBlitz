@@ -23,7 +23,10 @@ vi.mock("@/lib/api", () => ({
 // Mock the upload field
 vi.mock("./upload-field", () => ({
   UploadField: ({ label, onUploaded }: any) => (
-    <button type="button" onClick={() => onUploaded("test-logo-key", "https://cdn.example.com/logo.png")}>
+    <button
+      type="button"
+      onClick={() => onUploaded("test-logo-key", "https://cdn.example.com/logo.png")}
+    >
       {label}
     </button>
   ),

@@ -63,7 +63,9 @@ describe("Archive Queue Integration Tests", () => {
 
   afterAll(async () => {
     // Cleanup test data
-    await query(`DELETE FROM session_round_scores WHERE session_id = ANY($1::uuid[])`, [sessionIds]);
+    await query(`DELETE FROM session_round_scores WHERE session_id = ANY($1::uuid[])`, [
+      sessionIds,
+    ]);
     await query(`DELETE FROM game_sessions_archive WHERE id = ANY($1::uuid[])`, [sessionIds]);
     await query(`DELETE FROM game_sessions WHERE id = ANY($1::uuid[])`, [sessionIds]);
     await query(`DELETE FROM challenges_archive WHERE id = $1`, [testChallengeId]);
@@ -98,12 +100,12 @@ describe("Archive Queue Integration Tests", () => {
 
     // Create and run archive worker
     const worker = createArchiveWorker();
-    
+
     // Manually trigger the job (since we're testing the processor directly)
     await worker.run();
-    
+
     // Wait a moment for processing
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify session_round_scores are deleted from hot table
     const postArchiveScores = await query(
@@ -127,10 +129,9 @@ describe("Archive Queue Integration Tests", () => {
     expect(postArchiveSessions.rows[0].count).toBe(0);
 
     // Verify challenge is moved to archive table
-    const archivedChallenge = await query(
-      `SELECT * FROM challenges_archive WHERE id = $1`,
-      [testChallengeId]
-    );
+    const archivedChallenge = await query(`SELECT * FROM challenges_archive WHERE id = $1`, [
+      testChallengeId,
+    ]);
     expect(archivedChallenge.rows.length).toBe(1);
     expect(archivedChallenge.rows[0].status).toBe("settled");
 
@@ -139,10 +140,9 @@ describe("Archive Queue Integration Tests", () => {
     expect(postArchiveChallenge).toBeNull();
 
     // Verify archived sessions have identical field values
-    const archivedSessionData = await query(
-      `SELECT * FROM game_sessions_archive WHERE id = $1`,
-      [sessionIds[0]]
-    );
+    const archivedSessionData = await query(`SELECT * FROM game_sessions_archive WHERE id = $1`, [
+      sessionIds[0],
+    ]);
     expect(archivedSessionData.rows.length).toBe(1);
     expect(archivedSessionData.rows[0].user_id).toBe(testUserId);
     expect(archivedSessionData.rows[0].challenge_id).toBe(testChallengeId);
@@ -152,9 +152,11 @@ describe("Archive Queue Integration Tests", () => {
     // Verify leaderboard endpoint reads from archive and returns correct data
     const archivedLeaderboard = await getArchivedLeaderboard(testChallengeId, 10);
     expect(archivedLeaderboard.sessions.length).toBe(10);
-    
+
     // Verify rankings match pre-archive state (same order by score)
-    expect(archivedLeaderboard.sessions[0].total_score).toBe(preArchiveLeaderboard.sessions[0].total_score);
+    expect(archivedLeaderboard.sessions[0].total_score).toBe(
+      preArchiveLeaderboard.sessions[0].total_score
+    );
     expect(archivedLeaderboard.sessions[0].user_id).toBe(preArchiveLeaderboard.sessions[0].user_id);
 
     await worker.close();
@@ -169,7 +171,12 @@ describe("Archive Queue Integration Tests", () => {
        RETURNING id`,
       [testBrandId, `idempotent-${idempotentChallengeId}`, "settled", 500000000]
     );
-    const challengeId = (await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [testBrandId, `idempotent-${idempotentChallengeId}`])).rows[0].id;
+    const challengeId = (
+      await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [
+        testBrandId,
+        `idempotent-${idempotentChallengeId}`,
+      ])
+    ).rows[0].id;
 
     const idempotentSessionId = randomUUID();
     await query(
@@ -182,7 +189,7 @@ describe("Archive Queue Integration Tests", () => {
     // First archive run
     const worker = createArchiveWorker();
     await worker.run();
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify data was archived
     const firstArchiveCheck = await query(
@@ -193,7 +200,7 @@ describe("Archive Queue Integration Tests", () => {
 
     // Second archive run (should be idempotent)
     await worker.run();
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify no duplicate archive rows
     const secondArchiveCheck = await query(
@@ -219,7 +226,12 @@ describe("Archive Queue Integration Tests", () => {
        VALUES ($1, $2, $3, $4, NOW() + INTERVAL '48 hours', NOW())`,
       [testBrandId, `active-${activeChallengeId}`, "active", 1000000000]
     );
-    const activeChallenge = (await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [testBrandId, `active-${activeChallengeId}`])).rows[0].id;
+    const activeChallenge = (
+      await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [
+        testBrandId,
+        `active-${activeChallengeId}`,
+      ])
+    ).rows[0].id;
 
     const activeSessionId = randomUUID();
     await query(
@@ -236,7 +248,12 @@ describe("Archive Queue Integration Tests", () => {
        VALUES ($1, $2, $3, $4, NOW() + INTERVAL '48 hours', NOW())`,
       [testBrandId, `pending-${pendingChallengeId}`, "pending_deposit", 500000000]
     );
-    const pendingChallenge = (await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [testBrandId, `pending-${pendingChallengeId}`])).rows[0].id;
+    const pendingChallenge = (
+      await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [
+        testBrandId,
+        `pending-${pendingChallengeId}`,
+      ])
+    ).rows[0].id;
 
     const pendingSessionId = randomUUID();
     await query(
@@ -249,7 +266,7 @@ describe("Archive Queue Integration Tests", () => {
     // Run archive worker
     const worker = createArchiveWorker();
     await worker.run();
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify active challenge still exists in hot table
     const activeChallengeCheck = await getChallengeByIdAny(activeChallenge);
@@ -289,8 +306,12 @@ describe("Archive Queue Integration Tests", () => {
     expect(pendingArchiveCheck.rows[0].count).toBe(0);
 
     // Cleanup
-    await query(`DELETE FROM game_sessions WHERE id = ANY($1::uuid[])`, [[activeSessionId, pendingSessionId]]);
-    await query(`DELETE FROM challenges WHERE id = ANY($1::uuid[])`, [[activeChallenge, pendingChallenge]]);
+    await query(`DELETE FROM game_sessions WHERE id = ANY($1::uuid[])`, [
+      [activeSessionId, pendingSessionId],
+    ]);
+    await query(`DELETE FROM challenges WHERE id = ANY($1::uuid[])`, [
+      [activeChallenge, pendingChallenge],
+    ]);
 
     await worker.close();
   });
@@ -304,7 +325,12 @@ describe("Archive Queue Integration Tests", () => {
        VALUES ($1, $2, $3, $4, NOW() + INTERVAL '48 hours', NOW())`,
       [testBrandId, `error-${errorChallengeId}`, "active", 1000000000]
     );
-    const challengeId = (await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [testBrandId, `error-${errorChallengeId}`])).rows[0].id;
+    const challengeId = (
+      await query(`SELECT id FROM challenges WHERE challenge_id = $2`, [
+        testBrandId,
+        `error-${errorChallengeId}`,
+      ])
+    ).rows[0].id;
 
     const errorSessionId = randomUUID();
     await query(
@@ -316,7 +342,7 @@ describe("Archive Queue Integration Tests", () => {
     // Run archive worker - should not error even with ineligible challenges
     const worker = createArchiveWorker();
     await worker.run();
-    await new Promise(resolve => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Verify the ineligible challenge was not touched
     const errorChallengeCheck = await getChallengeByIdAny(challengeId);

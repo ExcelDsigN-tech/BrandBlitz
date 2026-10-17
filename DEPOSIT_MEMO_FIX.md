@@ -1,7 +1,9 @@
 # Deposit Memo Security Fix
 
 ## Problem
+
 Deposit memo and address were leaked in URL query params, ending up in:
+
 - Browser history
 - Analytics
 - Sentry breadcrumbs
@@ -10,6 +12,7 @@ Deposit memo and address were leaked in URL query params, ending up in:
 The memo is critical for Stellar hot-wallet reconciliation and must be kept secret.
 
 ## Solution
+
 Moved deposit details from URL query params to server-side API endpoint.
 
 ## Changes Made
@@ -17,11 +20,13 @@ Moved deposit details from URL query params to server-side API endpoint.
 ### Frontend
 
 #### 1. **brand-kit-form.tsx** (Line 71)
+
 - **Before**: `router.push(/brand/${brandId}?depositAddress=...&memo=...&amount=...)`
 - **After**: `router.push(/brand/${brandId})`
 - Secrets no longer included in redirect URL
 
 #### 2. **brand/[id]/page.tsx**
+
 - Removed `useSearchParams()` hook
 - Removed query param extraction: `depositAddress`, `depositMemo`, `depositAmount`
 - Added `depositInfo` state
@@ -30,12 +35,14 @@ Moved deposit details from URL query params to server-side API endpoint.
 - Gracefully handles missing deposit info
 
 #### 3. **brand-kit-form.test.tsx** (NEW)
+
 - Unit test verifies redirect URL contains no secrets
 - Tests that URL does not contain: `depositAddress`, `memo`, `amount`, wallet address, or challenge ID
 
 ### Backend
 
 #### 1. **challenges.ts** (New Endpoint)
+
 - Added `GET /challenges/:id/deposit-info`
 - **Authentication**: Required (authenticate middleware)
 - **Authorization**: Only brand owner can access
@@ -47,6 +54,7 @@ Moved deposit details from URL query params to server-side API endpoint.
   - 400: Challenge is not pending deposit
 
 #### 2. **challenges.deposit-info.test.ts** (NEW)
+
 - Tests 404 for unknown challenge
 - Tests 403 for unauthorized users
 - Tests 400 for non-pending challenges
@@ -56,6 +64,7 @@ Moved deposit details from URL query params to server-side API endpoint.
 ### Documentation
 
 #### 1. **docs/06-legal-compliance.md** (NEW)
+
 - Explains why memos must be kept secret
 - Documents implementation details
 - Provides manual QA checklist
@@ -69,11 +78,12 @@ Moved deposit details from URL query params to server-side API endpoint.
 ✅ Backend returns 404 if requester is not brand owner  
 ✅ Vitest unit test verifies redirect URL contains no secrets  
 ✅ Manual QA checklist provided in docs  
-✅ Documented in `docs/06-legal-compliance.md`  
+✅ Documented in `docs/06-legal-compliance.md`
 
 ## Testing
 
 ### Unit Tests
+
 ```bash
 # Frontend
 npm run test -- brand-kit-form.test.tsx
@@ -83,6 +93,7 @@ npm run test -- challenges.deposit-info.test.ts
 ```
 
 ### Manual QA
+
 1. Create a brand and challenge
 2. Verify redirect URL is clean: `/brand/[id]` (no query params)
 3. Verify deposit info appears on the page (fetched from API)
@@ -96,7 +107,7 @@ npm run test -- challenges.deposit-info.test.ts
 ✅ **No Sentry Leakage**: Memos not in breadcrumbs  
 ✅ **No Referer Leakage**: Memos not sent to external sites  
 ✅ **Authorization Enforced**: Only brand owner can access deposit info  
-✅ **Status Validation**: Deposit info only available for pending challenges  
+✅ **Status Validation**: Deposit info only available for pending challenges
 
 ## Files Modified
 
@@ -118,6 +129,7 @@ npm run test -- challenges.deposit-info.test.ts
 ## Rollback Plan
 
 If issues arise:
+
 1. Revert frontend to use query params (temporary)
 2. Keep API endpoint for future use
 3. Investigate root cause

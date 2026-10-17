@@ -82,7 +82,7 @@ export default function ChallengeIndexPage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-12 w-32 rounded bg-[var(--muted)] mb-2" />
+                <div className="mb-2 h-12 w-32 rounded bg-[var(--muted)]" />
                 <div className="h-5 w-40 rounded bg-[var(--muted)]" />
               </CardHeader>
               <CardContent>
@@ -137,7 +137,9 @@ export default function ChallengeIndexPage() {
                     <Badge variant="default">Active</Badge>
                   </div>
                   <CardTitle>{c.brand_name ?? "Untitled brand"}</CardTitle>
-                  <CardDescription>Prize pool: {formatUsdc(c.pool_amount_usdc)} USDC</CardDescription>
+                  <CardDescription>
+                    Prize pool: {formatUsdc(c.pool_amount_usdc)} USDC
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Link href={`/challenge/${c.id}`}>

@@ -33,14 +33,10 @@ function loadConfig(): Readonly<Config> {
     const parsed = configSchema.parse({
       ...process.env,
       // Support legacy env-var aliases so existing deployments keep working.
-      HOT_WALLET_SECRET:
-        process.env.HOT_WALLET_SECRET ?? process.env.STELLAR_HOT_WALLET_SECRET,
-      S3_ACCESS_KEY_ID:
-        process.env.S3_ACCESS_KEY_ID ?? process.env.S3_ACCESS_KEY,
-      S3_SECRET_ACCESS_KEY:
-        process.env.S3_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_KEY,
-      TWILIO_SERVICE_SID:
-        process.env.TWILIO_SERVICE_SID ?? process.env.TWILIO_VERIFY_SERVICE_SID,
+      HOT_WALLET_SECRET: process.env.HOT_WALLET_SECRET ?? process.env.STELLAR_HOT_WALLET_SECRET,
+      S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? process.env.S3_ACCESS_KEY,
+      S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_KEY,
+      TWILIO_SERVICE_SID: process.env.TWILIO_SERVICE_SID ?? process.env.TWILIO_VERIFY_SERVICE_SID,
     });
 
     // Log non-secret config values at startup so operators can verify what
@@ -74,7 +70,7 @@ function loadConfig(): Readonly<Config> {
       console.error(
         `❌ Invalid or missing environment variables:\n${details}${missingLine}\n` +
           `Check your .env file against .env.example for the expected format.\n` +
-          `Hint: run \`pnpm setup:secrets\` (or \`npx tsx scripts/setup-dev-secrets.ts\`) to generate a local .env, or copy the example: \`cp .env.example .env\` and fill in the missing values. See scripts/setup-dev-secrets.ts.`,
+          `Hint: run \`pnpm setup:secrets\` (or \`npx tsx scripts/setup-dev-secrets.ts\`) to generate a local .env, or copy the example: \`cp .env.example .env\` and fill in the missing values. See scripts/setup-dev-secrets.ts.`
       );
       process.exit(1);
     }

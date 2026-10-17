@@ -18,7 +18,7 @@ export default function LoginPage() {
           <p>By signing in you agree to our Terms of Service and Privacy Policy.</p>
           <a
             href="https://github.com/privexlabs/BrandBlitz/blob/main/docs/guides/signing-in.md"
-            className="font-medium text-primary underline-offset-4 hover:underline"
+            className="text-primary font-medium underline-offset-4 hover:underline"
           >
             Learn about sign-in options
           </a>

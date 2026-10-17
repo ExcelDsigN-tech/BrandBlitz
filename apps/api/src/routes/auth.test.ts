@@ -217,10 +217,11 @@ describe("auth routes", () => {
       sub: string;
       email: string;
     };
-    const refreshPayload = jwt.verify(
-      response.body.refreshToken,
-      TEST_JWT_REFRESH_SECRET
-    ) as { sub: string; email: string; type: string };
+    const refreshPayload = jwt.verify(response.body.refreshToken, TEST_JWT_REFRESH_SECRET) as {
+      sub: string;
+      email: string;
+      type: string;
+    };
 
     expect(accessPayload.sub).toBe(userFixture.id);
     expect(accessPayload.email).toBe(userFixture.email);

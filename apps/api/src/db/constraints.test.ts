@@ -169,10 +169,10 @@ describeIntegration("CHECK constraint regressions (migration 013)", () => {
     const bid = await insertBrand(uid);
     const cid = await insertChallenge(bid);
     await expect(
-      query(
-        `INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, 0)`,
-        [uid, cid]
-      )
+      query(`INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, 0)`, [
+        uid,
+        cid,
+      ])
     ).resolves.toBeDefined();
   });
 
@@ -181,10 +181,10 @@ describeIntegration("CHECK constraint regressions (migration 013)", () => {
     const bid = await insertBrand(uid);
     const cid = await insertChallenge(bid);
     await expect(
-      query(
-        `INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, 450)`,
-        [uid, cid]
-      )
+      query(`INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, 450)`, [
+        uid,
+        cid,
+      ])
     ).resolves.toBeDefined();
   });
 
@@ -193,10 +193,10 @@ describeIntegration("CHECK constraint regressions (migration 013)", () => {
     const bid = await insertBrand(uid);
     const cid = await insertChallenge(bid);
     await expect(
-      query(
-        `INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, 451)`,
-        [uid, cid]
-      )
+      query(`INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, 451)`, [
+        uid,
+        cid,
+      ])
     ).rejects.toThrow();
   });
 
@@ -205,10 +205,10 @@ describeIntegration("CHECK constraint regressions (migration 013)", () => {
     const bid = await insertBrand(uid);
     const cid = await insertChallenge(bid);
     await expect(
-      query(
-        `INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, -1)`,
-        [uid, cid]
-      )
+      query(`INSERT INTO game_sessions (user_id, challenge_id, total_score) VALUES ($1, $2, -1)`, [
+        uid,
+        cid,
+      ])
     ).rejects.toThrow();
   });
 
@@ -219,10 +219,10 @@ describeIntegration("CHECK constraint regressions (migration 013)", () => {
     const bid = await insertBrand(uid);
     const cid = await insertChallenge(bid);
     await expect(
-      query(
-        `INSERT INTO payouts (challenge_id, user_id, amount_stroops) VALUES ($1, $2, 0)`,
-        [cid, uid]
-      )
+      query(`INSERT INTO payouts (challenge_id, user_id, amount_stroops) VALUES ($1, $2, 0)`, [
+        cid,
+        uid,
+      ])
     ).rejects.toThrow();
   });
 

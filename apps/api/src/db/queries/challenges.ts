@@ -728,9 +728,7 @@ export async function optChallengeOutOfGallery(
 /**
  * Fetch a single gallery template by id (must be opted in and ended).
  */
-export async function getGalleryTemplateById(
-  id: string
-): Promise<GalleryTemplate | null> {
+export async function getGalleryTemplateById(id: string): Promise<GalleryTemplate | null> {
   const result = await query<GalleryTemplate>(
     `SELECT
        c.id,

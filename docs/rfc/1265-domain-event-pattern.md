@@ -9,7 +9,7 @@ call site that currently orchestrates payout completion by hand, rather than sub
 listener to a well-known event.
 
 **Correcting the issue's premise on one point:** `services/streaks.ts`'s `updateStreak()` is
-*not* actually called from the payout path — `grep` confirms its only caller is
+_not_ actually called from the payout path — `grep` confirms its only caller is
 `routes/sessions.ts` on session completion, a related but distinct event from payout/challenge
 settlement. It's still a same-shape example of a directly-invoked side effect, just triggered by
 a different domain event (`SessionCompleted`, not `PayoutCompleted`) — included below as a second
@@ -94,11 +94,11 @@ class DomainEvents {
 
   on<K extends keyof DomainEventMap>(
     event: K,
-    listener: (payload: DomainEventMap[K]) => void | Promise<void>,
+    listener: (payload: DomainEventMap[K]) => void | Promise<void>
   ): void {
     this.emitter.on(event, (payload) => {
       Promise.resolve(listener(payload)).catch((err) =>
-        logger.error("Async domain event listener rejected", { event, err }),
+        logger.error("Async domain event listener rejected", { event, err })
       );
     });
   }
@@ -107,7 +107,7 @@ class DomainEvents {
 export const domainEvents = new DomainEvents();
 ```
 
-Deliberately *not* proposed: a persistent/durable event log, cross-process pub/sub, or an outbox
+Deliberately _not_ proposed: a persistent/durable event log, cross-process pub/sub, or an outbox
 pattern. Everything here already runs inside the same Node process (the BullMQ worker), so a
 plain `EventEmitter` wrapper is the entire scope — genuinely a "minimal" pattern, not a message
 bus in disguise.
@@ -124,12 +124,14 @@ a premature package boundary.
 
 1. **`queueReferralBonusForPayout` (both call sites in `processPayout`)** becomes a listener on
    `PayoutCompleted` instead of an inline call:
+
    ```typescript
    // services/referrals.ts
    domainEvents.on("PayoutCompleted", ({ userId, amountStroops, challengeId }) => {
      return queueReferralBonusForPayout({ userId, amountStroops, challengeId });
    });
    ```
+
    `processPayout` emits `domainEvents.emit("PayoutCompleted", {...})` once per successful payout
    instead of calling `queueReferralBonusForPayout` directly.
 
@@ -146,6 +148,7 @@ in-line code — see Open Questions.
 ## Honest Debuggability/Observability Trade-offs
 
 **Costs of indirection:**
+
 - **Harder to trace a request's full effect graph by reading one file.** Today, reading
   `processPayout` top-to-bottom tells you everything that happens on a successful payout. After
   migration, `queueReferralBonusForPayout`'s trigger requires knowing `services/referrals.ts`
@@ -165,6 +168,7 @@ in-line code — see Open Questions.
   mock.
 
 **Benefits that justify it for these two specific side effects:**
+
 - Referral bonus queueing and streak updates are already conceptually "fire and forget, log on
   failure" — the emitter's isolated-listener-errors model matches what they already are, it just
   makes that isolation structural instead of an artifact of each call site's own try/catch.
@@ -175,7 +179,7 @@ in-line code — see Open Questions.
 **Where this RFC explicitly does NOT recommend migrating:** the integrity-HMAC check, Stellar
 submission (`submitBatchPayout`/`EscrowClient`), and the `createPayout`/`updatePayoutStatus` DB
 writes stay direct, synchronous, in-line calls. These aren't "side effects" of payout completion —
-they're what payout completion *is*. Eventifying them would hide the core operation's own control
+they're what payout completion _is_. Eventifying them would hide the core operation's own control
 flow behind the same indirection this RFC is trying to justify only for genuinely secondary
 concerns.
 
@@ -194,7 +198,7 @@ concerns.
    `processPayout`-time events (a payout is only "completed" once it actually executes), but
    worth confirming a `PayoutQueued` event isn't also wanted by a future listener.
 2. Is `node:events`' synchronous-dispatch `EventEmitter` sufficient, or does any candidate
-   listener need to run *before* the emitting function returns (vs. this RFC's `Promise.resolve`
+   listener need to run _before_ the emitting function returns (vs. this RFC's `Promise.resolve`
    fire-and-forget async listeners)? The two POC listeners chosen are fine either way; a future
    listener with a hard ordering requirement would need this revisited.
 3. Where should `domain_events.listener_error_total` (or equivalent) actually be wired into the

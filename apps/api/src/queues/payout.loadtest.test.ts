@@ -45,7 +45,10 @@ const INSTRUCTIONS_PER_RECIPIENT = 1_200;
 const SOROBAN_INSTRUCTION_BUDGET = 100_000_000;
 /** Practical recipients ceiling from BOTH envelope size and instructions. */
 const MAX_RECIPIENTS_PER_TX = Math.floor(
-  Math.min(ENVELOPE_MAX_BYTES / ENVELOPE_BYTES_PER_RECIPIENT, SOROBAN_INSTRUCTION_BUDGET / INSTRUCTIONS_PER_RECIPIENT / 5)
+  Math.min(
+    ENVELOPE_MAX_BYTES / ENVELOPE_BYTES_PER_RECIPIENT,
+    SOROBAN_INSTRUCTION_BUDGET / INSTRUCTIONS_PER_RECIPIENT / 5
+  )
 );
 
 /** Modeled latency for one settle submission + confirmation (ms). */

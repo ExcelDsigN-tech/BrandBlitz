@@ -102,7 +102,10 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
       return;
     }
 
-    if (secondTier.prizePoolUsdc && Number(secondTier.prizePoolUsdc) >= Number(fields.poolAmountUsdc)) {
+    if (
+      secondTier.prizePoolUsdc &&
+      Number(secondTier.prizePoolUsdc) >= Number(fields.poolAmountUsdc)
+    ) {
       setError("The higher-stakes prize pool must be smaller than the total pool.");
       return;
     }
@@ -175,7 +178,9 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
                     {
                       name: "Standard",
                       entryFeeUsdc: "0",
-                      prizePoolUsdc: (Number(fields.poolAmountUsdc) - Number(secondTier.prizePoolUsdc)).toFixed(7),
+                      prizePoolUsdc: (
+                        Number(fields.poolAmountUsdc) - Number(secondTier.prizePoolUsdc)
+                      ).toFixed(7),
                     },
                     { name: "Higher stakes", ...secondTier },
                   ],
@@ -322,7 +327,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
               {fieldError("secondaryColor")}
             </div>
           </div>
-          <div className="space-y-2 mt-6">
+          <div className="mt-6 space-y-2">
             <Label>Gradient Preview</Label>
             <div
               className="h-16 w-full rounded-md border border-[var(--border)] shadow-sm"
@@ -401,11 +406,27 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
             <div className="grid gap-3 rounded-lg border border-[var(--border)] p-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="secondTierEntryFee">Optional higher-stakes entry fee (USDC)</Label>
-                <Input id="secondTierEntryFee" inputMode="decimal" value={secondTier.entryFeeUsdc} onChange={(event) => setSecondTier((current) => ({ ...current, entryFeeUsdc: event.target.value }))} />
+                <Input
+                  id="secondTierEntryFee"
+                  inputMode="decimal"
+                  value={secondTier.entryFeeUsdc}
+                  onChange={(event) =>
+                    setSecondTier((current) => ({ ...current, entryFeeUsdc: event.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="secondTierPrizePool">Optional higher-stakes prize pool (USDC)</Label>
-                <Input id="secondTierPrizePool" inputMode="decimal" value={secondTier.prizePoolUsdc} onChange={(event) => setSecondTier((current) => ({ ...current, prizePoolUsdc: event.target.value }))} />
+                <Label htmlFor="secondTierPrizePool">
+                  Optional higher-stakes prize pool (USDC)
+                </Label>
+                <Input
+                  id="secondTierPrizePool"
+                  inputMode="decimal"
+                  value={secondTier.prizePoolUsdc}
+                  onChange={(event) =>
+                    setSecondTier((current) => ({ ...current, prizePoolUsdc: event.target.value }))
+                  }
+                />
               </div>
             </div>
           </div>

@@ -9,10 +9,7 @@ import {
   findUserLegalAcceptance,
   getAcceptedVersions,
 } from "../db/queries/legal";
-import {
-  GDPR_ERASURE_ACTION,
-  GDPR_ERASURE_CLEARED_COLUMNS,
-} from "../db/queries/gdpr";
+import { GDPR_ERASURE_ACTION, GDPR_ERASURE_CLEARED_COLUMNS } from "../db/queries/gdpr";
 
 const router = Router();
 
@@ -91,12 +88,15 @@ router.get("/status", authenticate, async (req, res) => {
   const tos = await getCurrentLegalDocument("tos");
   const privacy = await getCurrentLegalDocument("privacy");
 
-  const [tosAcceptance, privacyAcceptance, tosAcceptedVersions, privacyAcceptedVersions] = await Promise.all([
-    tos ? findUserLegalAcceptance(req.user!.sub, "tos", tos.version) : Promise.resolve(null),
-    privacy ? findUserLegalAcceptance(req.user!.sub, "privacy", privacy.version) : Promise.resolve(null),
-    getAcceptedVersions(req.user!.sub, "tos"),
-    getAcceptedVersions(req.user!.sub, "privacy"),
-  ]);
+  const [tosAcceptance, privacyAcceptance, tosAcceptedVersions, privacyAcceptedVersions] =
+    await Promise.all([
+      tos ? findUserLegalAcceptance(req.user!.sub, "tos", tos.version) : Promise.resolve(null),
+      privacy
+        ? findUserLegalAcceptance(req.user!.sub, "privacy", privacy.version)
+        : Promise.resolve(null),
+      getAcceptedVersions(req.user!.sub, "tos"),
+      getAcceptedVersions(req.user!.sub, "privacy"),
+    ]);
 
   res.json({
     tos: {

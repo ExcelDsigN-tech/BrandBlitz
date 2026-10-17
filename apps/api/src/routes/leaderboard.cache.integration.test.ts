@@ -39,10 +39,10 @@ const describeIntegration = originalDatabaseUrl ? describe : describe.skip;
 async function startServer(): Promise<{ server: Server; baseUrl: string }> {
   const app = express();
   app.use(express.json());
-  
+
   app.use("/leaderboard", leaderboardRoutes);
   app.use("/sessions", sessionsRoutes);
-  
+
   app.use(errorHandler);
 
   const server = app.listen(0);
@@ -65,7 +65,7 @@ describeIntegration("Leaderboard Cache Invalidation", () => {
 
   beforeAll(async () => {
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
-    
+
     await query(`
       CREATE TABLE users (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -191,7 +191,7 @@ describeIntegration("Leaderboard Cache Invalidation", () => {
     const cacheKey = `leaderboard:score:${challengeId}:10:`;
     // Simulate setting the cache in redis to guarantee it's primed
     await redis.set(cacheKey, JSON.stringify({ cached: true, sessions: [] }), "EX", 300);
-    
+
     // Verify it's cached
     const cached = await redis.get(cacheKey);
     expect(cached).not.toBeNull();
@@ -206,9 +206,9 @@ describeIntegration("Leaderboard Cache Invalidation", () => {
       body: JSON.stringify({
         selectedOption: "A",
         reactionTimeMs: 100,
-      })
+      }),
     });
-    
+
     expect(completeRes.status).toBe(200);
 
     // 3. Verify Redis key is absent immediately after completion

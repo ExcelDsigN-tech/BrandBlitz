@@ -4,12 +4,12 @@ This document provides a comprehensive overview of the implementations for Brand
 
 ## Summary
 
-| Issue | Title | Type | Status | Implementation |
-|-------|-------|------|--------|----------------|
-| #202 | `users.username` is UNIQUE but nullable — multiple NULLs allowed | Database/Bug | ✅ **Implemented** | Partial unique index (case-insensitive) |
-| #208 | `challenge_questions` has both `correct_answer` and `correct_option` | Database/Refactor | ✅ **Implemented** | Dropped redundant column |
-| #227 | API Dockerfile not hardened (root user, no multi-stage, unpinned base) | Infrastructure/Security | ✅ **Implemented** | Pinned base, multi-stage, non-root user, CVE scanning |
-| #77 | `.github/workflows/e2e.yml` — Playwright suite on every PR | Testing/Infrastructure | ✅ **Implemented** | Full E2E CI pipeline with docker-compose |
+| Issue | Title                                                                  | Type                    | Status             | Implementation                                        |
+| ----- | ---------------------------------------------------------------------- | ----------------------- | ------------------ | ----------------------------------------------------- |
+| #202  | `users.username` is UNIQUE but nullable — multiple NULLs allowed       | Database/Bug            | ✅ **Implemented** | Partial unique index (case-insensitive)               |
+| #208  | `challenge_questions` has both `correct_answer` and `correct_option`   | Database/Refactor       | ✅ **Implemented** | Dropped redundant column                              |
+| #227  | API Dockerfile not hardened (root user, no multi-stage, unpinned base) | Infrastructure/Security | ✅ **Implemented** | Pinned base, multi-stage, non-root user, CVE scanning |
+| #77   | `.github/workflows/e2e.yml` — Playwright suite on every PR             | Testing/Infrastructure  | ✅ **Implemented** | Full E2E CI pipeline with docker-compose              |
 
 ---
 
@@ -24,6 +24,7 @@ This document provides a comprehensive overview of the implementations for Brand
 ### Solution
 
 Created a partial unique index that:
+
 1. Only applies when `username IS NOT NULL`
 2. Uses `LOWER(username)` for case-insensitive uniqueness
 3. Allows multiple NULL usernames (users who haven't chosen a username yet)
@@ -31,22 +32,25 @@ Created a partial unique index that:
 ### Implementation
 
 #### Migration File: `apps/api/migrations/0024-username-unique-partial.sql`
-*(Superseded previous un-run migration `migrations/011_username_unique_partial.sql` in root)*
+
+_(Superseded previous un-run migration `migrations/011_username_unique_partial.sql` in root)_
 
 ```sql
 -- Drop the existing UNIQUE constraint on username
 ALTER TABLE users DROP CONSTRAINT IF EXISTS users_username_key;
 
 -- Create a partial unique index (case-insensitive, only when username IS NOT NULL)
-CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique 
-  ON users (LOWER(username)) 
+CREATE UNIQUE INDEX IF NOT EXISTS users_username_unique
+  ON users (LOWER(username))
   WHERE username IS NOT NULL;
 ```
 
 #### Test Coverage: `apps/api/src/db/queries/users.username.test.ts`
-*(Moved from root directory so it is executed by `vitest` under `@brandblitz/api`)*
+
+_(Moved from root directory so it is executed by `vitest` under `@brandblitz/api`)_
 
 Comprehensive Vitest tests covering:
+
 - ✅ Multiple NULL usernames allowed
 - ✅ Duplicate usernames rejected (case-insensitive, e.g. "Alice" vs "alice")
 - ✅ Duplicate usernames rejected (same case)
@@ -76,6 +80,7 @@ Comprehensive Vitest tests covering:
 ### Problem
 
 `init.sql:86-98` defines both `correct_answer` (string) and `correct_option` (A-D). Code only references `correct_option`. The redundant column:
+
 - Confuses future maintainers
 - Wastes storage space
 - Can drift if a question gets edited
@@ -94,7 +99,7 @@ Drop the redundant `correct_answer` column, keeping only `correct_option` as the
 ALTER TABLE challenge_questions DROP COLUMN IF EXISTS correct_answer;
 
 -- Add comment for documentation
-COMMENT ON COLUMN challenge_questions.correct_option IS 
+COMMENT ON COLUMN challenge_questions.correct_option IS
   'The correct answer option (A, B, C, or D). This is the single source of truth for scoring.';
 ```
 
@@ -126,6 +131,7 @@ grep -r "correct_answer" apps/ packages/ --exclude-dir=node_modules
 ### Problem
 
 `apps/api/Dockerfile` had security issues:
+
 1. Unpinned base image (`:22-alpine` instead of digest)
 2. Already using multi-stage build (good!) but could be improved
 3. Running as root user in some stages
@@ -134,6 +140,7 @@ grep -r "correct_answer" apps/ packages/ --exclude-dir=node_modules
 ### Solution
 
 Hardened Dockerfile with:
+
 1. **Pinned base image**: `node:22.11-alpine@sha256:...` for reproducibility
 2. **Multi-stage build**: Already implemented, maintained
 3. **Non-root user**: Run as `nodejs` user (UID 1001) in production
@@ -163,6 +170,7 @@ USER nodejs  # Switch to non-root user
 #### CVE Scanning Workflow: `.github/workflows/docker-cve-scan.yml`
 
 **Features:**
+
 - Runs on PR and push to main/develop
 - Uses Trivy to scan for vulnerabilities
 - Fails on HIGH or CRITICAL findings
@@ -170,6 +178,7 @@ USER nodejs  # Switch to non-root user
 - Scans both API and Web images
 
 **Workflow Steps:**
+
 1. Build Docker image
 2. Run Trivy vulnerability scanner
 3. Upload SARIF results to GitHub Security
@@ -178,12 +187,12 @@ USER nodejs  # Switch to non-root user
 
 ### Security Improvements
 
-| Before | After |
-|--------|-------|
-| `FROM node:22-alpine` | `FROM node:22.11-alpine@sha256:...` |
-| Root user in production | Non-root user (nodejs:1001) |
-| No CVE scanning | Trivy scan on every PR |
-| Unpinned dependencies | Pinned base image |
+| Before                  | After                               |
+| ----------------------- | ----------------------------------- |
+| `FROM node:22-alpine`   | `FROM node:22.11-alpine@sha256:...` |
+| Root user in production | Non-root user (nodejs:1001)         |
+| No CVE scanning         | Trivy scan on every PR              |
+| Unpinned dependencies   | Pinned base image                   |
 
 ### Benefits
 
@@ -224,6 +233,7 @@ No E2E tests running in CI. Full-stack regressions could be merged without detec
 ### Solution
 
 Created comprehensive E2E workflow that:
+
 1. Starts full stack with `docker-compose`
 2. Waits for services to be healthy
 3. Runs Playwright tests
@@ -265,6 +275,7 @@ Created comprehensive E2E workflow that:
 ### Configuration
 
 **Playwright Config** (`e2e/playwright.config.ts`):
+
 - Base URL: `http://localhost:3000`
 - Workers: 1 (sequential execution)
 - Retries: 1 in CI, 0 locally
@@ -302,6 +313,7 @@ docker compose down -v
 ## Testing Checklist
 
 ### Issue #202 (Username UNIQUE)
+
 - [x] Migration 011 runs successfully
 - [x] Partial unique index created
 - [x] Multiple NULL usernames allowed
@@ -309,12 +321,14 @@ docker compose down -v
 - [x] Vitest tests pass
 
 ### Issue #208 (Drop correct_answer)
+
 - [x] Migration 012 runs successfully
 - [x] Column dropped without errors
 - [x] No code references to `correct_answer`
 - [x] Existing questions still scorable
 
 ### Issue #227 (Dockerfile hardening)
+
 - [x] Dockerfile builds successfully
 - [x] Base image pinned to digest
 - [x] Multi-stage build works
@@ -323,6 +337,7 @@ docker compose down -v
 - [x] Trivy detects vulnerabilities
 
 ### Issue #77 (E2E workflow)
+
 - [x] Workflow syntax valid
 - [x] Docker-compose starts successfully
 - [x] Health checks pass
@@ -342,11 +357,13 @@ docker compose down -v
 ## Performance Impact
 
 ### Database
+
 - **Positive**: Partial index is smaller and faster than full index
 - **Positive**: Dropped column reduces table size
 - **Neutral**: Minimal impact on query performance
 
 ### Infrastructure
+
 - **Positive**: Non-root user improves security
 - **Positive**: CVE scanning catches vulnerabilities early
 - **Neutral**: E2E tests add ~10-15 minutes to CI time
@@ -380,16 +397,19 @@ ALTER TABLE challenge_questions ADD COLUMN correct_answer TEXT;
 ## Future Enhancements
 
 ### Database
+
 1. **Username validation**: Add CHECK constraint for username format
 2. **Username history**: Track username changes for audit
 3. **Reserved usernames**: Prevent registration of reserved names
 
 ### Infrastructure
+
 1. **SBOM generation**: Generate Software Bill of Materials
 2. **Image signing**: Sign Docker images with cosign
 3. **Automated updates**: Dependabot for base image updates
 
 ### Testing
+
 1. **Visual regression**: Add Percy or Chromatic
 2. **Performance testing**: Add Lighthouse CI
 3. **Load testing**: Add k6 or Artillery

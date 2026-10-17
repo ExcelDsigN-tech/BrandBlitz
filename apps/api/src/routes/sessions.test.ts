@@ -159,9 +159,7 @@ describe("sessions warmup-complete endpoint", () => {
   });
 
   it("returns 401 when no auth token is provided", async () => {
-    const response = await request(app)
-      .post("/sessions/challenge-1/warmup-complete")
-      .send({});
+    const response = await request(app).post("/sessions/challenge-1/warmup-complete").send({});
 
     expect(response.status).toBe(401);
     expect(response.body.error).toBe("Missing authentication token");
@@ -274,8 +272,6 @@ describe("sessions warmup-complete endpoint", () => {
       Date.now = originalDateNow;
     }
   });
-
-
 });
 
 describe("GET /sessions/:challengeId (recovery)", () => {

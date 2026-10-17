@@ -96,10 +96,7 @@ export function StreakHeatmap({ activity }: StreakHeatmapProps) {
   }, []);
   const displayWeeks = isMobile ? weeks.slice(-26) : weeks;
 
-  const handleCellHover = (
-    e: React.MouseEvent<HTMLDivElement>,
-    date: string
-  ) => {
+  const handleCellHover = (e: React.MouseEvent<HTMLDivElement>, date: string) => {
     if (!date) return;
     const rect = e.currentTarget.getBoundingClientRect();
     let tooltipX = rect.left + rect.width / 2; // Center tooltip initially
@@ -120,7 +117,10 @@ export function StreakHeatmap({ activity }: StreakHeatmapProps) {
   return (
     <div className="w-full">
       <div className="inline-block">
-        <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${displayWeeks.length}, 1fr)` }}>
+        <div
+          className="grid gap-1"
+          style={{ gridTemplateColumns: `repeat(${displayWeeks.length}, 1fr)` }}
+        >
           {displayWeeks.map((week, weekIndex) =>
             week.map((record, dayIndex) => (
               <div
@@ -129,9 +129,9 @@ export function StreakHeatmap({ activity }: StreakHeatmapProps) {
                 onMouseLeave={() => setHoveredDate(null)}
                 className={`h-3 w-3 rounded-sm border border-[var(--border)] transition-all ${
                   record.date
-                    ? `${getColorClass(record.session_count)} ${getDarkColorClass(record.session_count)} cursor-pointer hover:ring-2 hover:ring-offset-1 hover:ring-[var(--primary)]`
+                    ? `${getColorClass(record.session_count)} ${getDarkColorClass(record.session_count)} cursor-pointer hover:ring-2 hover:ring-[var(--primary)] hover:ring-offset-1`
                     : "bg-slate-50 dark:bg-slate-800"
-                } ${hoveredDate === record.date ? "ring-2 ring-offset-1 ring-[var(--primary)]" : ""}`}
+                } ${hoveredDate === record.date ? "ring-2 ring-[var(--primary)] ring-offset-1" : ""}`}
               />
             ))
           )}
@@ -146,7 +146,8 @@ export function StreakHeatmap({ activity }: StreakHeatmapProps) {
               pointerEvents: "none",
             }}
           >
-            {hoveredRecord.session_count} {hoveredRecord.session_count === 1 ? "session" : "sessions"} on{" "}
+            {hoveredRecord.session_count}{" "}
+            {hoveredRecord.session_count === 1 ? "session" : "sessions"} on{" "}
             {formatDate(hoveredDate)}
           </div>
         )}

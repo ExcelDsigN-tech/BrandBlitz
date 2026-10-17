@@ -24,10 +24,12 @@ GET /legal/:type/current
 ```
 
 **Examples:**
+
 - Terms of Service: `GET /legal/tos/current`
 - Privacy Policy: `GET /legal/privacy/current`
 
 **Response:**
+
 ```json
 {
   "type": "tos",
@@ -46,10 +48,12 @@ GET /legal/:type/:version
 ```
 
 **Examples:**
+
 - Old ToS: `GET /legal/tos/2023-06-01`
 - Old Privacy Policy: `GET /legal/privacy/2023-12-15`
 
 **Response:**
+
 ```json
 {
   "type": "tos",
@@ -68,6 +72,7 @@ GET /legal/status
 ```
 
 **Response:**
+
 ```json
 {
   "tos": {
@@ -100,6 +105,7 @@ Content-Type: application/json
 ## Why Versioning Matters
 
 ### Legal Compliance
+
 Legal documents change over time to reflect new regulations, business practices, or user protections. Tracking which version a user accepted:
 
 1. **Proves Consent** - Demonstrates the user agreed to specific terms at a specific time
@@ -108,7 +114,9 @@ Legal documents change over time to reflect new regulations, business practices,
 4. **Change Management** - Enables notifying users when terms change and requiring re-acceptance
 
 ### User Transparency
+
 Users have the right to know:
+
 - What terms they agreed to
 - When terms change
 - How changes affect their relationship with the platform
@@ -127,9 +135,10 @@ Users have the right to know:
    - Or: `https://api.brandblitz.com/legal/privacy/{version}`
 
 3. **Example workflow:**
+
    ```bash
    # 1. Get your acceptance status
-   curl -H "Authorization: Bearer YOUR_TOKEN" \
+   curl --oauth2-bearer "$ACCESS_TOKEN" \
      https://api.brandblitz.com/legal/status
 
    # Response shows you accepted ToS version "2024-01-15"
@@ -146,6 +155,7 @@ The legal document pages display the current version with links to historical ve
 - **Privacy Policy**: `/legal/privacy`
 
 Each page includes:
+
 - Current version number
 - Effective date
 - Link to view other versions
@@ -156,11 +166,13 @@ Each page includes:
 Versions use ISO 8601 date format: `YYYY-MM-DD`
 
 Examples:
+
 - `2024-01-15`
 - `2023-12-01`
 - `2024-03-20`
 
 This format ensures:
+
 - Chronological sorting
 - Clear identification of when changes were made
 - Easy comparison between versions
@@ -168,12 +180,14 @@ This format ensures:
 ## Common Scenarios
 
 ### Scenario 1: User Signs Up
+
 1. User is shown the current version during registration
 2. User accepts by clicking "I agree"
 3. System records: `{ type: "tos", version: "2024-01-15", acceptedAt: "2024-01-20..." }`
 4. User can later reference this via `/legal/tos/2024-01-15`
 
 ### Scenario 2: Terms Are Updated
+
 1. New version `2024-06-01` is published
 2. Existing users see notification of changes
 3. Users must accept new version to continue
@@ -181,6 +195,7 @@ This format ensures:
 5. Old version remains accessible: `/legal/tos/2024-01-15`
 
 ### Scenario 3: User Reviews Past Terms
+
 1. User wants to check what they agreed to 6 months ago
 2. User calls `GET /legal/status` to see accepted version
 3. User retrieves that version: `GET /legal/tos/2024-01-15`
@@ -189,7 +204,9 @@ This format ensures:
 ## Technical Implementation
 
 ### Database Schema
+
 Acceptances are stored in the `legal_acceptances` table:
+
 ```sql
 CREATE TABLE legal_acceptances (
   user_id UUID NOT NULL,
@@ -202,7 +219,9 @@ CREATE TABLE legal_acceptances (
 ```
 
 ### Version Storage
+
 Document versions are stored in the `legal_documents` table:
+
 ```sql
 CREATE TABLE legal_documents (
   type VARCHAR(50) NOT NULL,
@@ -217,6 +236,7 @@ CREATE TABLE legal_documents (
 ## Best Practices
 
 ### For Platform Administrators
+
 1. **Never delete old versions** - They may be needed for legal disputes
 2. **Use meaningful version dates** - Match the effective date
 3. **Document changes** - Maintain a changelog of what changed between versions
@@ -224,6 +244,7 @@ CREATE TABLE legal_documents (
 5. **Archive old versions** - Keep them accessible but mark as historical
 
 ### For Developers
+
 1. **Always use the API** - Don't hardcode document content
 2. **Cache appropriately** - Documents don't change often
 3. **Handle errors** - Version may not exist
@@ -239,6 +260,7 @@ CREATE TABLE legal_documents (
 ## Support
 
 For questions about legal document versions:
+
 - Technical: Review `apps/api/src/routes/legal.ts`
 - Legal: Contact legal@brandblitz.com
 - User support: support@brandblitz.com

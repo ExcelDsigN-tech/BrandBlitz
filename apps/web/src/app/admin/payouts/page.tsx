@@ -164,7 +164,11 @@ export default function AdminPayoutsPage() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-3xl font-bold text-green-600">
-                {Number(stats.total_paid_usdc).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 7 })} USDC
+                {Number(stats.total_paid_usdc).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 7,
+                })}{" "}
+                USDC
               </p>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">Total Paid</p>
             </CardContent>
@@ -172,7 +176,11 @@ export default function AdminPayoutsPage() {
           <Card>
             <CardContent className="pt-6">
               <p className="text-3xl font-bold text-amber-600">
-                {Number(stats.total_pending_usdc).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 7 })} USDC
+                {Number(stats.total_pending_usdc).toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 7,
+                })}{" "}
+                USDC
               </p>
               <p className="mt-1 text-sm text-[var(--muted-foreground)]">Total Pending</p>
             </CardContent>
@@ -190,18 +198,18 @@ export default function AdminPayoutsPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm font-medium">Status:</span>
-            {(["all", "pending", "processing", "sent", "confirmed", "failed"] as StatusFilter[]).map(
-              (s) => (
-                <Button
-                  key={s}
-                  variant={statusFilter === s ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setStatusFilter(s)}
-                >
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </Button>
-              )
-            )}
+            {(
+              ["all", "pending", "processing", "sent", "confirmed", "failed"] as StatusFilter[]
+            ).map((s) => (
+              <Button
+                key={s}
+                variant={statusFilter === s ? "default" : "outline"}
+                size="sm"
+                onClick={() => setStatusFilter(s)}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>

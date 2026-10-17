@@ -38,11 +38,11 @@ Content-Type: application/json
 
 ### Validation rules
 
-| Rule | Detail |
-|---|---|
-| Length | 56 – 70 characters |
-| Format | Must be a valid Stellar public key (`G...`) |
-| Uniqueness | One wallet address per account |
+| Rule       | Detail                                      |
+| ---------- | ------------------------------------------- |
+| Length     | 56 – 70 characters                          |
+| Format     | Must be a valid Stellar public key (`G...`) |
+| Uniqueness | One wallet address per account              |
 
 > **Update your address?** Call the same endpoint with the new address. The old address is replaced immediately. In-flight payouts that are already queued will complete to the old address — contact support if you need to redirect an in-flight payout.
 
@@ -54,9 +54,9 @@ Before BrandBlitz can send USDC to your wallet, the wallet must have an explicit
 
 **USDC asset details on Stellar:**
 
-| Field | Value |
-|---|---|
-| Asset code | `USDC` |
+| Field            | Value                                                      |
+| ---------------- | ---------------------------------------------------------- |
+| Asset code       | `USDC`                                                     |
 | Issuer (mainnet) | `GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN` |
 | Issuer (testnet) | `GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5` |
 
@@ -65,10 +65,7 @@ Most Stellar wallets (Lobstr, Freighter, Solar) let you add trustlines from thei
 ```js
 import { Asset, Operation, TransactionBuilder } from "@stellar/stellar-sdk";
 
-const usdcAsset = new Asset(
-  "USDC",
-  "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN"
-);
+const usdcAsset = new Asset("USDC", "GA5ZSEJYB37JRC5AVCIA5MOP4RHTM335X2KGX3IHOJAPP5RE34K4KZVN");
 const op = Operation.changeTrust({ asset: usdcAsset });
 ```
 
@@ -100,12 +97,12 @@ Fees are covered by the platform — players receive their full calculated share
 
 Once shares are calculated the platform submits a **Stellar batch payment transaction** from the challenge escrow account to each winning wallet address.
 
-| Metric | Typical value |
-|---|---|
-| Settlement time | 3 – 5 seconds |
+| Metric          | Typical value                  |
+| --------------- | ------------------------------ |
+| Settlement time | 3 – 5 seconds                  |
 | Transaction fee | ~$0.0007 per payment operation |
-| Fee payer | BrandBlitz platform |
-| Memo | `BRANDBLITZ:<challenge_id>` |
+| Fee payer       | BrandBlitz platform            |
+| Memo            | `BRANDBLITZ:<challenge_id>`    |
 
 You can verify your payout on any Stellar block explorer (Stellar Expert, StellarChain) by searching for your wallet address and filtering by the `BRANDBLITZ:` memo prefix.
 

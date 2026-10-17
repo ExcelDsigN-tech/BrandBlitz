@@ -12,11 +12,7 @@ const POLL_INTERVAL_MS = 50;
  * writes the result, and releases the lock.  Concurrent callers poll for up
  * to WAIT_TOTAL_MS before falling through to the loader themselves.
  */
-export async function cached<T>(
-  key: string,
-  ttlSec: number,
-  loader: () => Promise<T>,
-): Promise<T> {
+export async function cached<T>(key: string, ttlSec: number, loader: () => Promise<T>): Promise<T> {
   const hit = await redis.get(key);
   if (hit !== null) {
     metrics.inc("cache.hit_total", { key });
@@ -73,7 +69,7 @@ export async function withCoalescing<T>(
   key: string,
   ttlSec: number,
   loader: () => Promise<T>,
-  lockTtlSec: number = 5,
+  lockTtlSec: number = 5
 ): Promise<T> {
   // Check cache first
   const hit = await redis.get(key);
@@ -103,7 +99,7 @@ export async function withCoalescing<T>(
 
   // Another request holds the lock — wait for it to populate the cache
   const waitStart = Date.now();
-  const waitDeadline = waitStart + (lockTtlSec * 1000);
+  const waitDeadline = waitStart + lockTtlSec * 1000;
 
   while (Date.now() < waitDeadline) {
     await new Promise<void>((resolve) => setTimeout(resolve, 100));

@@ -13,12 +13,10 @@ export const referralBonusQueue = new Queue("referral-bonus", {
   defaultJobOptions: referralBonusJobOptions,
 });
 
-export async function enqueueReferralBonus(
-  referralPayoutId: string,
-): Promise<void> {
+export async function enqueueReferralBonus(referralPayoutId: string): Promise<void> {
   await referralBonusQueue.add(
     "process-referral-bonus",
     { referralPayoutId },
-    referralBonusJobOptions,
+    referralBonusJobOptions
   );
 }

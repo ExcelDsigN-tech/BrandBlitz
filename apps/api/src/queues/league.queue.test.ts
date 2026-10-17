@@ -84,10 +84,7 @@ describe("league queue configurable schedule", () => {
   });
 
   it("removes existing repeatable jobs before adding new ones", async () => {
-    const existingJobs = [
-      { key: "old-finalize-key" },
-      { key: "old-start-key" },
-    ];
+    const existingJobs = [{ key: "old-finalize-key" }, { key: "old-start-key" }];
 
     mocks.queueGetRepeatableJobs.mockResolvedValue(existingJobs);
     mocks.getConfig.mockResolvedValue(null);

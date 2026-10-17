@@ -6,33 +6,34 @@
 **Method:** Isolated benchmark via `scripts/benchmark-metrics.ts` (200 iterations, `registry.metrics()` + `updatePoolMetrics()`)
 
 ## Question
+
 Does Prometheus scraping at short intervals add measurable overhead to the API process under production traffic?
 
 ## Measurements
 
 ### Per-scrape cost (single scrape, 200 samples)
 
-| Metric | Value |
-|--------|-------|
-| wall avg | **0.87 ms** |
-| p50 | 0.81 ms |
-| p95 | 1.32 ms |
-| p99 | 1.70 ms |
-| min / max | 0.61 ms / 1.81 ms |
-| CPU user avg | 1.15 ms |
-| CPU sys avg | 0.08 ms |
-| total CPU avg | **1.23 ms** |
-| payload | 7.45 KiB (7,632 bytes) |
+| Metric        | Value                  |
+| ------------- | ---------------------- |
+| wall avg      | **0.87 ms**            |
+| p50           | 0.81 ms                |
+| p95           | 1.32 ms                |
+| p99           | 1.70 ms                |
+| min / max     | 0.61 ms / 1.81 ms      |
+| CPU user avg  | 1.15 ms                |
+| CPU sys avg   | 0.08 ms                |
+| total CPU avg | **1.23 ms**            |
+| payload       | 7.45 KiB (7,632 bytes) |
 
 `updatePoolMetrics()` itself is 4× `Gauge.set()` — microseconds, negligible. Cost is dominated by `registry.metrics()` serialization (prom-client iterates all collectors and formats text).
 
 ### CPU overhead vs scrape interval
 
-| Interval | Scrapes/sec | CPU ms/sec | % of 1 core | Wall ms/sec |
-|----------|-------------|------------|-------------|-------------|
-| 15 s (default) | 0.067 | 0.082 | **0.008 %** | 0.058 |
-| 5 s | 0.200 | 0.246 | 0.025 % | 0.174 |
-| 1 s | 1.000 | 1.230 | 0.123 % | 0.867 |
+| Interval       | Scrapes/sec | CPU ms/sec | % of 1 core | Wall ms/sec |
+| -------------- | ----------- | ---------- | ----------- | ----------- |
+| 15 s (default) | 0.067       | 0.082      | **0.008 %** | 0.058       |
+| 5 s            | 0.200       | 0.246      | 0.025 %     | 0.174       |
+| 1 s            | 1.000       | 1.230      | 0.123 %     | 0.867       |
 
 Baseline with scraping disabled = 0 ms/sec.
 
@@ -40,23 +41,23 @@ Baseline with scraping disabled = 0 ms/sec.
 
 Assume typical API handler p50 = 30 ms. Probability a request overlaps a scrape = `scrape_wall / interval`. Expected extra latency ≈ `overlapProb * scrape_wall * 0.5`.
 
-| Interval | Overlap prob | Expected p50 | Delta |
-|----------|--------------|--------------|-------|
-| 15 s | 0.0058 % | 30.000 ms | +0.000 ms |
-| 5 s | 0.017 % | 30.000 ms | +0.000 ms |
-| 1 s | 0.087 % | 30.000 ms | +0.000 ms |
-| 0.5 s | 0.174 % | 30.001 ms | +0.001 ms |
+| Interval | Overlap prob | Expected p50 | Delta     |
+| -------- | ------------ | ------------ | --------- |
+| 15 s     | 0.0058 %     | 30.000 ms    | +0.000 ms |
+| 5 s      | 0.017 %      | 30.000 ms    | +0.000 ms |
+| 1 s      | 0.087 %      | 30.000 ms    | +0.000 ms |
+| 0.5 s    | 0.174 %      | 30.001 ms    | +0.001 ms |
 
 Even at 1 s interval, expected p50 increase is <1 µs — unmeasurable in production noise.
 
 ### Concurrent scrapes (HA Prometheus)
 
-| Concurrency | avg per-scrape | p95 | max |
-|-------------|----------------|-----|-----|
-| 1 | 0.87 ms | 1.25 ms | 1.29 ms |
-| 2 | 0.88 ms | 1.20 ms | 1.36 ms |
-| 5 | 0.76 ms | 1.08 ms | 1.10 ms |
-| 10 | 0.75 ms | 0.98 ms | 0.99 ms |
+| Concurrency | avg per-scrape | p95     | max     |
+| ----------- | -------------- | ------- | ------- |
+| 1           | 0.87 ms        | 1.25 ms | 1.29 ms |
+| 2           | 0.88 ms        | 1.20 ms | 1.36 ms |
+| 5           | 0.76 ms        | 1.08 ms | 1.10 ms |
+| 10          | 0.75 ms        | 0.98 ms | 0.99 ms |
 
 No degradation — serialization is per-request, no shared lock.
 

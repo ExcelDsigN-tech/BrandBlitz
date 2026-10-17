@@ -5,8 +5,7 @@ export const s3 = new S3Client({
   region: process.env.S3_REGION ?? "auto",
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY_ID ?? process.env.S3_ACCESS_KEY!,
-    secretAccessKey:
-      process.env.S3_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_KEY!,
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_KEY!,
   },
   // true for MinIO (dev), false for Cloudflare R2 or AWS S3 (prod)
   forcePathStyle: process.env.S3_FORCE_PATH_STYLE === "true",
@@ -65,7 +64,11 @@ export interface UploadObjectOptions {
  */
 export class StorageValidationError extends Error {
   public code = "STORAGE_VALIDATION_FAILED";
-  constructor(message: string, public key: string, public contentType: string) {
+  constructor(
+    message: string,
+    public key: string,
+    public contentType: string
+  ) {
     super(message);
     this.name = "StorageValidationError";
   }
@@ -80,9 +83,7 @@ const IMAGE_MAGIC_VALIDATORS: Record<string, (b: Buffer) => boolean> = {
   "image/jpeg": (b) => b.length >= 3 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
   "image/gif": (b) => b.length >= 6 && b.toString("ascii", 0, 4) === "GIF8",
   "image/webp": (b) =>
-    b.length >= 12 &&
-    b.toString("ascii", 0, 4) === "RIFF" &&
-    b.toString("ascii", 8, 12) === "WEBP",
+    b.length >= 12 && b.toString("ascii", 0, 4) === "RIFF" && b.toString("ascii", 8, 12) === "WEBP",
 };
 
 /**
@@ -101,11 +102,7 @@ export async function uploadObject({
   immutable = false,
 }: UploadObjectOptions): Promise<void> {
   if (!body || body.length === 0) {
-    throw new StorageValidationError(
-      "Refusing to store an empty file buffer",
-      key,
-      contentType,
-    );
+    throw new StorageValidationError("Refusing to store an empty file buffer", key, contentType);
   }
 
   const validator = IMAGE_MAGIC_VALIDATORS[contentType];
@@ -113,7 +110,7 @@ export async function uploadObject({
     throw new StorageValidationError(
       `Buffer magic bytes do not match declared content type ${contentType}`,
       key,
-      contentType,
+      contentType
     );
   }
 
@@ -123,9 +120,7 @@ export async function uploadObject({
       Key: key,
       Body: body,
       ContentType: contentType,
-      ...(immutable
-        ? { CacheControl: "public, max-age=31536000, immutable" }
-        : {}),
-    }),
+      ...(immutable ? { CacheControl: "public, max-age=31536000, immutable" } : {}),
+    })
   );
 }

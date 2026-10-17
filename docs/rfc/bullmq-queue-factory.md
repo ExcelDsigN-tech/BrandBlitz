@@ -20,6 +20,7 @@ BrandBlitz has seven independent Queue/Worker definitions in `apps/api/src/queue
 Plus `dlq.ts` for dead letter queue handling.
 
 Each queue re-implements:
+
 - Redis connection options
 - Retry/backoff configuration
 - Worker lifecycle wiring
@@ -27,6 +28,7 @@ Each queue re-implements:
 - DLQ registration
 
 This leads to:
+
 - **Inconsistent behavior** - Different retry policies across queues
 - **Maintenance burden** - Changes must be replicated 7+ times
 - **Copy-paste errors** - Each new queue copies from an arbitrary existing one
@@ -38,17 +40,17 @@ This leads to:
 
 ```typescript
 // apps/api/src/queues/payout.queue.ts
-import { Queue, Worker, Job } from 'bullmq';
-import { getRedisConnection } from '@/lib/redis';
+import { Queue, Worker, Job } from "bullmq";
+import { getRedisConnection } from "@/lib/redis";
 
 const connection = getRedisConnection();
 
-export const payoutQueue = new Queue('payout', {
+export const payoutQueue = new Queue("payout", {
   connection,
   defaultJobOptions: {
     attempts: 3,
     backoff: {
-      type: 'exponential',
+      type: "exponential",
       delay: 5000,
     },
     removeOnComplete: 100,
@@ -57,7 +59,7 @@ export const payoutQueue = new Queue('payout', {
 });
 
 export const payoutWorker = new Worker(
-  'payout',
+  "payout",
   async (job: Job) => {
     const { userId, amount, destination } = job.data;
     // Process payout...
@@ -72,11 +74,11 @@ export const payoutWorker = new Worker(
   }
 );
 
-payoutWorker.on('completed', (job) => {
+payoutWorker.on("completed", (job) => {
   console.log(`Payout ${job.id} completed`);
 });
 
-payoutWorker.on('failed', (job, err) => {
+payoutWorker.on("failed", (job, err) => {
   console.error(`Payout ${job.id} failed:`, err);
   // DLQ wiring...
 });
@@ -84,17 +86,18 @@ payoutWorker.on('failed', (job, err) => {
 
 ### Divergences Across Queues
 
-| Queue | Attempts | Backoff | Concurrency | Rate Limit | Remove Complete | Remove Fail |
-|-------|----------|---------|-------------|------------|-----------------|-------------|
-| payout | 3 | exponential (5s) | 5 | 10/1s | 100 | 50 |
-| league | 5 | exponential (10s) | 1 | none | 1000 | 100 |
-| referral | 3 | exponential (5s) | 10 | 20/1s | 100 | 50 |
-| session-timeout | 3 | exponential (2s) | 10 | none | 50 | 25 |
-| archive | 2 | fixed (30s) | 2 | 5/10s | 10 | 10 |
-| gdpr-erasure | 5 | exponential (60s) | 1 | 1/1s | 1 | 100 |
-| leaderboard | 3 | exponential (5s) | 3 | 10/1s | 1000 | 50 |
+| Queue           | Attempts | Backoff           | Concurrency | Rate Limit | Remove Complete | Remove Fail |
+| --------------- | -------- | ----------------- | ----------- | ---------- | --------------- | ----------- |
+| payout          | 3        | exponential (5s)  | 5           | 10/1s      | 100             | 50          |
+| league          | 5        | exponential (10s) | 1           | none       | 1000            | 100         |
+| referral        | 3        | exponential (5s)  | 10          | 20/1s      | 100             | 50          |
+| session-timeout | 3        | exponential (2s)  | 10          | none       | 50              | 25          |
+| archive         | 2        | fixed (30s)       | 2           | 5/10s      | 10              | 10          |
+| gdpr-erasure    | 5        | exponential (60s) | 1           | 1/1s       | 1               | 100         |
+| leaderboard     | 3        | exponential (5s)  | 3           | 10/1s      | 1000            | 50          |
 
 **Key Observations:**
+
 - No clear reasoning for different values
 - Copy-paste from different sources
 - Some intentional (gdpr slow, archive rare)
@@ -105,12 +108,12 @@ payoutWorker.on('failed', (job, err) => {
 ```typescript
 // apps/api/src/queues/dlq.ts
 export function setupDLQ(worker: Worker, queueName: string) {
-  worker.on('failed', async (job, err) => {
+  worker.on("failed", async (job, err) => {
     if (!job) return;
-    
+
     const attempts = job.attemptsMade;
     const maxAttempts = job.opts.attempts || 3;
-    
+
     if (attempts >= maxAttempts) {
       await dlqQueue.add(`${queueName}:${job.id}`, {
         originalQueue: queueName,
@@ -123,32 +126,34 @@ export function setupDLQ(worker: Worker, queueName: string) {
 }
 
 // Must be manually called in each queue file
-setupDLQ(payoutWorker, 'payout');
-setupDLQ(leagueWorker, 'league');
+setupDLQ(payoutWorker, "payout");
+setupDLQ(leagueWorker, "league");
 // ... etc
 ```
 
 ### Special Cases
 
 **League Queue:**
+
 ```typescript
 // Uses repeatable jobs for cron-like scheduling
 await leagueQueue.add(
-  'end-league',
+  "end-league",
   { leagueId },
   {
     repeat: {
-      pattern: '0 0 * * *', // Daily at midnight
+      pattern: "0 0 * * *", // Daily at midnight
     },
   }
 );
 ```
 
 **Archive Queue:**
+
 ```typescript
 // Very long-running jobs (hours)
 export const archiveWorker = new Worker(
-  'archive',
+  "archive",
   async (job: Job) => {
     // May take 2-3 hours for large archives
     await archiveUserData(job.data.userId);
@@ -161,10 +166,11 @@ export const archiveWorker = new Worker(
 ```
 
 **Session Timeout Queue:**
+
 ```typescript
 // Delay-based jobs
 await sessionTimeoutQueue.add(
-  'timeout',
+  "timeout",
   { sessionId },
   { delay: SESSION_TIMEOUT_MS } // 30 minutes
 );
@@ -176,16 +182,16 @@ await sessionTimeoutQueue.add(
 
 ```typescript
 // apps/api/src/queues/factory.ts
-import { Queue, Worker, Job, QueueOptions, WorkerOptions } from 'bullmq';
-import { getRedisConnection } from '@/lib/redis';
-import { setupDLQ } from './dlq';
+import { Queue, Worker, Job, QueueOptions, WorkerOptions } from "bullmq";
+import { getRedisConnection } from "@/lib/redis";
+import { setupDLQ } from "./dlq";
 
 export interface CreateQueueOptions extends Partial<QueueOptions> {
   name: string;
   defaultJobOptions?: {
     attempts?: number;
     backoff?: {
-      type: 'exponential' | 'fixed';
+      type: "exponential" | "fixed";
       delay: number;
     };
     removeOnComplete?: number | boolean;
@@ -208,12 +214,12 @@ export interface CreateWorkerOptions extends Partial<WorkerOptions> {
 
 // Default configurations based on common patterns
 const DEFAULT_QUEUE_OPTIONS: CreateQueueOptions = {
-  name: '',
+  name: "",
   connection: undefined, // Set at runtime
   defaultJobOptions: {
     attempts: 3,
     backoff: {
-      type: 'exponential',
+      type: "exponential",
       delay: 5000,
     },
     removeOnComplete: 100,
@@ -221,7 +227,7 @@ const DEFAULT_QUEUE_OPTIONS: CreateQueueOptions = {
   },
 };
 
-const DEFAULT_WORKER_OPTIONS: Omit<CreateWorkerOptions, 'queueName' | 'processor'> = {
+const DEFAULT_WORKER_OPTIONS: Omit<CreateWorkerOptions, "queueName" | "processor"> = {
   concurrency: 5,
   limiter: {
     max: 10,
@@ -235,13 +241,13 @@ const DEFAULT_WORKER_OPTIONS: Omit<CreateWorkerOptions, 'queueName' | 'processor
  */
 export function createQueue(options: CreateQueueOptions): Queue {
   const connection = getRedisConnection();
-  
+
   const queueOptions: QueueOptions = {
     ...DEFAULT_QUEUE_OPTIONS,
     ...options,
     connection,
   };
-  
+
   return new Queue(options.name, queueOptions);
 }
 
@@ -250,40 +256,33 @@ export function createQueue(options: CreateQueueOptions): Queue {
  */
 export function createWorker(options: CreateWorkerOptions): Worker {
   const connection = getRedisConnection();
-  
-  const {
-    queueName,
-    processor,
-    useDLQ = true,
-    onCompleted,
-    onFailed,
-    ...workerOptions
-  } = options;
-  
+
+  const { queueName, processor, useDLQ = true, onCompleted, onFailed, ...workerOptions } = options;
+
   const finalOptions: WorkerOptions = {
     ...DEFAULT_WORKER_OPTIONS,
     ...workerOptions,
     connection,
   };
-  
+
   const worker = new Worker(queueName, processor, finalOptions);
-  
+
   // Standard event handlers
-  worker.on('completed', (job) => {
+  worker.on("completed", (job) => {
     console.log(`[${queueName}] Job ${job.id} completed`);
     onCompleted?.(job);
   });
-  
-  worker.on('failed', (job, error) => {
+
+  worker.on("failed", (job, error) => {
     console.error(`[${queueName}] Job ${job?.id} failed:`, error);
     onFailed?.(job!, error);
   });
-  
+
   // Automatic DLQ registration
   if (useDLQ) {
     setupDLQ(worker, queueName);
   }
-  
+
   return worker;
 }
 
@@ -295,7 +294,7 @@ export const QUEUE_PRESETS = {
   highThroughput: {
     defaultJobOptions: {
       attempts: 2,
-      backoff: { type: 'exponential' as const, delay: 2000 },
+      backoff: { type: "exponential" as const, delay: 2000 },
       removeOnComplete: 1000,
       removeOnFail: 100,
     },
@@ -304,12 +303,12 @@ export const QUEUE_PRESETS = {
       limiter: { max: 100, duration: 1000 },
     },
   },
-  
+
   // Critical financial operations (e.g., payouts, deposits)
   financial: {
     defaultJobOptions: {
       attempts: 5,
-      backoff: { type: 'exponential' as const, delay: 10000 },
+      backoff: { type: "exponential" as const, delay: 10000 },
       removeOnComplete: false, // Keep for audit
       removeOnFail: false,
     },
@@ -318,12 +317,12 @@ export const QUEUE_PRESETS = {
       limiter: { max: 10, duration: 1000 },
     },
   },
-  
+
   // Long-running, rare jobs (e.g., data export, archival)
   longRunning: {
     defaultJobOptions: {
       attempts: 2,
-      backoff: { type: 'fixed' as const, delay: 60000 },
+      backoff: { type: "fixed" as const, delay: 60000 },
       removeOnComplete: 10,
       removeOnFail: 10,
     },
@@ -332,7 +331,7 @@ export const QUEUE_PRESETS = {
       lockDuration: 10800000, // 3 hours
     },
   },
-  
+
   // Time-sensitive, single-attempt jobs (e.g., real-time updates)
   realtime: {
     defaultJobOptions: {
@@ -351,26 +350,27 @@ export const QUEUE_PRESETS = {
 ### Refactored Queue Example
 
 **Before:**
+
 ```typescript
 // apps/api/src/queues/payout.queue.ts (50+ lines)
-import { Queue, Worker, Job } from 'bullmq';
-import { getRedisConnection } from '@/lib/redis';
-import { setupDLQ } from './dlq';
+import { Queue, Worker, Job } from "bullmq";
+import { getRedisConnection } from "@/lib/redis";
+import { setupDLQ } from "./dlq";
 
 const connection = getRedisConnection();
 
-export const payoutQueue = new Queue('payout', {
+export const payoutQueue = new Queue("payout", {
   connection,
   defaultJobOptions: {
     attempts: 3,
-    backoff: { type: 'exponential', delay: 5000 },
+    backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: 100,
     removeOnFail: 50,
   },
 });
 
 export const payoutWorker = new Worker(
-  'payout',
+  "payout",
   async (job: Job) => {
     const { userId, amount, destination } = job.data;
     await processPayoutInternal(userId, amount, destination);
@@ -382,30 +382,31 @@ export const payoutWorker = new Worker(
   }
 );
 
-payoutWorker.on('completed', (job) => {
+payoutWorker.on("completed", (job) => {
   console.log(`Payout ${job.id} completed`);
 });
 
-payoutWorker.on('failed', (job, err) => {
+payoutWorker.on("failed", (job, err) => {
   console.error(`Payout ${job.id} failed:`, err);
 });
 
-setupDLQ(payoutWorker, 'payout');
+setupDLQ(payoutWorker, "payout");
 ```
 
 **After:**
+
 ```typescript
 // apps/api/src/queues/payout.queue.ts (15 lines)
-import { createQueue, createWorker, QUEUE_PRESETS } from './factory';
-import { processPayoutInternal } from '@/services/payout';
+import { createQueue, createWorker, QUEUE_PRESETS } from "./factory";
+import { processPayoutInternal } from "@/services/payout";
 
 export const payoutQueue = createQueue({
-  name: 'payout',
+  name: "payout",
   ...QUEUE_PRESETS.financial,
 });
 
 export const payoutWorker = createWorker({
-  queueName: 'payout',
+  queueName: "payout",
   processor: async (job) => {
     const { userId, amount, destination } = job.data;
     await processPayoutInternal(userId, amount, destination);
@@ -417,40 +418,42 @@ export const payoutWorker = createWorker({
 ### Handling Special Cases
 
 **League Queue (Repeatable Jobs):**
+
 ```typescript
 // Factory doesn't prevent direct queue access
 export const leagueQueue = createQueue({
-  name: 'league',
+  name: "league",
   ...QUEUE_PRESETS.financial, // Critical business logic
 });
 
 // Use queue directly for repeat patterns
 await leagueQueue.add(
-  'end-league',
+  "end-league",
   { leagueId },
   {
     repeat: {
-      pattern: '0 0 * * *',
+      pattern: "0 0 * * *",
     },
   }
 );
 
 export const leagueWorker = createWorker({
-  queueName: 'league',
+  queueName: "league",
   processor: handleLeagueJob,
   concurrency: 1, // Override: only one league job at a time
 });
 ```
 
 **Archive Queue (Long Lock Duration):**
+
 ```typescript
 export const archiveQueue = createQueue({
-  name: 'archive',
+  name: "archive",
   ...QUEUE_PRESETS.longRunning,
 });
 
 export const archiveWorker = createWorker({
-  queueName: 'archive',
+  queueName: "archive",
   processor: archiveUserData,
   ...QUEUE_PRESETS.longRunning.workerOptions,
   // Preset already has lockDuration: 10800000
@@ -458,10 +461,11 @@ export const archiveWorker = createWorker({
 ```
 
 **Session Timeout (Delayed Jobs):**
+
 ```typescript
 // Delay is per-job, not queue config
 await sessionTimeoutQueue.add(
-  'timeout',
+  "timeout",
   { sessionId },
   { delay: SESSION_TIMEOUT_MS } // Still works!
 );
@@ -470,6 +474,7 @@ await sessionTimeoutQueue.add(
 ## Migration Plan
 
 ### Phase 1: Audit & Document (Week 1)
+
 - [ ] Create comparison table of all queue configs (Done above)
 - [ ] Document rationale for each divergence
 - [ ] Identify which divergences are intentional vs accidental
@@ -478,6 +483,7 @@ await sessionTimeoutQueue.add(
 **Deliverable:** `docs/queues/config-audit.md`
 
 ### Phase 2: Build Factory (Week 2)
+
 - [ ] Implement `createQueue()` and `createWorker()`
 - [ ] Add presets based on audit findings
 - [ ] Write comprehensive unit tests
@@ -487,6 +493,7 @@ await sessionTimeoutQueue.add(
 **Deliverable:** `apps/api/src/queues/factory.ts` + tests
 
 ### Phase 3: Migrate One Queue (Week 3)
+
 - [ ] Choose simplest queue (leaderboard-refresh)
 - [ ] Refactor to use factory
 - [ ] Run integration tests
@@ -496,6 +503,7 @@ await sessionTimeoutQueue.add(
 **Deliverable:** Refactored `leaderboard-refresh.queue.ts`
 
 ### Phase 4: Migrate Remaining Queues (Weeks 4-6)
+
 Migrate in order of complexity:
 
 1. **referral-bonus** (simple, matches defaults)
@@ -506,6 +514,7 @@ Migrate in order of complexity:
 6. **league** (repeatable jobs)
 
 For each:
+
 - [ ] Refactor queue file
 - [ ] Update tests
 - [ ] Deploy to staging
@@ -515,6 +524,7 @@ For each:
 **Deliverable:** All queues refactored
 
 ### Phase 5: Remove Old Patterns (Week 7)
+
 - [ ] Add linting rule preventing direct `new Queue()` usage
 - [ ] Update contribution guidelines
 - [ ] Archive old queue templates
@@ -525,17 +535,20 @@ For each:
 ## Rollout Strategy
 
 **Staging:**
+
 - All refactored queues run in parallel with old code
 - Compare metrics: throughput, failure rate, latency
 - Switch traffic gradually (10% → 50% → 100%)
 
 **Production:**
+
 - One queue at a time
 - Blue-green deployment per queue
 - Automated rollback if error rate increases
 - 24-hour monitoring period per queue
 
 **Metrics to Watch:**
+
 - Job completion rate
 - Retry count
 - DLQ size
@@ -545,57 +558,65 @@ For each:
 ## Edge Cases & Accommodations
 
 ### Edge Case 1: Queue-Specific Middleware
+
 **Problem:** Some queues need custom middleware (e.g., auth checks)
 
 **Solution:**
+
 ```typescript
-export function createWorker(options: CreateWorkerOptions & {
-  middleware?: (job: Job, next: () => Promise<any>) => Promise<any>;
-}) {
+export function createWorker(
+  options: CreateWorkerOptions & {
+    middleware?: (job: Job, next: () => Promise<any>) => Promise<any>;
+  }
+) {
   const { middleware, processor, ...rest } = options;
-  
+
   const wrappedProcessor = middleware
     ? async (job: Job) => middleware(job, () => processor(job))
     : processor;
-  
+
   return new Worker(queueName, wrappedProcessor, workerOptions);
 }
 ```
 
 ### Edge Case 2: Multiple Workers Per Queue
+
 **Problem:** Some queues need different workers for different job types
 
 **Solution:** Factory doesn't prevent this:
+
 ```typescript
-const payoutQueue = createQueue({ name: 'payout' });
+const payoutQueue = createQueue({ name: "payout" });
 
 const regularPayouts = createWorker({
-  queueName: 'payout',
+  queueName: "payout",
   processor: handleRegularPayout,
 });
 
 const batchPayouts = createWorker({
-  queueName: 'payout',
+  queueName: "payout",
   processor: handleBatchPayout,
   concurrency: 1, // Process batches serially
 });
 ```
 
 ### Edge Case 3: Dynamic Configuration
+
 **Problem:** Some queues need runtime-adjustable config
 
 **Solution:** Support function-based options:
+
 ```typescript
 export function createQueue(options: CreateQueueOptions | (() => CreateQueueOptions)) {
-  const resolvedOptions = typeof options === 'function' ? options() : options;
+  const resolvedOptions = typeof options === "function" ? options() : options;
   // ...
 }
 
 // Usage with runtime config
 const payoutQueue = createQueue(() => ({
-  name: 'payout',
+  name: "payout",
   defaultJobOptions: {
-    attempts: getRuntimeConfig('payout.max_attempts'), // From DB
+    attempts: getRuntimeConfig("payout.max_attempts"), // From DB
   },
 }));
 ```
@@ -603,42 +624,43 @@ const payoutQueue = createQueue(() => ({
 ## Testing Strategy
 
 ### Unit Tests
+
 ```typescript
-describe('createQueue', () => {
-  it('applies default options', () => {
-    const queue = createQueue({ name: 'test' });
+describe("createQueue", () => {
+  it("applies default options", () => {
+    const queue = createQueue({ name: "test" });
     expect(queue.defaultJobOptions.attempts).toBe(3);
   });
-  
-  it('overrides defaults with custom options', () => {
+
+  it("overrides defaults with custom options", () => {
     const queue = createQueue({
-      name: 'test',
+      name: "test",
       defaultJobOptions: { attempts: 10 },
     });
     expect(queue.defaultJobOptions.attempts).toBe(10);
   });
-  
-  it('applies presets correctly', () => {
+
+  it("applies presets correctly", () => {
     const queue = createQueue({
-      name: 'test',
+      name: "test",
       ...QUEUE_PRESETS.financial,
     });
     expect(queue.defaultJobOptions.attempts).toBe(5);
   });
 });
 
-describe('createWorker', () => {
-  it('registers DLQ by default', () => {
+describe("createWorker", () => {
+  it("registers DLQ by default", () => {
     const worker = createWorker({
-      queueName: 'test',
+      queueName: "test",
       processor: jest.fn(),
     });
-    expect(worker.listeners('failed').length).toBeGreaterThan(0);
+    expect(worker.listeners("failed").length).toBeGreaterThan(0);
   });
-  
-  it('skips DLQ when disabled', () => {
+
+  it("skips DLQ when disabled", () => {
     const worker = createWorker({
-      queueName: 'test',
+      queueName: "test",
       processor: jest.fn(),
       useDLQ: false,
     });
@@ -648,24 +670,25 @@ describe('createWorker', () => {
 ```
 
 ### Integration Tests
+
 ```typescript
-describe('Queue Factory Integration', () => {
-  it('processes jobs end-to-end', async () => {
+describe("Queue Factory Integration", () => {
+  it("processes jobs end-to-end", async () => {
     const processed: string[] = [];
-    
-    const queue = createQueue({ name: 'test' });
+
+    const queue = createQueue({ name: "test" });
     const worker = createWorker({
-      queueName: 'test',
+      queueName: "test",
       processor: async (job) => {
         processed.push(job.data.value);
       },
     });
-    
-    await queue.add('job1', { value: 'test' });
-    await waitForJob(queue, 'job1');
-    
-    expect(processed).toContain('test');
-    
+
+    await queue.add("job1", { value: "test" });
+    await waitForJob(queue, "job1");
+
+    expect(processed).toContain("test");
+
     await worker.close();
     await queue.close();
   });
@@ -675,17 +698,20 @@ describe('Queue Factory Integration', () => {
 ## Success Metrics
 
 **Code Quality:**
+
 - ✅ All queues use factory (0 direct `new Queue()` outside factory)
 - ✅ DLQ setup is automatic (no manual `setupDLQ()` calls)
 - ✅ All queues have consistent error handling
 - ✅ Retry policies follow documented reasoning
 
 **Maintainability:**
+
 - ✅ Adding new queue takes <10 lines of code
 - ✅ Changing retry policy requires 1 file edit (factory), not 7
 - ✅ New team members can add queues without asking
 
 **Reliability:**
+
 - ✅ No increase in job failure rate post-migration
 - ✅ DLQ size remains stable or decreases
 - ✅ Redis connection count stable or decreases
@@ -707,6 +733,7 @@ describe('Queue Factory Integration', () => {
 ## Future Enhancements
 
 **Phase 2 Features:**
+
 - Job priority queues
 - Batch job processing
 - Queue metrics dashboard
@@ -714,6 +741,7 @@ describe('Queue Factory Integration', () => {
 - Queue health monitoring
 
 **Phase 3 Features:**
+
 - Queue-specific tracing (OpenTelemetry)
 - Job cost estimation
 - SLA tracking per queue

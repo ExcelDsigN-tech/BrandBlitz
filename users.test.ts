@@ -125,7 +125,10 @@ describeIntegration("users db queries", () => {
   });
 
   it("findUserByPhoneHash returns user after markPhoneVerified", async () => {
-    const user = await users.upsertUser({ email: `phone-${randomUUID()}@test.com`, googleId: randomUUID() });
+    const user = await users.upsertUser({
+      email: `phone-${randomUUID()}@test.com`,
+      googleId: randomUUID(),
+    });
     const phoneHash = `hash-${randomUUID()}`;
 
     await users.markPhoneVerified(user.id, phoneHash);
@@ -137,7 +140,10 @@ describeIntegration("users db queries", () => {
   it("getUserPublicProfileByUsername returns correct public subset", async () => {
     const username = `user_${randomUUID().slice(0, 8)}`;
     const user = await users.upsertUser({ email: `${username}@test.com`, googleId: randomUUID() });
-    await query(`UPDATE users SET username = $1, league = 'gold' WHERE id = $2`, [username, user.id]);
+    await query(`UPDATE users SET username = $1, league = 'gold' WHERE id = $2`, [
+      username,
+      user.id,
+    ]);
 
     const profile = await users.getUserPublicProfileByUsername(username);
     expect(profile?.username).toBe(username);
@@ -146,16 +152,21 @@ describeIntegration("users db queries", () => {
   });
 
   it("updateUserWallet updates stellar_address and updated_at", async () => {
-    const user = await users.upsertUser({ email: `wallet-${randomUUID()}@test.com`, googleId: randomUUID() });
+    const user = await users.upsertUser({
+      email: `wallet-${randomUUID()}@test.com`,
+      googleId: randomUUID(),
+    });
     const addr = "GABC123...";
 
     const before = await users.findUserById(user.id);
-    await new Promise(r => setTimeout(r, 10)); 
+    await new Promise((r) => setTimeout(r, 10));
     await users.updateUserWallet(user.id, addr);
-    
+
     const after = await users.findUserById(user.id);
     expect(after?.stellar_address).toBe(addr);
-    expect(new Date(after!.updated_at).getTime()).toBeGreaterThan(new Date(before!.updated_at).getTime());
+    expect(new Date(after!.updated_at).getTime()).toBeGreaterThan(
+      new Date(before!.updated_at).getTime()
+    );
   });
 
   it("respects unique constraints on email", async () => {
@@ -163,7 +174,6 @@ describeIntegration("users db queries", () => {
     await users.upsertUser({ email, googleId: "g1" });
 
     // Conflict on google_id is UPSERT (ok), conflict on email with different google_id should throw
-    await expect(users.upsertUser({ email, googleId: "g2" }))
-      .rejects.toThrow();
+    await expect(users.upsertUser({ email, googleId: "g2" })).rejects.toThrow();
   });
 });

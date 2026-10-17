@@ -6,179 +6,165 @@ import { WARMUP_MIN_SECONDS } from "../../apps/web/src/components/game/constants
 test.use({ viewport: { width: 375, height: 812 } });
 
 test.describe("Mobile Game Flow (375px) (#440)", () => {
-    test("game loads and renders at 375px without horizontal scroll", async ({
-        page,
-        request,
-    }) => {
-        const seeded = await seedActiveChallenge(request, {
-            email: "mobile-brand@example.com",
-            name: "Mobile Brand",
-        });
-
-        await signInWithMockGoogle(
-            page,
-            { email: "mobile-player@example.com", name: "Mobile Player" },
-            `/challenge/${seeded.challengeId}`
-        );
-
-        await page.waitForURL(`**/challenge/${seeded.challengeId}`);
-
-        // Verify no horizontal scroll
-        const hasOverflow = await page.evaluate(
-            () => document.documentElement.scrollWidth > window.innerWidth
-        );
-        expect(hasOverflow).toBe(false);
-
-        // Verify warmup content is visible
-        await expect(page.getByText(/Study this brand carefully/i)).toBeVisible();
+  test("game loads and renders at 375px without horizontal scroll", async ({ page, request }) => {
+    const seeded = await seedActiveChallenge(request, {
+      email: "mobile-brand@example.com",
+      name: "Mobile Brand",
     });
 
-    test("answer option buttons visible and tappable at 375px", async ({
-        page,
-        request,
-    }) => {
-        const seeded = await seedActiveChallenge(request, {
-            email: "mobile-options-brand@example.com",
-            name: "Mobile Options Brand",
-        });
+    await signInWithMockGoogle(
+      page,
+      { email: "mobile-player@example.com", name: "Mobile Player" },
+      `/challenge/${seeded.challengeId}`
+    );
 
-        await signInWithMockGoogle(
-            page,
-            { email: "mobile-options-player@example.com", name: "Mobile Options Player" },
-            `/challenge/${seeded.challengeId}`
-        );
+    await page.waitForURL(`**/challenge/${seeded.challengeId}`);
 
-        await page.waitForURL(`**/challenge/${seeded.challengeId}`);
+    // Verify no horizontal scroll
+    const hasOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth
+    );
+    expect(hasOverflow).toBe(false);
 
-        // Wait for warmup to complete
-        const startButton = page.getByRole("button", { name: "Start Challenge →" });
-        await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
-        await startButton.click();
+    // Verify warmup content is visible
+    await expect(page.getByText(/Study this brand carefully/i)).toBeVisible();
+  });
 
-        // Verify round text and answer options are visible
-        await expect(page.getByText("Round 1 of 3")).toBeVisible();
-
-        // Check that all answer buttons are visible and within viewport
-        const answerButtons = page.locator('button[role="button"]:has-text("A"), button[role="button"]:has-text("B"), button[role="button"]:has-text("C"), button[role="button"]:has-text("D")');
-        const count = await answerButtons.count();
-        expect(count).toBeGreaterThanOrEqual(4);
-
-        // Tap first answer option
-        await page.getByRole("button", { name: /^A/ }).click();
-
-        // Verify selection feedback is visible
-        await expect(page.getByText(/Round 2 of 3/)).toBeVisible({ timeout: 5000 });
+  test("answer option buttons visible and tappable at 375px", async ({ page, request }) => {
+    const seeded = await seedActiveChallenge(request, {
+      email: "mobile-options-brand@example.com",
+      name: "Mobile Options Brand",
     });
 
-    test("countdown timer visible and not truncated at 375px", async ({
-        page,
-        request,
-    }) => {
-        const seeded = await seedActiveChallenge(request, {
-            email: "mobile-timer-brand@example.com",
-            name: "Mobile Timer Brand",
-        });
+    await signInWithMockGoogle(
+      page,
+      { email: "mobile-options-player@example.com", name: "Mobile Options Player" },
+      `/challenge/${seeded.challengeId}`
+    );
 
-        await signInWithMockGoogle(
-            page,
-            { email: "mobile-timer-player@example.com", name: "Mobile Timer Player" },
-            `/challenge/${seeded.challengeId}`
-        );
+    await page.waitForURL(`**/challenge/${seeded.challengeId}`);
 
-        await page.waitForURL(`**/challenge/${seeded.challengeId}`);
+    // Wait for warmup to complete
+    const startButton = page.getByRole("button", { name: "Start Challenge →" });
+    await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
+    await startButton.click();
 
-        // Wait for warmup and start
-        const startButton = page.getByRole("button", { name: "Start Challenge →" });
-        await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
-        await startButton.click();
+    // Verify round text and answer options are visible
+    await expect(page.getByText("Round 1 of 3")).toBeVisible();
 
-        // Look for countdown timer element
-        const timerRegex = /\d+:\d+/;
-        const timerElement = page.locator('*:has-text("' + timerRegex + '")')
-            .first();
+    // Check that all answer buttons are visible and within viewport
+    const answerButtons = page.locator(
+      'button[role="button"]:has-text("A"), button[role="button"]:has-text("B"), button[role="button"]:has-text("C"), button[role="button"]:has-text("D")'
+    );
+    const count = await answerButtons.count();
+    expect(count).toBeGreaterThanOrEqual(4);
 
-        // Verify timer is visible
-        await expect(timerElement).toBeVisible();
+    // Tap first answer option
+    await page.getByRole("button", { name: /^A/ }).click();
 
-        // Check that timer is not clipped or overflowing
-        const boundingBox = await timerElement.boundingBox();
-        if (boundingBox) {
-            expect(boundingBox.width).toBeGreaterThan(0);
-            expect(boundingBox.height).toBeGreaterThan(0);
-            // Timer should fit within viewport width (375px)
-            expect(boundingBox.x + boundingBox.width).toBeLessThanOrEqual(375);
-        }
+    // Verify selection feedback is visible
+    await expect(page.getByText(/Round 2 of 3/)).toBeVisible({ timeout: 5000 });
+  });
+
+  test("countdown timer visible and not truncated at 375px", async ({ page, request }) => {
+    const seeded = await seedActiveChallenge(request, {
+      email: "mobile-timer-brand@example.com",
+      name: "Mobile Timer Brand",
     });
 
-    test("final score screen renders without overflow at 375px", async ({
-        page,
-        request,
-    }) => {
-        const seeded = await seedActiveChallenge(request, {
-            email: "mobile-score-brand@example.com",
-            name: "Mobile Score Brand",
-        });
+    await signInWithMockGoogle(
+      page,
+      { email: "mobile-timer-player@example.com", name: "Mobile Timer Player" },
+      `/challenge/${seeded.challengeId}`
+    );
 
-        await signInWithMockGoogle(
-            page,
-            { email: "mobile-score-player@example.com", name: "Mobile Score Player" },
-            `/challenge/${seeded.challengeId}`
-        );
+    await page.waitForURL(`**/challenge/${seeded.challengeId}`);
 
-        await page.waitForURL(`**/challenge/${seeded.challengeId}`);
+    // Wait for warmup and start
+    const startButton = page.getByRole("button", { name: "Start Challenge →" });
+    await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
+    await startButton.click();
 
-        // Complete warmup
-        const startButton = page.getByRole("button", { name: "Start Challenge →" });
-        await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
-        await startButton.click();
+    // Look for countdown timer element
+    const timerRegex = /\d+:\d+/;
+    const timerElement = page.locator('*:has-text("' + timerRegex + '")').first();
 
-        // Complete all 3 rounds
-        for (const round of [1, 2, 3]) {
-            await expect(page.getByText(`Round ${round} of 3`)).toBeVisible({ timeout: 5000 });
-            await page.waitForTimeout(250);
-            await page.getByRole("button", { name: /^A/ }).click();
-        }
+    // Verify timer is visible
+    await expect(timerElement).toBeVisible();
 
-        // Verify final score screen appears
-        await expect(page.getByRole("heading", { name: "Challenge Complete!" })).toBeVisible();
+    // Check that timer is not clipped or overflowing
+    const boundingBox = await timerElement.boundingBox();
+    if (boundingBox) {
+      expect(boundingBox.width).toBeGreaterThan(0);
+      expect(boundingBox.height).toBeGreaterThan(0);
+      // Timer should fit within viewport width (375px)
+      expect(boundingBox.x + boundingBox.width).toBeLessThanOrEqual(375);
+    }
+  });
 
-        // Verify no horizontal overflow
-        const hasOverflow = await page.evaluate(
-            () => document.documentElement.scrollWidth > window.innerWidth
-        );
-        expect(hasOverflow).toBe(false);
-
-        // Verify score card elements are visible
-        await expect(page.getByRole("link", { name: "View Leaderboard" })).toBeVisible();
+  test("final score screen renders without overflow at 375px", async ({ page, request }) => {
+    const seeded = await seedActiveChallenge(request, {
+      email: "mobile-score-brand@example.com",
+      name: "Mobile Score Brand",
     });
 
-    test("mobile gesture handling for answer selection", async ({
-        page,
-        request,
-    }) => {
-        const seeded = await seedActiveChallenge(request, {
-            email: "mobile-gesture-brand@example.com",
-            name: "Mobile Gesture Brand",
-        });
+    await signInWithMockGoogle(
+      page,
+      { email: "mobile-score-player@example.com", name: "Mobile Score Player" },
+      `/challenge/${seeded.challengeId}`
+    );
 
-        await signInWithMockGoogle(
-            page,
-            { email: "mobile-gesture-player@example.com", name: "Mobile Gesture Player" },
-            `/challenge/${seeded.challengeId}`
-        );
+    await page.waitForURL(`**/challenge/${seeded.challengeId}`);
 
-        await page.waitForURL(`**/challenge/${seeded.challengeId}`);
+    // Complete warmup
+    const startButton = page.getByRole("button", { name: "Start Challenge →" });
+    await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
+    await startButton.click();
 
-        const startButton = page.getByRole("button", { name: "Start Challenge →" });
-        await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
-        await startButton.click();
+    // Complete all 3 rounds
+    for (const round of [1, 2, 3]) {
+      await expect(page.getByText(`Round ${round} of 3`)).toBeVisible({ timeout: 5000 });
+      await page.waitForTimeout(250);
+      await page.getByRole("button", { name: /^A/ }).click();
+    }
 
-        // Simulate tap on answer button (Playwright uses click for touch)
-        const buttonB = page.getByRole("button", { name: /^B/ });
-        await expect(buttonB).toBeVisible();
-        await buttonB.tap();
+    // Verify final score screen appears
+    await expect(page.getByRole("heading", { name: "Challenge Complete!" })).toBeVisible();
 
-        // Verify next round appears
-        await expect(page.getByText("Round 2 of 3")).toBeVisible({ timeout: 5000 });
+    // Verify no horizontal overflow
+    const hasOverflow = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth
+    );
+    expect(hasOverflow).toBe(false);
+
+    // Verify score card elements are visible
+    await expect(page.getByRole("link", { name: "View Leaderboard" })).toBeVisible();
+  });
+
+  test("mobile gesture handling for answer selection", async ({ page, request }) => {
+    const seeded = await seedActiveChallenge(request, {
+      email: "mobile-gesture-brand@example.com",
+      name: "Mobile Gesture Brand",
     });
+
+    await signInWithMockGoogle(
+      page,
+      { email: "mobile-gesture-player@example.com", name: "Mobile Gesture Player" },
+      `/challenge/${seeded.challengeId}`
+    );
+
+    await page.waitForURL(`**/challenge/${seeded.challengeId}`);
+
+    const startButton = page.getByRole("button", { name: "Start Challenge →" });
+    await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
+    await startButton.click();
+
+    // Simulate tap on answer button (Playwright uses click for touch)
+    const buttonB = page.getByRole("button", { name: /^B/ });
+    await expect(buttonB).toBeVisible();
+    await buttonB.tap();
+
+    // Verify next round appears
+    await expect(page.getByText("Round 2 of 3")).toBeVisible({ timeout: 5000 });
+  });
 });

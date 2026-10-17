@@ -50,10 +50,7 @@ router.post("/:id/retry", async (req, res) => {
     id: string;
     challenge_id: string;
     status: string;
-  }>(
-    "SELECT id, challenge_id, status FROM payouts WHERE id = $1",
-    [id]
-  );
+  }>("SELECT id, challenge_id, status FROM payouts WHERE id = $1", [id]);
 
   if (!payout.rows[0]) throw createError("Payout not found", 404);
 
@@ -78,7 +75,11 @@ router.post("/:id/retry", async (req, res) => {
       [
         req.user!.sub,
         id,
-        JSON.stringify({ payoutId: id, challengeId: record.challenge_id, previousStatus: "failed" }),
+        JSON.stringify({
+          payoutId: id,
+          challengeId: record.challenge_id,
+          previousStatus: "failed",
+        }),
       ]
     );
     await client.query("COMMIT");

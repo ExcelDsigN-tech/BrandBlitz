@@ -68,13 +68,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        disabled
-        aria-hidden="true"
-      >
+      <Button type="button" size="sm" variant="ghost" disabled aria-hidden="true">
         System
       </Button>
     );
@@ -93,4 +87,3 @@ export function ThemeToggle() {
     </Button>
   );
 }
-

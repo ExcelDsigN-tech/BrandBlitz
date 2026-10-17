@@ -16,8 +16,14 @@ export const payoutWorkerOptions = {
   concurrency: PAYOUT_WORKER_CONCURRENCY,
 } satisfies WorkerOptions;
 
-export async function processPayoutJob(job: Job<{ challengeId: string; requestId?: string }>): Promise<void> {
-  logger.info("Processing payout job", { jobId: job.id, challengeId: job.data.challengeId, requestId: job.data.requestId });
+export async function processPayoutJob(
+  job: Job<{ challengeId: string; requestId?: string }>
+): Promise<void> {
+  logger.info("Processing payout job", {
+    jobId: job.id,
+    challengeId: job.data.challengeId,
+    requestId: job.data.requestId,
+  });
   try {
     await processPayout(job.data.challengeId);
   } catch (err) {
@@ -28,20 +34,14 @@ export async function processPayoutJob(job: Job<{ challengeId: string; requestId
         jobId: job.id,
         challengeId: job.data.challengeId,
       });
-      throw new UnrecoverableError(
-        err instanceof Error ? err.message : String(err)
-      );
+      throw new UnrecoverableError(err instanceof Error ? err.message : String(err));
     }
     throw err;
   }
 }
 
 export function createPayoutWorker(WorkerImpl: typeof Worker = Worker): Worker {
-  const worker = new WorkerImpl(
-    "payout",
-    processPayoutJob,
-    payoutWorkerOptions
-  );
+  const worker = new WorkerImpl("payout", processPayoutJob, payoutWorkerOptions);
 
   worker.on("completed", (job) => {
     logger.info("Payout job completed", { jobId: job.id });

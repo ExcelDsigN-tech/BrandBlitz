@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { simulateSessionStartBurst, ConnectionPoolSimulator } from "../../../../scripts/benchmark-session-burst";
+import {
+  simulateSessionStartBurst,
+  ConnectionPoolSimulator,
+} from "../../../../scripts/benchmark-session-burst";
 
 describe("Issue #1100: POST session-start burst load test at challenge open time", () => {
   it("detects connection pool waiting spike and exhaustion under unshaped burst", async () => {

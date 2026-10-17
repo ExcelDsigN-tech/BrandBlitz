@@ -81,7 +81,9 @@ export function registerEndpoint(options: EndpointOptions): void {
           [shape.contentType ?? "application/json"]: { schema: shape.schema },
         }
       : undefined;
-    responses[status] = content ? { description: shape.description, content } : { description: shape.description };
+    responses[status] = content
+      ? { description: shape.description, content }
+      : { description: shape.description };
   }
   registry.registerPath({
     method: options.method,

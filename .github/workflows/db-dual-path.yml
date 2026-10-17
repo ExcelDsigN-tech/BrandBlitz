@@ -3,18 +3,18 @@ name: DB dual-path convergence
 on:
   push:
     paths:
-      - 'init.sql'
-      - 'migrations/**'
-      - 'apps/api/migrations/**'
-      - 'docs/DATABASE.md'
-      - 'docs/db/er.svg'
+      - "init.sql"
+      - "migrations/**"
+      - "apps/api/migrations/**"
+      - "docs/DATABASE.md"
+      - "docs/db/er.svg"
   pull_request:
     paths:
-      - 'init.sql'
-      - 'migrations/**'
-      - 'apps/api/migrations/**'
-      - 'docs/DATABASE.md'
-      - 'docs/db/er.svg'
+      - "init.sql"
+      - "migrations/**"
+      - "apps/api/migrations/**"
+      - "docs/DATABASE.md"
+      - "docs/db/er.svg"
 
 jobs:
   dual-path:
@@ -106,7 +106,8 @@ jobs:
 
       - name: Install tbls
         run: |
-          GOBIN=$HOME/go/bin go install github.com/k1LoW/tbls@latest
+          # Keep tbls at v1.94.5; intentionally bump here and in package.json's docs:db script.
+          GOBIN=$HOME/go/bin go install github.com/k1LoW/tbls@v1.94.5
 
       - name: Assert ER diagram is up-to-date
         run: |

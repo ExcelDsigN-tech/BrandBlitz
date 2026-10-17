@@ -23,13 +23,13 @@ For a **wrong** answer:
 roundScore = 0   (no penalty — keeps engagement positive)
 ```
 
-| Constant | Value |
-|---|---|
-| Base points | 100 |
-| Max speed bonus | 50 |
-| Round window | 15,000 ms |
-| Max per round | 150 |
-| Max total | 450 |
+| Constant        | Value     |
+| --------------- | --------- |
+| Base points     | 100       |
+| Max speed bonus | 50        |
+| Round window    | 15,000 ms |
+| Max per round   | 150       |
+| Max total       | 450       |
 
 Key properties:
 
@@ -102,10 +102,10 @@ The same ordering drives payouts via `rankWinners` (with user id as the final fa
 ### Tie example
 
 | Player | Score | Finished at | Rank |
-|---|---|---|---|
-| Ana | 350 | 10:00:00 | 1 |
-| Ben | 350 | 10:00:05 | 2 |
-| Cy | 340 | 09:59:59 | 3 |
+| ------ | ----- | ----------- | ---- |
+| Ana    | 350   | 10:00:00    | 1    |
+| Ben    | 350   | 10:00:05    | 2    |
+| Cy     | 340   | 09:59:59    | 3    |
 
 Ana outranks Ben despite identical scores because she finished earlier.
 
@@ -129,11 +129,11 @@ Rules applied by the payout pipeline:
 
 Pool = **100 USDC**. Eligible scores: Ana 400, Ben 300, Cy 100 (sum = 800):
 
-| Player | Share | Payout |
-|---|---|---|
-| Ana | 400/800 × 100 | 50.00 USDC |
-| Ben | 300/800 × 100 | 37.50 USDC |
-| Cy | 100/800 × 100 | 12.50 USDC |
+| Player | Share         | Payout     |
+| ------ | ------------- | ---------- |
+| Ana    | 400/800 × 100 | 50.00 USDC |
+| Ben    | 300/800 × 100 | 37.50 USDC |
+| Cy     | 100/800 × 100 | 12.50 USDC |
 
 ## Where This Data Is Served
 

@@ -20,11 +20,11 @@ beforeAll(async () => {
   process.env.JWT_SECRET = process.env.JWT_SECRET ?? "test-secret";
   app = express();
   app.use(express.json());
-  
+
   // Register routes manually since this is a clean Express instance for testing
   const { default: uploadRouter } = await import("./upload");
   app.use("/upload", uploadRouter);
-  
+
   app.use(errorHandler);
 });
 
@@ -61,7 +61,8 @@ describe("Image Upload Pipeline", () => {
     // JPEG magic bytes: FF D8 FF E0 00 10 4A 46 49 46 00 01
     // And some dummy content for Sharp to parse... Wait, sharp will fail on a dummy JPEG.
     // We need a real valid 1x1 JPEG base64 decoded.
-    const validJpegBase64 = "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
+    const validJpegBase64 =
+      "/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////wgALCAABAAEBAREA/8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxA=";
     const jpegBuffer = Buffer.from(validJpegBase64, "base64");
 
     const uploadResponse = await fetch(uploadUrl, {
@@ -72,7 +73,7 @@ describe("Image Upload Pipeline", () => {
       },
       body: jpegBuffer,
     });
-    
+
     expect(uploadResponse.status).toBe(200);
 
     // 3. Verify upload
@@ -98,7 +99,7 @@ describe("Image Upload Pipeline", () => {
     );
     expect(headObj.ContentType).toBe("image/webp");
     expect(headObj.ContentLength).toBeGreaterThan(0);
-    
+
     // Cleanup
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKETS.BRAND_ASSETS, Key: key }));
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKETS.BRAND_ASSETS, Key: optimizedKey }));
@@ -131,7 +132,7 @@ describe("Image Upload Pipeline", () => {
         contentLength: 1024,
       })
       .expect(400);
-      
+
     expect(response.body.error).toBeDefined();
   });
 });

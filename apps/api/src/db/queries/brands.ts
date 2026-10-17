@@ -87,7 +87,9 @@ export async function getBrandsByOwner(ownerUserId: string): Promise<Brand[]> {
 }
 
 export async function getBrandById(id: string): Promise<Brand | null> {
-  const result = await query<Brand>("SELECT * FROM brands WHERE id = $1 AND deleted_at IS NULL", [id]);
+  const result = await query<Brand>("SELECT * FROM brands WHERE id = $1 AND deleted_at IS NULL", [
+    id,
+  ]);
   return result.rows[0] ?? null;
 }
 
@@ -96,7 +98,7 @@ export async function getPublicBrandById(id: string): Promise<PublicBrand | null
     `SELECT id, name, logo_url, primary_color, secondary_color, tagline,
             brand_story, usp, product_image_keys, created_at
      FROM brands WHERE id = $1 AND deleted_at IS NULL`,
-    [id],
+    [id]
   );
   return result.rows[0] ?? null;
 }
@@ -115,7 +117,7 @@ export async function getPublicBrands(limit = 50): Promise<PublicBrand[]> {
        )
      ORDER BY created_at DESC
      LIMIT $1`,
-    [limit],
+    [limit]
   );
   return result.rows;
 }
@@ -200,7 +202,7 @@ export async function updateBrand(
 
 export async function deleteBrand(
   id: string,
-  ownerUserId?: string,
+  ownerUserId?: string
 ): Promise<{ deletedAt: string; cancelledChallenges: number } | null> {
   const result = await query<{ deleted_at: string; cancelled_count: number }>(
     `WITH deleted_brand AS (
@@ -223,7 +225,7 @@ export async function deleteBrand(
      FROM deleted_brand db
      LEFT JOIN cancelled c ON TRUE
      GROUP BY db.deleted_at`,
-    [id, ownerUserId ?? null],
+    [id, ownerUserId ?? null]
   );
   const row = result.rows[0];
   return row

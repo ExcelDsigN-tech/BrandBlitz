@@ -27,11 +27,11 @@ Source: `apps/api/src/routes/challenges.ts`
 
 Three auth levels are used across these endpoints:
 
-| Level | Middleware | Meaning |
-|---|---|---|
-| Public | none | No auth required |
+| Level         | Middleware     | Meaning                                       |
+| ------------- | -------------- | --------------------------------------------- |
+| Public        | none           | No auth required                              |
 | Optional auth | `optionalAuth` | Accepts JWT if present; continues without one |
-| Required auth | `authenticate` | JWT required; 401 if missing/invalid |
+| Required auth | `authenticate` | JWT required; 401 if missing/invalid          |
 
 ---
 
@@ -45,15 +45,15 @@ List challenges with cursor-based pagination. Supports filters.
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `limit` | int (1–50) | 20 | Page size |
-| `cursor` | string | — | Opaque continuation token |
-| `brandId` | UUID | — | Filter by brand |
-| `status` | `active` \| `upcoming` \| `ended` | — | Filter by status |
-| `min_pool` | number | — | Minimum pool in USDC |
-| `end_before` | ISO datetime | — | Only challenges ending before this time |
-| `offset` | int | — | **Deprecated.** Use `cursor` instead. |
+| Param        | Type                              | Default | Description                             |
+| ------------ | --------------------------------- | ------- | --------------------------------------- |
+| `limit`      | int (1–50)                        | 20      | Page size                               |
+| `cursor`     | string                            | —       | Opaque continuation token               |
+| `brandId`    | UUID                              | —       | Filter by brand                         |
+| `status`     | `active` \| `upcoming` \| `ended` | —       | Filter by status                        |
+| `min_pool`   | number                            | —       | Minimum pool in USDC                    |
+| `end_before` | ISO datetime                      | —       | Only challenges ending before this time |
+| `offset`     | int                               | —       | **Deprecated.** Use `cursor` instead.   |
 
 When no filters are applied, results are cached for 10 seconds. The response includes an `X-Cache` header (`HIT` or `MISS`).
 
@@ -77,6 +77,7 @@ When no filters are applied, results are cached for 10 seconds. The response inc
 ```
 
 **Deprecation:** If the legacy `offset` parameter is used, the response includes:
+
 - `Deprecation: offset` header
 - `Link: <https://docs.api.brandblitz.com/pagination>; rel="deprecation"` header
 
@@ -90,11 +91,11 @@ Lobby listing: active challenges sorted and cursor-paginated. Enriched with bran
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `sort` | `pool_desc` \| `pool_asc` \| `newest` \| `ending_soon` | `pool_desc` | Sort order |
-| `limit` | int (1–50) | 20 | Page size |
-| `cursor` | string | — | Continuation token |
+| Param    | Type                                                   | Default     | Description        |
+| -------- | ------------------------------------------------------ | ----------- | ------------------ |
+| `sort`   | `pool_desc` \| `pool_asc` \| `newest` \| `ending_soon` | `pool_desc` | Sort order         |
+| `limit`  | int (1–50)                                             | 20          | Page size          |
+| `cursor` | string                                                 | —           | Continuation token |
 
 **Response `200`:**
 
@@ -158,6 +159,7 @@ For `pending_deposit` challenges, the `challenge` object includes confirmation c
 **ETag / 304:** The response includes an `ETag` header. Send `If-None-Match` to receive `304 Not Modified` if unchanged.
 
 **Errors:**
+
 - `404` — challenge not found
 
 ---
@@ -188,6 +190,7 @@ Aggregate performance metrics. Only accessible to the challenge's brand owner or
 ```
 
 **Errors:**
+
 - `403` `FORBIDDEN` — not brand owner or admin
 
 ---
@@ -213,6 +216,7 @@ Return the authenticated user's most recent session for this challenge.
 ```
 
 **Errors:**
+
 - `400` `INVALID_CHALLENGE_ID` — malformed challenge ID
 - `404` — challenge or session not found
 
@@ -226,11 +230,11 @@ Paginated leaderboard. Automatically uses archived data for ended challenges.
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `sort_by` or `order` | `score` \| `speed` \| `earliest` | `score` | Sort order |
-| `limit` | int (1–50) | 20 | Page size |
-| `cursor` | string | — | Continuation token |
+| Param                | Type                             | Default | Description        |
+| -------------------- | -------------------------------- | ------- | ------------------ |
+| `sort_by` or `order` | `score` \| `speed` \| `earliest` | `score` | Sort order         |
+| `limit`              | int (1–50)                       | 20      | Page size          |
+| `cursor`             | string                           | —       | Continuation token |
 
 **Response `200`:**
 
@@ -254,6 +258,7 @@ Paginated leaderboard. Automatically uses archived data for ended challenges.
 ```
 
 **Errors:**
+
 - `400` `INVALID_SORT` — invalid sort value
 
 ---
@@ -277,6 +282,7 @@ Deposit instructions for a challenge (memo, address, amount). Only accessible to
 ```
 
 **Errors:**
+
 - `400` — challenge is not pending deposit
 - `403` — not brand owner
 
@@ -297,18 +303,18 @@ Report inappropriate challenge content. Rate-limited to 5 reports per user per h
 }
 ```
 
-| `reason` value | Description |
-|---|---|
-| `misleading` | Misleading or false information |
-| `offensive` | Offensive or inappropriate content |
-| `spam` | Spam or low-quality content |
-| `trademark_violation` | Unauthorized use of trademarks |
-| `other` | Other (use `details` to explain) |
+| `reason` value        | Description                        |
+| --------------------- | ---------------------------------- |
+| `misleading`          | Misleading or false information    |
+| `offensive`           | Offensive or inappropriate content |
+| `spam`                | Spam or low-quality content        |
+| `trademark_violation` | Unauthorized use of trademarks     |
+| `other`               | Other (use `details` to explain)   |
 
-| Field | Required | Validation |
-|---|---|---|
-| `reason` | yes | One of the enum values above |
-| `details` | no | Max 500 chars |
+| Field     | Required | Validation                   |
+| --------- | -------- | ---------------------------- |
+| `reason`  | yes      | One of the enum values above |
+| `details` | no       | Max 500 chars                |
 
 **Response `201`:**
 
@@ -319,6 +325,7 @@ Report inappropriate challenge content. Rate-limited to 5 reports per user per h
 ```
 
 **Errors:**
+
 - `404` — challenge not found or not active
 - `409` `ALREADY_REPORTED` — user already reported this challenge
 
@@ -326,10 +333,10 @@ Report inappropriate challenge content. Rate-limited to 5 reports per user per h
 
 ## Caching
 
-| Endpoint | Cache |
-|---|---|
+| Endpoint                       | Cache                                   |
+| ------------------------------ | --------------------------------------- |
 | `GET /challenges` (no filters) | Redis, 10s TTL, with request coalescing |
-| `GET /challenges/:id` | Redis, 60s TTL + ETag (304 support) |
+| `GET /challenges/:id`          | Redis, 60s TTL + ETag (304 support)     |
 
 The `X-Cache` header (`HIT`/`MISS`) is included on the challenges list endpoint when no filters are active.
 
@@ -337,13 +344,13 @@ The `X-Cache` header (`HIT`/`MISS`) is included on the challenges list endpoint 
 
 ## Error Responses
 
-| Status | Code | Meaning |
-|---|---|---|
-| `400` | `INVALID_QUERY` | Invalid query parameters |
-| `400` | `INVALID_SORT` | Invalid leaderboard sort value |
-| `400` | `INVALID_CHALLENGE_ID` | Malformed challenge ID |
-| `400` | — | Challenge not pending deposit |
-| `401` | — | Missing or invalid auth token |
-| `403` | `FORBIDDEN` | Not brand owner or admin |
-| `404` | — | Challenge or session not found |
-| `409` | `ALREADY_REPORTED` | Duplicate report from same user |
+| Status | Code                   | Meaning                         |
+| ------ | ---------------------- | ------------------------------- |
+| `400`  | `INVALID_QUERY`        | Invalid query parameters        |
+| `400`  | `INVALID_SORT`         | Invalid leaderboard sort value  |
+| `400`  | `INVALID_CHALLENGE_ID` | Malformed challenge ID          |
+| `400`  | —                      | Challenge not pending deposit   |
+| `401`  | —                      | Missing or invalid auth token   |
+| `403`  | `FORBIDDEN`            | Not brand owner or admin        |
+| `404`  | —                      | Challenge or session not found  |
+| `409`  | `ALREADY_REPORTED`     | Duplicate report from same user |

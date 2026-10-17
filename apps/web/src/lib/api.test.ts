@@ -61,9 +61,11 @@ describe("createApiClient", () => {
 
     // Simulate a 401 from a non-auth endpoint by calling the interceptor's
     // rejected handler directly (avoids the need for a live HTTP server).
-    const handlers = (client.interceptors.response as unknown as {
-      handlers: Array<{ fulfilled: unknown; rejected: (e: unknown) => Promise<unknown> }>;
-    }).handlers;
+    const handlers = (
+      client.interceptors.response as unknown as {
+        handlers: Array<{ fulfilled: unknown; rejected: (e: unknown) => Promise<unknown> }>;
+      }
+    ).handlers;
 
     const rejectedHandler = handlers[0]?.rejected;
     expect(rejectedHandler).toBeDefined();
@@ -74,9 +76,15 @@ describe("createApiClient", () => {
       config: { url: "/users/me", skipErrorToast: false, headers: {} },
     });
     // Mark it so axios.isAxiosError returns true
-    Object.setPrototypeOf(axiosError, (axios as typeof axios & { AxiosError: typeof Error }).AxiosError?.prototype ?? Error.prototype);
+    Object.setPrototypeOf(
+      axiosError,
+      (axios as typeof axios & { AxiosError: typeof Error }).AxiosError?.prototype ??
+        Error.prototype
+    );
 
-    const promise = rejectedHandler!(axiosError).catch(() => {/* expected rejection */});
+    const promise = rejectedHandler!(axiosError).catch(() => {
+      /* expected rejection */
+    });
 
     // Advance past the 1 500 ms delay so signOut fires
     await vi.advanceTimersByTimeAsync(2000);

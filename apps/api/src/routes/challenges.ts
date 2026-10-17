@@ -99,7 +99,10 @@ router.get("/", optionalAuth, async (req, res) => {
   // Emit deprecation header if legacy offset is used
   if (offset !== undefined) {
     res.setHeader("Deprecation", "offset");
-    res.setHeader("Link", '<https://docs.api.brandblitz.com/pagination>; rel="deprecation"; type="text/html"');
+    res.setHeader(
+      "Link",
+      '<https://docs.api.brandblitz.com/pagination>; rel="deprecation"; type="text/html"'
+    );
   }
 
   if (brandId) {
@@ -108,7 +111,8 @@ router.get("/", optionalAuth, async (req, res) => {
     return;
   }
 
-  const hasFilters = status !== undefined || min_pool !== undefined || end_before !== undefined || tag !== undefined;
+  const hasFilters =
+    status !== undefined || min_pool !== undefined || end_before !== undefined || tag !== undefined;
 
   if (!hasFilters) {
     const cacheKey = `challenges:active:global:${cursor ?? "start"}:${limit}`;
@@ -132,7 +136,9 @@ router.get("/", optionalAuth, async (req, res) => {
   res.json({ data: challenges, nextCursor });
 });
 
-const ActiveSortSchema = z.enum(["pool_desc", "pool_asc", "newest", "ending_soon"]).default("pool_desc");
+const ActiveSortSchema = z
+  .enum(["pool_desc", "pool_asc", "newest", "ending_soon"])
+  .default("pool_desc");
 
 const ActiveQuerySchema = CursorQuerySchema.extend({
   sort: ActiveSortSchema.optional(),
@@ -154,44 +160,39 @@ const ActiveQuerySchema = CursorQuerySchema.extend({
  * Returns 200 with empty items array when no active challenges exist.
  * Requires authentication + active account (suspended users receive 403).
  */
-router.get(
-  "/active",
-  authenticate,
-  requireActiveUser,
-  async (req, res) => {
-    const parsed = ActiveQuerySchema.safeParse(req.query);
-    if (!parsed.success) {
-      throw createError("Invalid query parameters", 400, "INVALID_QUERY");
-    }
+router.get("/active", authenticate, requireActiveUser, async (req, res) => {
+  const parsed = ActiveQuerySchema.safeParse(req.query);
+  if (!parsed.success) {
+    throw createError("Invalid query parameters", 400, "INVALID_QUERY");
+  }
 
-    const { sort, cursor, limit: rawLimit } = parsed.data;
-    // Cap at 50 per the acceptance criteria
-    const limit = Math.min(rawLimit, 50);
+  const { sort, cursor, limit: rawLimit } = parsed.data;
+  // Cap at 50 per the acceptance criteria
+  const limit = Math.min(rawLimit, 50);
 
-    const { items, nextCursor } = await getActiveChallengesSorted({
-      sort: sort as ActiveChallengesSort | undefined,
-      cursor,
-      limit,
-    });
+  const { items, nextCursor } = await getActiveChallengesSorted({
+    sort: sort as ActiveChallengesSort | undefined,
+    cursor,
+    limit,
+  });
 
-    res.json({
-      items: items.map((c) => ({
-        id: c.id,
-        brand_id: c.brand_id,
-        title: c.title,
-        reward_pool_xlm: c.pool_amount_usdc,
-        entry_fee_xlm: null,
-        ends_at: c.ends_at,
-        participant_count: c.participant_count,
-        brand_name: c.brand_name,
-        logo_url: c.logo_url,
-        primary_color: c.primary_color,
-        secondary_color: c.secondary_color,
-      })),
-      nextCursor,
-    });
-  },
-);
+  res.json({
+    items: items.map((c) => ({
+      id: c.id,
+      brand_id: c.brand_id,
+      title: c.title,
+      reward_pool_xlm: c.pool_amount_usdc,
+      entry_fee_xlm: null,
+      ends_at: c.ends_at,
+      participant_count: c.participant_count,
+      brand_name: c.brand_name,
+      logo_url: c.logo_url,
+      primary_color: c.primary_color,
+      secondary_color: c.secondary_color,
+    })),
+    nextCursor,
+  });
+});
 
 /**
  * GET /challenges/tags
@@ -486,7 +487,10 @@ router.post("/:id/report", authenticate, requireActiveUser, reportLimiter, async
     await client.query(
       `INSERT INTO audit_log (action, entity_type, entity_id, metadata)
        VALUES ('content_report', 'challenge', $1, $2::jsonb)`,
-      [challengeId, JSON.stringify({ reporter_user_id: userId, reason: body.reason, details: body.details })]
+      [
+        challengeId,
+        JSON.stringify({ reporter_user_id: userId, reason: body.reason, details: body.details }),
+      ]
     );
 
     await client.query("COMMIT");

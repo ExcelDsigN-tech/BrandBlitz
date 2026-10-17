@@ -42,7 +42,7 @@ describe("fetchDepositEvents", () => {
     const mockAsset = {
       contractId: vi.fn().mockReturnValue("mock-contract-id"),
     };
-    
+
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
     vi.mocked(client.getUsdcAsset).mockReturnValue(mockAsset as any);
     vi.mocked(client.getNetworkConfig).mockReturnValue({
@@ -62,7 +62,7 @@ describe("fetchDepositEvents", () => {
     const mockAsset = {
       contractId: vi.fn().mockReturnValue("mock-contract-id"),
     };
-    
+
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
     vi.mocked(client.getUsdcAsset).mockReturnValue(mockAsset as any);
     vi.mocked(client.getNetworkConfig).mockReturnValue({
@@ -72,7 +72,9 @@ describe("fetchDepositEvents", () => {
     await fetchDepositEvents("hot-wallet", 1, "public");
 
     expect(client.getNetworkConfig).toHaveBeenCalledWith("public");
-    expect(mockAsset.contractId).toHaveBeenCalledWith("Public Global Stellar Network ; September 2015");
+    expect(mockAsset.contractId).toHaveBeenCalledWith(
+      "Public Global Stellar Network ; September 2015"
+    );
   });
 });
 
@@ -93,11 +95,7 @@ describe("getDepositConfirmationCount", () => {
 
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(50);
   });
@@ -114,11 +112,7 @@ describe("getDepositConfirmationCount", () => {
 
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(0);
   });
@@ -131,11 +125,7 @@ describe("getDepositConfirmationCount", () => {
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
     vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(0);
   });
@@ -152,11 +142,7 @@ describe("getDepositConfirmationCount", () => {
 
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(0);
   });

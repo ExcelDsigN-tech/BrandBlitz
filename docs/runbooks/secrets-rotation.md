@@ -6,16 +6,16 @@ This runbook provides step-by-step procedures for rotating long-lived secrets ac
 
 Secrets are rotated on a schedule to limit the blast radius of a potential compromise:
 
-| Secret | Interval | Service(s) | Restart Required |
-| ------ | --------- | ----------- | ------------------ |
-| `JWT_SECRET` | 90 days | `apps/api` | Yes |
-| `STELLAR_HOT_WALLET_SECRET` | 60 days | `packages/stellar` (payout.ts) | Yes (migration required) |
-| `GOOGLE_CLIENT_SECRET` | 180 days | `apps/api`, `apps/web` | Yes |
-| `WEBHOOK_SECRET` | 90 days | `apps/api`, webhooks, revalidation | Yes |
-| `DATABASE_URL` (password) | 90 days | `apps/api` | Yes |
-| `SESSION_INTEGRITY_KEY` | 90 days | `apps/api` | Yes |
-| `PHONE_HASH_SALT` | 180 days | `apps/api` | Yes (breaks existing hashes) |
-| `TWILIO_AUTH_TOKEN` | 180 days | `apps/api`, phone service | Yes |
+| Secret                      | Interval | Service(s)                         | Restart Required             |
+| --------------------------- | -------- | ---------------------------------- | ---------------------------- |
+| `JWT_SECRET`                | 90 days  | `apps/api`                         | Yes                          |
+| `STELLAR_HOT_WALLET_SECRET` | 60 days  | `packages/stellar` (payout.ts)     | Yes (migration required)     |
+| `GOOGLE_CLIENT_SECRET`      | 180 days | `apps/api`, `apps/web`             | Yes                          |
+| `WEBHOOK_SECRET`            | 90 days  | `apps/api`, webhooks, revalidation | Yes                          |
+| `DATABASE_URL` (password)   | 90 days  | `apps/api`                         | Yes                          |
+| `SESSION_INTEGRITY_KEY`     | 90 days  | `apps/api`                         | Yes                          |
+| `PHONE_HASH_SALT`           | 180 days | `apps/api`                         | Yes (breaks existing hashes) |
+| `TWILIO_AUTH_TOKEN`         | 180 days | `apps/api`, phone service          | Yes                          |
 
 ## Pre-Rotation Checklist
 

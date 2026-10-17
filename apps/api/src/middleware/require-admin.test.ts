@@ -7,19 +7,15 @@ import { requireAdmin } from "./require-admin";
 const JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-at-least-32-characters!!";
 
 function token(role: string): string {
-  return jwt.sign(
-    { sub: "test-user", email: "test@example.com", role },
-    JWT_SECRET,
-    { expiresIn: "15m" }
-  );
+  return jwt.sign({ sub: "test-user", email: "test@example.com", role }, JWT_SECRET, {
+    expiresIn: "15m",
+  });
 }
 
 function tokenWithoutRole(): string {
-  return jwt.sign(
-    { sub: "test-user", email: "test@example.com" },
-    JWT_SECRET,
-    { expiresIn: "15m" }
-  );
+  return jwt.sign({ sub: "test-user", email: "test@example.com" }, JWT_SECRET, {
+    expiresIn: "15m",
+  });
 }
 
 describe("requireAdmin middleware", () => {
@@ -41,13 +37,13 @@ describe("requireAdmin middleware", () => {
       err: { statusCode?: number; message?: string; code?: string },
       _req: express.Request,
       res: express.Response,
-      _next: express.NextFunction,
+      _next: express.NextFunction
     ) => {
       res
         .status(err.statusCode ?? 500)
         .set("Content-Type", "application/json")
         .json({ error: err.message, code: err.code });
-    },
+    }
   );
 
   it("calls next() when req.user.role === 'admin'", async () => {

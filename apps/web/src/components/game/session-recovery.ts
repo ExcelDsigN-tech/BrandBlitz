@@ -8,7 +8,10 @@ export interface SessionRecoverySnapshot {
 }
 
 export function shouldShowRecoveryModal(session: SessionRecoverySnapshot): boolean {
-  return session.status === "expired" || (session.status === "in_progress" && session.last_answered_round > 0);
+  return (
+    session.status === "expired" ||
+    (session.status === "in_progress" && session.last_answered_round > 0)
+  );
 }
 
 export function scoresForResume(session: SessionRecoverySnapshot): number[] {

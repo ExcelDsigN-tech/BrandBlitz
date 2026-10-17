@@ -137,13 +137,13 @@ Open [http://localhost:3000](http://localhost:3000).
 
 Set in `.env.local` for local development. In Docker, passed via `docker compose` environment config.
 
-| Variable | Required | Description |
-|---|---|---|
-| `NEXTAUTH_SECRET` | Yes | Encrypts next-auth session cookie |
-| `NEXTAUTH_URL` | Yes | Full URL of the web app (e.g. `http://localhost:3000`) |
-| `GOOGLE_CLIENT_ID` | Yes | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth client secret |
-| `NEXT_PUBLIC_API_URL` | Yes | API base URL visible to the browser (e.g. `http://localhost:3001/api`) |
+| Variable               | Required | Description                                                            |
+| ---------------------- | -------- | ---------------------------------------------------------------------- |
+| `NEXTAUTH_SECRET`      | Yes      | Encrypts next-auth session cookie                                      |
+| `NEXTAUTH_URL`         | Yes      | Full URL of the web app (e.g. `http://localhost:3000`)                 |
+| `GOOGLE_CLIENT_ID`     | Yes      | Google OAuth client ID                                                 |
+| `GOOGLE_CLIENT_SECRET` | Yes      | Google OAuth client secret                                             |
+| `NEXT_PUBLIC_API_URL`  | Yes      | API base URL visible to the browser (e.g. `http://localhost:3001/api`) |
 
 `NEXT_PUBLIC_` variables are embedded at build time — they must be available during `next build`.
 
@@ -209,11 +209,11 @@ Falls back gracefully if the API is unavailable (returns empty array).
 
 Next.js route groups `(name)` apply shared layouts without affecting URLs:
 
-| Group | Layout | Used for |
-|---|---|---|
-| `(auth)` | Vertically centred, no header/footer | Login page |
-| `(game)` | Full-screen, no header/footer | Immersive challenge experience |
-| `(brand)` | Header + footer | Dashboard, brand management |
+| Group     | Layout                               | Used for                       |
+| --------- | ------------------------------------ | ------------------------------ |
+| `(auth)`  | Vertically centred, no header/footer | Login page                     |
+| `(game)`  | Full-screen, no header/footer        | Immersive challenge experience |
+| `(brand)` | Header + footer                      | Dashboard, brand management    |
 
 Pages outside groups (landing, leaderboard, profile) render directly inside the root layout.
 
@@ -231,7 +231,9 @@ Variants: `default`, `destructive`, `outline`, `secondary`, `ghost`, `link`
 Sizes: `sm`, `default`, `lg`, `icon`
 
 ```tsx
-<Button variant="secondary" size="lg">Play Now</Button>
+<Button variant="secondary" size="lg">
+  Play Now
+</Button>
 ```
 
 #### `Card`
@@ -273,8 +275,8 @@ Radix `Dialog` with overlay, animated content, header, footer, title, and descri
 #### `constants.ts`
 
 ```typescript
-export const WARMUP_MIN_SECONDS = 20;  // Server-enforced minimum warmup
-export const ROUND_SECONDS = 15;        // Time per question
+export const WARMUP_MIN_SECONDS = 20; // Server-enforced minimum warmup
+export const ROUND_SECONDS = 15; // Time per question
 export const TOTAL_ROUNDS = 3;
 ```
 
@@ -309,6 +311,7 @@ Props: `totalScore: number`, `rank?: number`, `estimatedUsdc?: string`, `challen
 #### `UploadField`
 
 Drag-and-drop / click-to-upload field that:
+
 1. Calls `POST /upload/presign` to get a presigned S3 URL
 2. `PUT`s the file directly to MinIO/S3 (never through Express)
 3. Calls `POST /upload/verify` to confirm the upload
@@ -319,6 +322,7 @@ Props: `label`, `accept`, `uploadType`, `apiToken`, `onUploaded`
 #### `BrandKitForm`
 
 Multi-section form combining brand info, asset uploads, and challenge settings. On submit:
+
 1. `POST /brands` — creates the brand kit
 2. `POST /brands/:id/challenges` — creates the challenge
 3. Redirects to `/brand/:id` with deposit instructions in the query string
@@ -386,6 +390,7 @@ Exported types: `Challenge`, `ChallengeQuestion`, `LeaderboardEntry`
 ### `auth.ts`
 
 next-auth v4 config with:
+
 - `GoogleProvider` for OAuth
 - `signIn` callback: calls `POST /auth/google/callback` on the Express API to get a JWT, stores it in the token
 - `jwt` callback: forwards `apiToken` through the JWT
@@ -453,12 +458,12 @@ The challenge page (`/challenge/:id`) manages four phases via a `useState`:
 loading → warmup → challenge → result
 ```
 
-| Phase | Trigger | What happens |
-|---|---|---|
-| `loading` | Page mount | Fetches challenge + questions; calls `warmup-start` |
-| `warmup` | `warmup-start` success | Renders `WarmupPhase`; button locked 20s |
-| `challenge` | User clicks "I'm Ready" → `warmup-complete` | 3 sequential `ChallengeRound` renders |
-| `result` | Round 3 answer submitted | Renders `ResultScreen` with total score |
+| Phase       | Trigger                                     | What happens                                        |
+| ----------- | ------------------------------------------- | --------------------------------------------------- |
+| `loading`   | Page mount                                  | Fetches challenge + questions; calls `warmup-start` |
+| `warmup`    | `warmup-start` success                      | Renders `WarmupPhase`; button locked 20s            |
+| `challenge` | User clicks "I'm Ready" → `warmup-complete` | 3 sequential `ChallengeRound` renders               |
+| `result`    | Round 3 answer submitted                    | Renders `ResultScreen` with total score             |
 
 Answers are submitted one at a time via `POST /sessions/:id/answer/:round`. The server validates, scores, and returns the round score. The client accumulates scores in state for display on the result screen.
 
@@ -494,28 +499,36 @@ The `UploadField` component handles all three steps transparently.
 ## Testing
 
 ### Unit Tests
+
 Unit tests use **Vitest** and **React Testing Library**.
+
 ```bash
 pnpm --filter @brandblitz/web test
 ```
 
 ### E2E Tests
+
 E2E tests use **Playwright**. They run against a local build of the application and require the API and database to be running.
 
 #### 1. Setup Environment
+
 Ensure your `.env.local` is configured and infrastructure is up:
+
 ```bash
 docker compose up -d postgres redis minio minio-setup
 ```
 
 #### 2. Seed Test Data
+
 Run the seeding script to create a test brand and challenge:
+
 ```bash
 # From root
 pnpm tsx scripts/seed-e2e-challenge.ts
 ```
 
 #### 3. Run Tests
+
 ```bash
 # From apps/web
 pnpm exec playwright test
@@ -584,11 +597,11 @@ When upgrading Next.js, update both in `package.json` atomically:
 
 The `Dockerfile` is a 4-stage multi-stage build:
 
-| Stage | Purpose |
-|---|---|
-| `deps` | Install all monorepo dependencies (cached) |
-| `builder` | `next build` with build-time env args |
-| `runner` | Minimal Alpine image; non-root `nextjs` user; `output: standalone` |
+| Stage     | Purpose                                                            |
+| --------- | ------------------------------------------------------------------ |
+| `deps`    | Install all monorepo dependencies (cached)                         |
+| `builder` | `next build` with build-time env args                              |
+| `runner`  | Minimal Alpine image; non-root `nextjs` user; `output: standalone` |
 
 The `standalone` output copies only the files needed to run the server, keeping the final image small.
 

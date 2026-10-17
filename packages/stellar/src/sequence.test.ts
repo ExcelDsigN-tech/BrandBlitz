@@ -1,9 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import {
-  reserveSequence,
-  resetSequence,
-  type SequenceStore,
-} from "./sequence";
+import { reserveSequence, resetSequence, type SequenceStore } from "./sequence";
 
 class InMemorySequenceStore implements SequenceStore {
   private readonly values = new Map<string, string>();

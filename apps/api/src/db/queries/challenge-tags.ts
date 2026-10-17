@@ -42,10 +42,7 @@ export async function deleteTag(tagId: string): Promise<void> {
 /**
  * Assign tags to a challenge (idempotent — ignores duplicates).
  */
-export async function assignTagsToChallenge(
-  challengeId: string,
-  tagIds: string[]
-): Promise<void> {
+export async function assignTagsToChallenge(challengeId: string, tagIds: string[]): Promise<void> {
   if (tagIds.length === 0) return;
   for (const tagId of tagIds) {
     await query(
@@ -60,10 +57,7 @@ export async function assignTagsToChallenge(
 /**
  * Remove all tags from a challenge, then reassign the given set.
  */
-export async function setTagsForChallenge(
-  challengeId: string,
-  tagIds: string[]
-): Promise<void> {
+export async function setTagsForChallenge(challengeId: string, tagIds: string[]): Promise<void> {
   await query(`DELETE FROM challenge_tag_map WHERE challenge_id = $1`, [challengeId]);
   await assignTagsToChallenge(challengeId, tagIds);
 }

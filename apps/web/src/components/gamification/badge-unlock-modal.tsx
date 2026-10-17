@@ -215,7 +215,11 @@ export function BadgeUnlockModal({ badges, onClose }: BadgeUnlockModalProps) {
             <span>
               {currentIndex + 1} / {undismissed.length}
             </span>
-            <button onClick={goNext} disabled={currentIndex === undismissed.length - 1} aria-label="Next badge">
+            <button
+              onClick={goNext}
+              disabled={currentIndex === undismissed.length - 1}
+              aria-label="Next badge"
+            >
               Next ›
             </button>
           </div>

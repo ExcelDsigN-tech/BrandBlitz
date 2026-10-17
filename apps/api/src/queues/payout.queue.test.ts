@@ -33,10 +33,7 @@ describe("payout queue deduplication", () => {
 
     const jobs = await payoutQueue.getJobs(["waiting", "active"]);
     expect(jobs).toHaveLength(2);
-    expect(jobs.map((j) => j.id).sort()).toEqual([
-      "payout:challenge-A",
-      "payout:challenge-B",
-    ]);
+    expect(jobs.map((j) => j.id).sort()).toEqual(["payout:challenge-A", "payout:challenge-B"]);
 
     // Cleanup
     await payoutQueue.obliterate({ force: true });

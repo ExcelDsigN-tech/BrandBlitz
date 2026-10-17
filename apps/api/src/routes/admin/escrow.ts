@@ -68,10 +68,9 @@ router.get("/cosigners", async (req, res) => {
 router.post("/cosigners", async (req, res) => {
   const { publicKey, name, role } = CosignerSchema.parse(req.body);
 
-  const existing = await query(
-    `SELECT id FROM multisig_cosigners WHERE public_key = $1`,
-    [publicKey]
-  );
+  const existing = await query(`SELECT id FROM multisig_cosigners WHERE public_key = $1`, [
+    publicKey,
+  ]);
 
   if (existing.rows.length > 0) {
     throw createError("Cosigner with this public key already exists", 409);
@@ -96,12 +95,11 @@ router.post("/cosigners", async (req, res) => {
  */
 router.patch("/cosigners/:id", async (req, res) => {
   const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
-  const updates = z.object({ name: z.string().optional(), role: z.string().optional() }).parse(req.body);
+  const updates = z
+    .object({ name: z.string().optional(), role: z.string().optional() })
+    .parse(req.body);
 
-  const oldCosigner = await query(
-    `SELECT * FROM multisig_cosigners WHERE id = $1`,
-    [id]
-  );
+  const oldCosigner = await query(`SELECT * FROM multisig_cosigners WHERE id = $1`, [id]);
 
   if (oldCosigner.rows.length === 0) {
     throw createError("Cosigner not found", 404);
@@ -241,9 +239,7 @@ router.post("/:escrowId/propose", async (req, res) => {
   // Generate unsigned XDR for the operation
   // In a real scenario, this would use EscrowClient.generateAdminOperationXdr()
   // For now, we'll create a placeholder transaction
-  const horizon = new HorizonServer(
-    "https://horizon-testnet.stellar.org"
-  );
+  const horizon = new HorizonServer("https://horizon-testnet.stellar.org");
 
   const hotWalletKeypair = Keypair.fromSecret(config.HOT_WALLET_SECRET);
   const account = await horizon.loadAccount(hotWalletKeypair.publicKey());
@@ -408,11 +404,7 @@ router.post("/:operationId/submit", async (req, res) => {
       error: error instanceof Error ? error.message : String(error),
     });
 
-    throw createError(
-      "Failed to submit operation to Stellar",
-      500,
-      "STELLAR_SUBMISSION_FAILED"
-    );
+    throw createError("Failed to submit operation to Stellar", 500, "STELLAR_SUBMISSION_FAILED");
   }
 });
 

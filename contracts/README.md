@@ -107,6 +107,7 @@ cargo install --locked stellar-cli@25 --features opt
 ```
 
 Verify:
+
 ```bash
 stellar --version
 # stellar 25.x.x
@@ -151,13 +152,14 @@ cargo test
 
 ### Test Coverage
 
-| Test | What it verifies |
-|---|---|
-| `test_deposit_and_settle` | Full happy path: initialize → deposit 100 USDC → settle to 2 winners → verify balances |
-| `test_refund` | Initialize → deposit → refund → depositor gets full balance back |
-| `test_double_settle_fails` | Calling `settle()` twice panics with `"already settled"` |
+| Test                       | What it verifies                                                                       |
+| -------------------------- | -------------------------------------------------------------------------------------- |
+| `test_deposit_and_settle`  | Full happy path: initialize → deposit 100 USDC → settle to 2 winners → verify balances |
+| `test_refund`              | Initialize → deposit → refund → depositor gets full balance back                       |
+| `test_double_settle_fails` | Calling `settle()` twice panics with `"already settled"`                               |
 
 Run with output:
+
 ```bash
 cargo test -- --nocapture
 ```
@@ -283,11 +285,11 @@ pub fn initialize(env: Env, admin: Address, token: Address, memo: String)
 
 One-time setup. Must be called immediately after deployment before any other function.
 
-| Parameter | Type | Description |
-|---|---|---|
-| `admin` | `Address` | BrandBlitz hot wallet — the only address that can call `settle()` or `refund()` |
-| `token` | `Address` | Stellar Asset Contract (SAC) address for USDC on this network |
-| `memo` | `String` | Unique challenge identifier (e.g. `BLITZ-A1B2C3`) for event correlation |
+| Parameter | Type      | Description                                                                     |
+| --------- | --------- | ------------------------------------------------------------------------------- |
+| `admin`   | `Address` | BrandBlitz hot wallet — the only address that can call `settle()` or `refund()` |
+| `token`   | `Address` | Stellar Asset Contract (SAC) address for USDC on this network                   |
+| `memo`    | `String`  | Unique challenge identifier (e.g. `BLITZ-A1B2C3`) for event correlation         |
 
 Panics if called more than once (`"already initialized"`).
 
@@ -301,10 +303,10 @@ pub fn deposit(env: Env, depositor: Address, amount: i128)
 
 Transfers USDC from `depositor` into the contract. The depositor must have previously approved the contract to spend at least `amount` via the USDC SAC's `approve()` function.
 
-| Parameter | Type | Description |
-|---|---|---|
-| `depositor` | `Address` | Must sign the transaction (auth required) |
-| `amount` | `i128` | Amount in USDC stroops (7 decimal places: `100 USDC = 1_000_000_000`) |
+| Parameter   | Type      | Description                                                           |
+| ----------- | --------- | --------------------------------------------------------------------- |
+| `depositor` | `Address` | Must sign the transaction (auth required)                             |
+| `amount`    | `i128`    | Amount in USDC stroops (7 decimal places: `100 USDC = 1_000_000_000`) |
 
 Emits a `deposited` event. Panics if `amount <= 0` or contract is already settled.
 
@@ -318,8 +320,8 @@ pub fn settle(env: Env, recipients: Vec<(Address, i128)>)
 
 Distributes USDC to winners. Only `admin` can call this (auth required).
 
-| Parameter | Type | Description |
-|---|---|---|
+| Parameter    | Type                   | Description                            |
+| ------------ | ---------------------- | -------------------------------------- |
 | `recipients` | `Vec<(Address, i128)>` | List of (winner address, amount) pairs |
 
 The sum of all recipient amounts must not exceed the current `balance`. Any remainder stays in the contract (gas reserve / rounding dust). Marks `settled = true`.
@@ -374,14 +376,14 @@ View function. Returns the memo string set during `initialize()`.
 
 The contract stores all state in Soroban **instance storage** (tied to the contract's lifecycle):
 
-| Key | Type | Description |
-|---|---|---|
-| `DataKey::Admin` | `Address` | Authorised admin address |
-| `DataKey::Token` | `Address` | USDC SAC contract address |
-| `DataKey::Memo` | `String` | Challenge memo identifier |
-| `DataKey::Depositor` | `Address` | Address that called `deposit()` |
-| `DataKey::Balance` | `i128` | Current escrowed USDC in stroops |
-| `DataKey::Settled` | `bool` | Whether the escrow is closed |
+| Key                  | Type      | Description                      |
+| -------------------- | --------- | -------------------------------- |
+| `DataKey::Admin`     | `Address` | Authorised admin address         |
+| `DataKey::Token`     | `Address` | USDC SAC contract address        |
+| `DataKey::Memo`      | `String`  | Challenge memo identifier        |
+| `DataKey::Depositor` | `Address` | Address that called `deposit()`  |
+| `DataKey::Balance`   | `i128`    | Current escrowed USDC in stroops |
+| `DataKey::Settled`   | `bool`    | Whether the escrow is closed     |
 
 Instance storage is automatically archived with the contract. No persistent or temporary storage is used.
 
@@ -391,11 +393,11 @@ Instance storage is automatically archived with the contract. No persistent or t
 
 The contract emits Soroban events that can be subscribed to via the Soroban RPC `getEvents` method:
 
-| Event topic | Data | Emitted by |
-|---|---|---|
+| Event topic      | Data                                 | Emitted by  |
+| ---------------- | ------------------------------------ | ----------- |
 | `("deposited",)` | `(depositor: Address, amount: i128)` | `deposit()` |
-| `("settled",)` | `total_distributed: i128` | `settle()` |
-| `("refunded",)` | `(depositor: Address, amount: i128)` | `refund()` |
+| `("settled",)`   | `total_distributed: i128`            | `settle()`  |
+| `("refunded",)`  | `(depositor: Address, amount: i128)` | `refund()`  |
 
 ### Subscribing with the Stellar SDK
 
@@ -446,13 +448,13 @@ The contract has no `upgrade()` function. Once deployed and initialized, it cann
 
 BrandBlitz operates both a **hot wallet model** (default, off-chain) and this **Soroban escrow model** (on-chain, optional):
 
-| | Hot Wallet | Soroban Escrow |
-|---|---|---|
-| Prize pool location | Hot wallet account | Contract instance |
-| Deposit detection | Stellar RPC `getEvents` or Horizon payments | Contract `deposited` event |
-| Payout mechanism | Batch Payment ops (≤50/tx) | `settle(recipients)` |
-| On-chain transparency | Partial (payments visible) | Full (all state on-chain) |
-| Gas cost | ~0.0007 XLM per batch | Deploy + invoke fees |
-| Requires Rust/Soroban | No | Yes |
+|                       | Hot Wallet                                  | Soroban Escrow             |
+| --------------------- | ------------------------------------------- | -------------------------- |
+| Prize pool location   | Hot wallet account                          | Contract instance          |
+| Deposit detection     | Stellar RPC `getEvents` or Horizon payments | Contract `deposited` event |
+| Payout mechanism      | Batch Payment ops (≤50/tx)                  | `settle(recipients)`       |
+| On-chain transparency | Partial (payments visible)                  | Full (all state on-chain)  |
+| Gas cost              | ~0.0007 XLM per batch                       | Deploy + invoke fees       |
+| Requires Rust/Soroban | No                                          | Yes                        |
 
 The hot wallet model is simpler to operate and is the default for new challenges. The Soroban contract provides a trustless alternative for brands that want full on-chain transparency.

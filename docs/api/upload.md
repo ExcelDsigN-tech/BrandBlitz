@@ -6,11 +6,11 @@ Brand asset uploads use a presigned S3 flow — files **never** pass through the
 
 ## Upload Types
 
-| Type | Bucket | Key Prefix | Max Size |
-|------|--------|------------|----------|
-| `brand-logo` | `brand-assets` | `logos/` | 2 MB |
-| `product-image` | `brand-assets` | `products/` | 5 MB |
-| `user-avatar` | `brand-assets` | `avatars/` | 1 MB |
+| Type            | Bucket         | Key Prefix  | Max Size |
+| --------------- | -------------- | ----------- | -------- |
+| `brand-logo`    | `brand-assets` | `logos/`    | 2 MB     |
+| `product-image` | `brand-assets` | `products/` | 5 MB     |
+| `user-avatar`   | `brand-assets` | `avatars/`  | 1 MB     |
 
 **Allowed MIME types:** `image/png`, `image/jpeg`, `image/webp`
 
@@ -35,11 +35,11 @@ Generate a presigned PUT URL for direct client-to-storage upload.
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `type` | `"brand-logo" \| "product-image" \| "user-avatar"` | Yes | Upload category |
-| `contentType` | `"image/png" \| "image/jpeg" \| "image/webp"` | Yes | MIME type |
-| `contentLength` | `integer` | Yes | File size in bytes |
+| Field           | Type                                               | Required | Description        |
+| --------------- | -------------------------------------------------- | -------- | ------------------ |
+| `type`          | `"brand-logo" \| "product-image" \| "user-avatar"` | Yes      | Upload category    |
+| `contentType`   | `"image/png" \| "image/jpeg" \| "image/webp"`      | Yes      | MIME type          |
+| `contentLength` | `integer`                                          | Yes      | File size in bytes |
 
 **Response (200):**
 
@@ -54,11 +54,11 @@ Generate a presigned PUT URL for direct client-to-storage upload.
 
 **Error Codes:**
 
-| Status | Code | Cause |
-|--------|------|-------|
-| 400 | — | Content length exceeds max for type |
-| 409 | — | Rate limit exceeded |
-| 502 | `S3_PRESIGN_FAILED` | S3 signing failed |
+| Status | Code                | Cause                               |
+| ------ | ------------------- | ----------------------------------- |
+| 400    | —                   | Content length exceeds max for type |
+| 409    | —                   | Rate limit exceeded                 |
+| 502    | `S3_PRESIGN_FAILED` | S3 signing failed                   |
 
 ---
 
@@ -94,13 +94,13 @@ Verify a file was uploaded and its content matches the declared MIME type.
 
 **Error Codes:**
 
-| Status | Code | Cause |
-|--------|------|-------|
-| 404 | — | File not found in storage |
-| 400 | — | Content type not allowed |
-| 413 | `FILE_TOO_LARGE` | Exceeds max size for key prefix |
-| 415 | `UNSUPPORTED_MEDIA_TYPE` | Magic bytes don't match declared MIME |
-| 502 | `S3_READ_FAILED` | Failed to read file from storage |
+| Status | Code                     | Cause                                 |
+| ------ | ------------------------ | ------------------------------------- |
+| 404    | —                        | File not found in storage             |
+| 400    | —                        | Content type not allowed              |
+| 413    | `FILE_TOO_LARGE`         | Exceeds max size for key prefix       |
+| 415    | `UNSUPPORTED_MEDIA_TYPE` | Magic bytes don't match declared MIME |
+| 502    | `S3_READ_FAILED`         | Failed to read file from storage      |
 
 ---
 
@@ -120,11 +120,11 @@ Finalize an upload by verifying S3 object existence, enqueuing optimization, and
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `uploadId` | `UUID` | Yes | The S3 object key from presign |
-| `resourceType` | `"brand-logo" \| "challenge-asset" \| "user-avatar"` | Yes | Resource type to update |
-| `resourceId` | `UUID` | Yes | Brand, challenge, or user ID |
+| Field          | Type                                                 | Required | Description                    |
+| -------------- | ---------------------------------------------------- | -------- | ------------------------------ |
+| `uploadId`     | `UUID`                                               | Yes      | The S3 object key from presign |
+| `resourceType` | `"brand-logo" \| "challenge-asset" \| "user-avatar"` | Yes      | Resource type to update        |
+| `resourceId`   | `UUID`                                               | Yes      | Brand, challenge, or user ID   |
 
 **Response (200):**
 
@@ -137,10 +137,10 @@ Finalize an upload by verifying S3 object existence, enqueuing optimization, and
 
 **Error Codes:**
 
-| Status | Code | Cause |
-|--------|------|-------|
-| 403 | — | Upload not found or not owned by user |
-| 422 | `OBJECT_NOT_FOUND` | Object does not exist in storage |
+| Status | Code               | Cause                                 |
+| ------ | ------------------ | ------------------------------------- |
+| 403    | —                  | Upload not found or not owned by user |
+| 422    | `OBJECT_NOT_FOUND` | Object does not exist in storage      |
 
 ---
 
@@ -162,9 +162,9 @@ Remove an orphan S3 object when verify could not be confirmed.
 
 **Error Codes:**
 
-| Status | Code | Cause |
-|--------|------|-------|
-| 403 | — | Not authorised to abort this upload |
+| Status | Code | Cause                               |
+| ------ | ---- | ----------------------------------- |
+| 403    | —    | Not authorised to abort this upload |
 
 ---
 

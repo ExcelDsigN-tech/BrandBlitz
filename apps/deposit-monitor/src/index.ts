@@ -89,7 +89,7 @@ async function poll(): Promise<void> {
     for (const event of events) {
       logger.info("Deposit detected", { txHash: event.txHash, memo: event.memo });
       emitMetric("deposits.detected_total");
-      
+
       try {
         await sendDepositWebhook(event);
       } catch (err) {
@@ -136,7 +136,7 @@ export async function main() {
 const shutdown = async (signal: string) => {
   logger.info(`${signal} received — starting graceful shutdown`);
   isRunning = false;
-  
+
   try {
     await redis.disconnect();
     logger.info("Redis disconnected");

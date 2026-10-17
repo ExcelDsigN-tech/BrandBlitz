@@ -141,8 +141,20 @@ const dbStore = {
   auditLog: new Map<string, AuditLogRow>(),
 };
 
-function seedUser(id: string, email: string, displayName: string, username: string, phoneHash?: string): UserRow {
-  const row: UserRow = { id, email, display_name: displayName, username, phone_hash: phoneHash ?? null };
+function seedUser(
+  id: string,
+  email: string,
+  displayName: string,
+  username: string,
+  phoneHash?: string
+): UserRow {
+  const row: UserRow = {
+    id,
+    email,
+    display_name: displayName,
+    username,
+    phone_hash: phoneHash ?? null,
+  };
   dbStore.users.set(id, row);
   return row;
 }
@@ -172,16 +184,31 @@ describe("Integration test: GDPR erasure — request, 30-day delay, execute, ver
     shared.createErasureRequest.mockImplementation(async (userId: string) => {
       const executeAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
       const reqId = `req-${userId}`;
-      const row = { id: reqId, user_id: userId, requested_at: new Date().toISOString(), execute_at: executeAt, cancelled_at: null, executed_at: null, admin_id: null };
+      const row = {
+        id: reqId,
+        user_id: userId,
+        requested_at: new Date().toISOString(),
+        execute_at: executeAt,
+        cancelled_at: null,
+        executed_at: null,
+        admin_id: null,
+      };
       shared.reqStore.set(reqId, row);
       return row;
     });
     shared.findPendingErasureRequest.mockImplementation(async (userId: string) => {
-      return [...shared.reqStore.values()].find((r) => r.user_id === userId && r.cancelled_at === null && r.executed_at === null) ?? null;
+      return (
+        [...shared.reqStore.values()].find(
+          (r) => r.user_id === userId && r.cancelled_at === null && r.executed_at === null
+        ) ?? null
+      );
     });
     shared.markErasureExecuted.mockImplementation(async (requestId: string) => {
       const row = shared.reqStore.get(requestId);
-      if (row) { row.executed_at = new Date().toISOString(); shared.reqStore.set(requestId, row); }
+      if (row) {
+        row.executed_at = new Date().toISOString();
+        shared.reqStore.set(requestId, row);
+      }
     });
     // anonymizeUser: default no-op (each test wires its own implementation)
     shared.anonymizeUser.mockResolvedValue(undefined);
@@ -263,8 +290,18 @@ describe("Integration test: GDPR erasure — request, 30-day delay, execute, ver
 
   it("anonymizes referrals but does not delete them (preserves referral chain integrity)", async () => {
     seedUser("user-gdpr-4", "dave@example.com", "Dave", "davejo");
-    dbStore.referrals.set("ref-1", { id: "ref-1", referrer_id: "user-gdpr-4", referee_id: "other-user-1", referral_code: "DAVE2024" });
-    dbStore.referrals.set("ref-2", { id: "ref-2", referrer_id: "other-user-2", referee_id: "user-gdpr-4", referral_code: "SOMECODE" });
+    dbStore.referrals.set("ref-1", {
+      id: "ref-1",
+      referrer_id: "user-gdpr-4",
+      referee_id: "other-user-1",
+      referral_code: "DAVE2024",
+    });
+    dbStore.referrals.set("ref-2", {
+      id: "ref-2",
+      referrer_id: "other-user-2",
+      referee_id: "user-gdpr-4",
+      referral_code: "SOMECODE",
+    });
     expect(dbStore.referrals.size).toBe(2);
 
     shared.anonymizeUser.mockImplementation(async (userId: string) => {
@@ -296,8 +333,18 @@ describe("Integration test: GDPR erasure — request, 30-day delay, execute, ver
 
   it("nulls out audit_log PII fields for the erased user", async () => {
     seedUser("user-gdpr-5", "eve@example.com", "Eve", "evesmith");
-    dbStore.auditLog.set("log-1", { id: "log-1", user_id: "user-gdpr-5", action: "login", pii_field: "eve@example.com" });
-    dbStore.auditLog.set("log-2", { id: "log-2", user_id: "user-gdpr-5", action: "profile_update", pii_field: "+15551234567" });
+    dbStore.auditLog.set("log-1", {
+      id: "log-1",
+      user_id: "user-gdpr-5",
+      action: "login",
+      pii_field: "eve@example.com",
+    });
+    dbStore.auditLog.set("log-2", {
+      id: "log-2",
+      user_id: "user-gdpr-5",
+      action: "profile_update",
+      pii_field: "+15551234567",
+    });
 
     expect(dbStore.auditLog.get("log-1")?.pii_field).toBe("eve@example.com");
     expect(dbStore.auditLog.get("log-2")?.pii_field).toBe("+15551234567");
@@ -374,8 +421,18 @@ describe("Integration test: GDPR erasure — request, 30-day delay, execute, ver
 
   it("cleans up all created DB rows after test without affecting other suites", () => {
     seedUser("cleanup-user", "cleanup@example.com", "Cleanup", "cleanup");
-    dbStore.referrals.set("cleanup-ref", { id: "cleanup-ref", referrer_id: "cleanup-user", referee_id: "other", referral_code: "CODE" });
-    dbStore.auditLog.set("cleanup-log", { id: "cleanup-log", user_id: "cleanup-user", action: "login", pii_field: "cleanup@example.com" });
+    dbStore.referrals.set("cleanup-ref", {
+      id: "cleanup-ref",
+      referrer_id: "cleanup-user",
+      referee_id: "other",
+      referral_code: "CODE",
+    });
+    dbStore.auditLog.set("cleanup-log", {
+      id: "cleanup-log",
+      user_id: "cleanup-user",
+      action: "login",
+      pii_field: "cleanup@example.com",
+    });
     shared.reqStore.set("cleanup-req", { id: "cleanup-req", user_id: "cleanup-user" });
 
     dbStore.users.clear();

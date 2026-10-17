@@ -129,10 +129,13 @@ export async function processPayout(challengeId: string): Promise<void> {
     "SELECT id, prize_pool_stroops FROM challenge_tiers WHERE challenge_id = $1",
     [challengeId]
   );
-  const tierPools = new Map(tierResult.rows.map((tier) => [tier.id, BigInt(tier.prize_pool_stroops)]));
+  const tierPools = new Map(
+    tierResult.rows.map((tier) => [tier.id, BigInt(tier.prize_pool_stroops)])
+  );
   const tierPoints = new Map<string, number>();
   for (const winner of eligibleWinners) {
-    if (winner.tier_id) tierPoints.set(winner.tier_id, (tierPoints.get(winner.tier_id) ?? 0) + winner.totalScore);
+    if (winner.tier_id)
+      tierPoints.set(winner.tier_id, (tierPoints.get(winner.tier_id) ?? 0) + winner.totalScore);
   }
   const licenseTerms = await getLicensePayoutTerms(challengeId);
   const grossPoolStroops = BigInt(challenge.pool_amount_stroops);
@@ -160,7 +163,7 @@ export async function processPayout(challengeId: string): Promise<void> {
     const scopedPlayerPool = tierPool
       ? (scopedGrossPool * playerPoolStroops) / grossPoolStroops
       : playerPoolStroops;
-    const scopedTotalPoints = winner.tier_id ? tierPoints.get(winner.tier_id) ?? 0 : totalPoints;
+    const scopedTotalPoints = winner.tier_id ? (tierPoints.get(winner.tier_id) ?? 0) : totalPoints;
     const amountStroops = calculatePayoutShareStroops(
       winner.totalScore,
       scopedTotalPoints,

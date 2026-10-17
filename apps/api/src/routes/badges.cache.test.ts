@@ -58,7 +58,13 @@ noAuthApp.use((req: any, _res: any, next: any) => {
 noAuthApp.use("/badges", router);
 
 const fakeBadges = [
-  { id: "b1", slug: "first-win", name: "First Win", description: "Win first challenge", iconUrl: null },
+  {
+    id: "b1",
+    slug: "first-win",
+    name: "First Win",
+    description: "Win first challenge",
+    iconUrl: null,
+  },
 ];
 
 describe("badges cache", () => {
@@ -84,7 +90,12 @@ describe("badges cache", () => {
     const res = await request(app).get("/badges");
     expect(res.status).toBe(200);
     expect(mockQuery).toHaveBeenCalledTimes(1);
-    expect(mockRedisSet).toHaveBeenCalledWith("badges:definitions", JSON.stringify(fakeBadges), "EX", 86400);
+    expect(mockRedisSet).toHaveBeenCalledWith(
+      "badges:definitions",
+      JSON.stringify(fakeBadges),
+      "EX",
+      86400
+    );
     expect(res.headers["x-cache"]).toBe("MISS");
   });
 

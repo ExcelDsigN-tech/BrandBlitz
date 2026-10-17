@@ -89,10 +89,18 @@ describeIntegration("streak lifecycle integration", () => {
       $$ LANGUAGE plpgsql
     `);
 
-    await query(`CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
+    await query(
+      `CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
   });
 
   afterAll(async () => {
@@ -116,10 +124,7 @@ describeIntegration("streak lifecycle integration", () => {
 
     // Simulate day 1 play
     const day1 = "2026-05-29";
-    await query(
-      `UPDATE users SET streak = 1, last_play_day = $1 WHERE id = $2`,
-      [day1, userId]
-    );
+    await query(`UPDATE users SET streak = 1, last_play_day = $1 WHERE id = $2`, [day1, userId]);
 
     let user = await query<{ streak: number; last_play_day: string }>(
       `SELECT streak, last_play_day FROM users WHERE id = $1`,
@@ -130,10 +135,7 @@ describeIntegration("streak lifecycle integration", () => {
 
     // Simulate day 2 play (consecutive)
     const day2 = "2026-05-30";
-    await query(
-      `UPDATE users SET streak = 2, last_play_day = $1 WHERE id = $2`,
-      [day2, userId]
-    );
+    await query(`UPDATE users SET streak = 2, last_play_day = $1 WHERE id = $2`, [day2, userId]);
 
     user = await query<{ streak: number; last_play_day: string }>(
       `SELECT streak, last_play_day FROM users WHERE id = $1`,
@@ -169,10 +171,9 @@ describeIntegration("streak lifecycle integration", () => {
 
     // Skip a day and try to play on day with gap
     // last_play_day = May 27, now playing on May 30 (gap of 3 days)
-    await query(
-      `UPDATE users SET streak = 1, last_play_day = '2026-05-30' WHERE id = $1`,
-      [userId]
-    );
+    await query(`UPDATE users SET streak = 1, last_play_day = '2026-05-30' WHERE id = $1`, [
+      userId,
+    ]);
 
     const user = await query<{ streak: number; last_play_day: string }>(
       `SELECT streak, last_play_day FROM users WHERE id = $1`,
@@ -199,7 +200,11 @@ describeIntegration("streak lifecycle integration", () => {
       [previousStreak, "2026-05-30", userId]
     );
 
-    const user = await query<{ streak: number; streak_repairs_this_month: number; streak_repair_available: boolean }>(
+    const user = await query<{
+      streak: number;
+      streak_repairs_this_month: number;
+      streak_repair_available: boolean;
+    }>(
       `SELECT streak, streak_repairs_this_month, streak_repair_available FROM users WHERE id = $1`,
       [userId]
     );
@@ -242,10 +247,7 @@ describeIntegration("streak lifecycle integration", () => {
     const sessionId = sessionResult.rows[0].id;
 
     // Verify session is abandoned
-    const session = await query(
-      `SELECT status FROM game_sessions WHERE id = $1`,
-      [sessionId]
-    );
+    const session = await query(`SELECT status FROM game_sessions WHERE id = $1`, [sessionId]);
     expect(session.rows[0].status).toBe("abandoned");
 
     // Verify user streak was not updated

@@ -3,9 +3,7 @@ import { z } from "zod";
 export const configSchema = z.object({
   // Infrastructure
   PORT: z.coerce.number().default(3001),
-  NODE_ENV: z
-    .enum(["development", "production", "test"])
-    .default("development"),
+  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
   DB_POOL_MAX: z.coerce.number().int().positive().default(10),
@@ -39,15 +37,14 @@ export const configSchema = z.object({
    */
   ALLOWED_ORIGINS: z
     .string({
-      required_error:
-        "ALLOWED_ORIGINS is required (comma-separated explicit origins, no wildcard)",
+      required_error: "ALLOWED_ORIGINS is required (comma-separated explicit origins, no wildcard)",
     })
     .min(1, "ALLOWED_ORIGINS must list at least one explicit origin")
     .transform((value) =>
       value
         .split(",")
         .map((origin) => origin.trim())
-        .filter(Boolean),
+        .filter(Boolean)
     )
     .refine((origins) => origins.length > 0, {
       message: "ALLOWED_ORIGINS must contain at least one origin",
@@ -82,9 +79,7 @@ export const configSchema = z.object({
   TWILIO_VERIFY_SERVICE_SID: z.string().optional(),
 
   // Logging
-  LOG_LEVEL: z
-    .enum(["error", "warn", "info", "http", "verbose", "debug", "silly"])
-    .default("info"),
+  LOG_LEVEL: z.enum(["error", "warn", "info", "http", "verbose", "debug", "silly"]).default("info"),
 
   // Error monitoring — absent by default in local dev; set in staging/prod
   SENTRY_DSN: z.string().url().optional(),
@@ -96,10 +91,7 @@ export const configSchema = z.object({
   PHONE_HASH_SALT: z.string().min(16).optional(),
 
   // E2E testing — enables mock Google OAuth flow; never set in production
-  E2E_MOCK_GOOGLE_OAUTH: z
-    .enum(["true", "false"])
-    .optional()
-    .default("false"),
+  E2E_MOCK_GOOGLE_OAUTH: z.enum(["true", "false"]).optional().default("false"),
 
   // Worker concurrency
   PAYOUT_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(2),

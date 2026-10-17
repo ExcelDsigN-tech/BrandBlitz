@@ -93,9 +93,7 @@ describe("GET /badges", () => {
   it("returns all badge definitions without authentication", async () => {
     mockRedisGet.mockResolvedValueOnce(null);
 
-    const response = await request(app)
-      .get("/badges")
-      .expect(200);
+    const response = await request(app).get("/badges").expect(200);
 
     expect(response.body).toHaveLength(8);
     expect(response.body[0]).toMatchObject({
@@ -170,9 +168,7 @@ describe("GET /badges", () => {
   });
 
   it("rejects invalid query parameters", async () => {
-    const response = await request(app)
-      .get("/badges?category=123&invalid=param")
-      .expect(400);
+    const response = await request(app).get("/badges?category=123&invalid=param").expect(400);
 
     expect(response.body.error).toBe("Invalid query parameters");
   });

@@ -37,7 +37,7 @@ tools — this ADR is scoped to unit tests.
 - **Speed**: Vitest's worker pool + Vite's incremental graph give
   noticeably faster cold + watch runs on this codebase.
 - **Jest-compatible API**: `describe / it / expect / vi.fn() /
-  vi.mock()` line up with Jest's `jest.fn()` / `jest.mock()` so
+vi.mock()` line up with Jest's `jest.fn()` / `jest.mock()` so
   contributors don't need to relearn matchers or mocking semantics.
 - **Built-in coverage**: V8 coverage out of the box. No `babel-istanbul`
   config to maintain.

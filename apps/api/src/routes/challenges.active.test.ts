@@ -260,9 +260,9 @@ describe("GET /challenges/active", () => {
       const res = await fetch(`${baseUrl}/challenges/active?sort=${sort}`);
       expect(res.status).toBe(200);
       expect(mocks.getActiveChallengesSorted).toHaveBeenCalledWith(
-        expect.objectContaining({ sort }),
+        expect.objectContaining({ sort })
       );
-    },
+    }
   );
 
   it("returns 400 for an unrecognised sort value", async () => {
@@ -280,7 +280,7 @@ describe("GET /challenges/active", () => {
     const res = await fetch(`${baseUrl}/challenges/active?limit=10`);
     expect(res.status).toBe(200);
     expect(mocks.getActiveChallengesSorted).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 10 }),
+      expect.objectContaining({ limit: 10 })
     );
   });
 
@@ -290,7 +290,7 @@ describe("GET /challenges/active", () => {
     const res = await fetch(`${baseUrl}/challenges/active?limit=99`);
     expect(res.status).toBe(200);
     expect(mocks.getActiveChallengesSorted).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 50 }),
+      expect.objectContaining({ limit: 50 })
     );
   });
 
@@ -301,14 +301,14 @@ describe("GET /challenges/active", () => {
 
   it("forwards cursor parameter to the query layer", async () => {
     const cursor = Buffer.from(JSON.stringify({ pool_amount_stroops: "500", id: "abc" })).toString(
-      "base64url",
+      "base64url"
     );
     mocks.getActiveChallengesSorted.mockResolvedValue({ items: [], nextCursor: null });
 
     const res = await fetch(`${baseUrl}/challenges/active?cursor=${cursor}`);
     expect(res.status).toBe(200);
     expect(mocks.getActiveChallengesSorted).toHaveBeenCalledWith(
-      expect.objectContaining({ cursor }),
+      expect.objectContaining({ cursor })
     );
   });
 

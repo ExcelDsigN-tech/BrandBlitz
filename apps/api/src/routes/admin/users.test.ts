@@ -94,9 +94,7 @@ describe("DELETE /admin/users/:userId/suspend", () => {
 
     mocks.query.mockResolvedValueOnce({});
 
-    const res = await request(app)
-      .delete("/admin/users/user-001/suspend")
-      .expect(200);
+    const res = await request(app).delete("/admin/users/user-001/suspend").expect(200);
 
     expect(res.body.message).toBe("User suspension has been lifted.");
     expect(res.body.user.id).toBe("user-001");
@@ -105,29 +103,24 @@ describe("DELETE /admin/users/:userId/suspend", () => {
 
     expect(mocks.unsuspendUser).toHaveBeenCalledWith("user-001");
 
-    expect(mocks.query).toHaveBeenCalledWith(
-      expect.stringContaining("'unsuspend'"),
-      [
-        "admin-001",
-        "user-001",
-        JSON.stringify({
-          suspendedAt: "2026-06-01T00:00:00Z",
-          suspensionReason: "Spamming",
-        }),
-        JSON.stringify({
-          suspendedAt: null,
-          suspensionReason: null,
-        }),
-      ],
-    );
+    expect(mocks.query).toHaveBeenCalledWith(expect.stringContaining("'unsuspend'"), [
+      "admin-001",
+      "user-001",
+      JSON.stringify({
+        suspendedAt: "2026-06-01T00:00:00Z",
+        suspensionReason: "Spamming",
+      }),
+      JSON.stringify({
+        suspendedAt: null,
+        suspensionReason: null,
+      }),
+    ]);
   });
 
   it("returns 404 when the user ID does not exist", async () => {
     mocks.findUserById.mockResolvedValueOnce(null);
 
-    const res = await request(app)
-      .delete("/admin/users/nonexistent-uuid/suspend")
-      .expect(404);
+    const res = await request(app).delete("/admin/users/nonexistent-uuid/suspend").expect(404);
 
     expect(res.body.error).toBe("User not found");
     expect(mocks.unsuspendUser).not.toHaveBeenCalled();
@@ -141,9 +134,7 @@ describe("DELETE /admin/users/:userId/suspend", () => {
       suspension_reason: null,
     });
 
-    const res = await request(app)
-      .delete("/admin/users/user-002/suspend")
-      .expect(409);
+    const res = await request(app).delete("/admin/users/user-002/suspend").expect(409);
 
     expect(res.body.error).toBe("User is not currently suspended");
     expect(res.body.code).toBe("NOT_SUSPENDED");
@@ -151,20 +142,20 @@ describe("DELETE /admin/users/:userId/suspend", () => {
   });
 
   it("returns 403 for non-admin user", async () => {
-    vi.mocked(
-      (await import("../../middleware/authenticate")).authenticate
-    );
+    vi.mocked((await import("../../middleware/authenticate")).authenticate);
     const app2 = express();
     app2.use(express.json());
-    app2.use("/admin/users", (req: any, _res: any, next: any) => {
-      req.user = mocks.playerUser;
-      next();
-    }, adminUsersRouter);
+    app2.use(
+      "/admin/users",
+      (req: any, _res: any, next: any) => {
+        req.user = mocks.playerUser;
+        next();
+      },
+      adminUsersRouter
+    );
     app2.use(errorHandler);
 
-    const res = await request(app2)
-      .delete("/admin/users/user-001/suspend")
-      .expect(403);
+    const res = await request(app2).delete("/admin/users/user-001/suspend").expect(403);
 
     expect(res.body.error).toBe("Forbidden");
   });
@@ -185,12 +176,10 @@ describe("DELETE /admin/users/:userId/suspend", () => {
 
     mocks.query.mockResolvedValueOnce({});
 
-    await request(app)
-      .delete("/admin/users/user-003/suspend")
-      .expect(200);
+    await request(app).delete("/admin/users/user-003/suspend").expect(200);
 
     const auditCall = mocks.query.mock.calls.find(
-      (call: any) => typeof call[0] === "string" && call[0].includes("audit_log"),
+      (call: any) => typeof call[0] === "string" && call[0].includes("audit_log")
     );
     expect(auditCall).toBeDefined();
     expect(auditCall[1][0]).toBe("admin-001");

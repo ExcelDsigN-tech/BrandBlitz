@@ -101,9 +101,7 @@ export default function QuestionPreviewPage() {
         `/brands/${brandId}/questions/${questions[currentIndex].id}/regenerate`
       );
       const newQuestion = res.data.question;
-      setQuestions((prev) =>
-        prev.map((q, i) => (i === currentIndex ? { ...newQuestion } : q))
-      );
+      setQuestions((prev) => prev.map((q, i) => (i === currentIndex ? { ...newQuestion } : q)));
       toast.success("Question regenerated!");
     } catch {
       toast.error("Failed to regenerate question.");
@@ -114,7 +112,7 @@ export default function QuestionPreviewPage() {
 
   if (status === "loading" || loading) {
     return (
-      <main className="mx-auto max-w-2xl px-6 py-12 space-y-6">
+      <main className="mx-auto max-w-2xl space-y-6 px-6 py-12">
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-64 w-full" />
         <div className="flex gap-3">
@@ -196,15 +194,15 @@ export default function QuestionPreviewPage() {
                     question.approved === true
                       ? "default"
                       : question.approved === false
-                      ? "destructive"
-                      : "secondary"
+                        ? "destructive"
+                        : "secondary"
                   }
                 >
                   {question.approved === true
                     ? "Approved"
                     : question.approved === false
-                    ? "Flagged"
-                    : "Pending"}
+                      ? "Flagged"
+                      : "Pending"}
                 </Badge>
               </div>
             </CardHeader>

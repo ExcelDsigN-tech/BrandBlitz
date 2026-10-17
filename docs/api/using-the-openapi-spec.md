@@ -58,12 +58,12 @@ Run the command from the package that will consume the generated types, or adjus
 
 The OpenAPI registry currently includes schemas for these route groups:
 
-| Route group | Schema file |
-|---|---|
-| Auth | `apps/api/src/routes/openapi/auth.openapi.ts` |
-| Challenges | `apps/api/src/routes/openapi/challenges.openapi.ts` |
+| Route group | Schema file                                          |
+| ----------- | ---------------------------------------------------- |
+| Auth        | `apps/api/src/routes/openapi/auth.openapi.ts`        |
+| Challenges  | `apps/api/src/routes/openapi/challenges.openapi.ts`  |
 | Leaderboard | `apps/api/src/routes/openapi/leaderboard.openapi.ts` |
-| Sessions | `apps/api/src/routes/openapi/sessions.openapi.ts` |
+| Sessions    | `apps/api/src/routes/openapi/sessions.openapi.ts`    |
 
 These mounted route groups do not yet have dedicated OpenAPI schema files:
 

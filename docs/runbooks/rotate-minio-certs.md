@@ -100,10 +100,10 @@ Then restart MinIO as in step 3 above.
 
 ## Environment Variables
 
-| Variable | Default (prod) | Description |
-| --- | --- | --- |
-| `S3_ENDPOINT` | `https://minio:9000` | Must use `https://` in production |
-| `MINIO_OPTS` | `--certs-dir /certs` | Passed to the MinIO server command |
+| Variable      | Default (prod)       | Description                        |
+| ------------- | -------------------- | ---------------------------------- |
+| `S3_ENDPOINT` | `https://minio:9000` | Must use `https://` in production  |
+| `MINIO_OPTS`  | `--certs-dir /certs` | Passed to the MinIO server command |
 
 The prod compose override (`docker-compose.prod.yml`) sets `S3_ENDPOINT` to `https://minio:9000` by default. Override via the host environment if MinIO is on a different hostname.
 

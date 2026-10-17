@@ -2,7 +2,10 @@ import { expect, test } from "@playwright/test";
 import { seedActiveChallenge, signInWithMockGoogle } from "./helpers";
 
 test.describe("Cancel Challenge E2E", () => {
-  test("brand owner cancels challenge from dashboard and sees refund status", async ({ page, request }) => {
+  test("brand owner cancels challenge from dashboard and sees refund status", async ({
+    page,
+    request,
+  }) => {
     // Watch all network requests to /api/challenges/** to ensure 2xx
     page.on("response", (response) => {
       if (response.url().includes("/api/challenges/")) {
@@ -25,7 +28,9 @@ test.describe("Cancel Challenge E2E", () => {
     await page.waitForURL("**/dashboard");
 
     // Locate active challenge
-    const challengeCard = page.locator(`[data-testid="challenge-card-${seeded.challengeId}"]`).or(page.locator('.challenge-card').first());
+    const challengeCard = page
+      .locator(`[data-testid="challenge-card-${seeded.challengeId}"]`)
+      .or(page.locator(".challenge-card").first());
     await expect(challengeCard).toBeVisible();
 
     // Click cancel action
@@ -33,7 +38,7 @@ test.describe("Cancel Challenge E2E", () => {
     await cancelButton.click();
 
     // Confirm modal appears
-    const modal = page.locator('[role="dialog"]').or(page.locator('.modal'));
+    const modal = page.locator('[role="dialog"]').or(page.locator(".modal"));
     await expect(modal).toBeVisible();
     await expect(modal.getByText(/Are you sure/i)).toBeVisible();
 

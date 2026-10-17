@@ -2,7 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { LiveGlobalLeaderboard, LeaderboardScope } from "@/components/leaderboard/live-global-leaderboard";
+import {
+  LiveGlobalLeaderboard,
+  LeaderboardScope,
+} from "@/components/leaderboard/live-global-leaderboard";
 import { createApiClient, api } from "@/lib/api";
 import type { LeaderboardEntry } from "@/lib/api";
 import Link from "next/link";
@@ -24,11 +27,7 @@ const WINDOW_OPTIONS: { value: LeaderboardWindow; label: string }[] = [
   { value: "all-time", label: "All-Time" },
 ];
 
-export function ChallengeLeaderboardClient({
-  challengeId,
-  initialEntries,
-  initialHasMore,
-}: Props) {
+export function ChallengeLeaderboardClient({ challengeId, initialEntries, initialHasMore }: Props) {
   const { data: session, status } = useSession();
   const [scope, setScope] = useState<LeaderboardScope>("global");
   const [window_, setWindow] = useState<LeaderboardWindow>("all-time");
@@ -77,15 +76,7 @@ export function ChallengeLeaderboardClient({
     };
 
     void loadLeaderboard();
-  }, [
-    scope,
-    window_,
-    isLoggedIn,
-    challengeId,
-    initialEntries,
-    initialHasMore,
-    session?.apiToken,
-  ]);
+  }, [scope, window_, isLoggedIn, challengeId, initialEntries, initialHasMore, session?.apiToken]);
 
   return (
     <div>
@@ -150,7 +141,9 @@ export function ChallengeLeaderboardClient({
             title="Sign in to view friends"
             description="Log in with Google to see how your referred friends rank on this challenge."
             action={
-              <Link href={`/login?callbackUrl=${encodeURIComponent(`/leaderboard/${challengeId}`)}`}>
+              <Link
+                href={`/login?callbackUrl=${encodeURIComponent(`/leaderboard/${challengeId}`)}`}
+              >
                 <Button>Sign In</Button>
               </Link>
             }
@@ -186,8 +179,7 @@ export function ChallengeLeaderboardClient({
                   client
                     .get(`/leaderboard/${challengeId}?limit=50&scope=friends`)
                     .then((res) => {
-                      const data: LeaderboardEntry[] =
-                        res.data.data || res.data.sessions || [];
+                      const data: LeaderboardEntry[] = res.data.data || res.data.sessions || [];
                       setEntries(data);
                       setHasMore(Boolean(res.data.nextCursor));
                       setFriendsFailed(false);

@@ -17,11 +17,7 @@ export const leaderboardRefreshQueue = new Queue("leaderboard-refresh", {
 });
 
 export async function enqueueLeaderboardRefresh(challengeId: string): Promise<void> {
-  await leaderboardRefreshQueue.add(
-    "refresh",
-    { challengeId },
-    leaderboardRefreshJobOptions
-  );
+  await leaderboardRefreshQueue.add("refresh", { challengeId }, leaderboardRefreshJobOptions);
   logger.info("Leaderboard refresh job enqueued", { challengeId });
 }
 
@@ -34,13 +30,7 @@ export async function refreshLeaderboardView(): Promise<void> {
 async function invalidateLeaderboardCache(): Promise<void> {
   let cursor = 0;
   do {
-    const [next, keys] = await redis.scan(
-      cursor,
-      "MATCH",
-      "leaderboard:global:*",
-      "COUNT",
-      100
-    );
+    const [next, keys] = await redis.scan(cursor, "MATCH", "leaderboard:global:*", "COUNT", 100);
     cursor = Number(next);
     if (keys.length > 0) {
       await redis.del(...(keys as [string, ...string[]]));

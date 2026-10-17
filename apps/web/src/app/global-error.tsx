@@ -36,12 +36,10 @@ export default function GlobalError({
               />
             </svg>
           </div>
-          <h1 className="mb-3 text-3xl font-bold text-slate-900">
-            A critical error occurred
-          </h1>
+          <h1 className="mb-3 text-3xl font-bold text-slate-900">A critical error occurred</h1>
           <p className="mb-8 max-w-md text-lg text-slate-600">
-            Something went very wrong and we couldn&apos;t recover. The team has been
-            automatically notified.
+            Something went very wrong and we couldn&apos;t recover. The team has been automatically
+            notified.
           </p>
           <button
             onClick={() => reset()}
@@ -50,9 +48,7 @@ export default function GlobalError({
             Reload Application
           </button>
           {error.digest && (
-            <p className="mt-8 text-xs font-mono text-slate-400">
-              Error ID: {error.digest}
-            </p>
+            <p className="mt-8 font-mono text-xs text-slate-400">Error ID: {error.digest}</p>
           )}
         </div>
       </body>

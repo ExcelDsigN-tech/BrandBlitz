@@ -14,7 +14,12 @@ interface UseCountdownOptions {
   paused?: boolean;
 }
 
-export function useCountdown({ durationSeconds, deadlineAt, onExpire, paused = false }: UseCountdownOptions) {
+export function useCountdown({
+  durationSeconds,
+  deadlineAt,
+  onExpire,
+  paused = false,
+}: UseCountdownOptions) {
   const [timeLeftMs, setTimeLeftMs] = useState(durationSeconds * 1000);
   const [isPaused, setIsPaused] = useState(paused);
   const onExpireRef = useRef(onExpire);
@@ -25,7 +30,9 @@ export function useCountdown({ durationSeconds, deadlineAt, onExpire, paused = f
   useEffect(() => {
     const totalMs = durationSeconds * 1000;
     setTimeLeftMs(totalMs);
-    setIsPaused(paused || (typeof document !== "undefined" && document.visibilityState === "hidden"));
+    setIsPaused(
+      paused || (typeof document !== "undefined" && document.visibilityState === "hidden")
+    );
 
     let remainingMs = deadlineAt != null ? Math.max(0, deadlineAt - Date.now()) : totalMs;
     let lastTickAt = Date.now();
@@ -48,9 +55,10 @@ export function useCountdown({ durationSeconds, deadlineAt, onExpire, paused = f
       }
 
       lastTickAt = now;
-      const remaining = deadlineAt != null && !pausedRef.current && !hidden && !blurred
-        ? Math.max(0, deadlineAt - now)
-        : readRemaining();
+      const remaining =
+        deadlineAt != null && !pausedRef.current && !hidden && !blurred
+          ? Math.max(0, deadlineAt - now)
+          : readRemaining();
 
       setTimeLeftMs(remaining);
       if (remaining === 0 && !expired) {

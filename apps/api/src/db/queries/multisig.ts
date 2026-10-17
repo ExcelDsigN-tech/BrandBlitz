@@ -142,9 +142,10 @@ export async function createMultisigOperation(data: {
   return result.rows[0];
 }
 
-export async function getPendingOperations(
-  opts?: { escrowId?: string; status?: string }
-): Promise<MultisigOperationDetail[]> {
+export async function getPendingOperations(opts?: {
+  escrowId?: string;
+  status?: string;
+}): Promise<MultisigOperationDetail[]> {
   let whereClause = "1=1";
   const params: unknown[] = [];
   let paramIdx = 1;

@@ -88,7 +88,14 @@ export async function claimSession(data: {
      VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (user_id, challenge_id) DO NOTHING
      RETURNING *`,
-    [data.userId, data.challengeId, data.deviceId ?? null, data.isPractice ?? false, data.variantId ?? null, data.tierId ?? null]
+    [
+      data.userId,
+      data.challengeId,
+      data.deviceId ?? null,
+      data.isPractice ?? false,
+      data.variantId ?? null,
+      data.tierId ?? null,
+    ]
   );
   return result.rows[0] ?? null;
 }

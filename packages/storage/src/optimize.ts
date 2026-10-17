@@ -5,10 +5,13 @@ import { s3, BUCKETS, getPublicUrl, uploadObject } from "./client";
 
 type ImageType = "brand-logo" | "product-image" | "user-avatar";
 
-const SPECS: Record<ImageType, { width: number; height: number; fit: "contain" | "inside" | "cover" }> = {
-  "brand-logo":    { width: 400, height: 400, fit: "contain" },
+const SPECS: Record<
+  ImageType,
+  { width: number; height: number; fit: "contain" | "inside" | "cover" }
+> = {
+  "brand-logo": { width: 400, height: 400, fit: "contain" },
   "product-image": { width: 800, height: 600, fit: "inside" },
-  "user-avatar":   { width: 200, height: 200, fit: "cover" },
+  "user-avatar": { width: 200, height: 200, fit: "cover" },
 };
 
 export class StorageError extends Error {
@@ -17,7 +20,7 @@ export class StorageError extends Error {
     message: string,
     public key: string,
     public bucket: string,
-    code = "STORAGE_BODY_EMPTY",
+    code = "STORAGE_BODY_EMPTY"
   ) {
     super(message);
     this.name = "StorageError";
@@ -46,7 +49,7 @@ export async function assertImageMatchesDeclaredType(
   buffer: Buffer,
   declaredMime: string,
   key = "",
-  bucket = "",
+  bucket = ""
 ): Promise<void> {
   const expectedFormats = MIME_TO_SHARP_FORMATS[declaredMime];
   if (!expectedFormats) {
@@ -54,7 +57,7 @@ export async function assertImageMatchesDeclaredType(
       `Unsupported declared MIME type: ${declaredMime}`,
       key,
       bucket,
-      "STORAGE_MIME_UNSUPPORTED",
+      "STORAGE_MIME_UNSUPPORTED"
     );
   }
 
@@ -66,7 +69,7 @@ export async function assertImageMatchesDeclaredType(
       `Sharp could not parse the buffer as an image: ${(error as Error).message}`,
       key,
       bucket,
-      "STORAGE_IMAGE_UNDECODABLE",
+      "STORAGE_IMAGE_UNDECODABLE"
     );
   }
 
@@ -75,7 +78,7 @@ export async function assertImageMatchesDeclaredType(
       `Image content (${format ?? "unknown"}) does not match declared type ${declaredMime}`,
       key,
       bucket,
-      "STORAGE_MIME_MISMATCH",
+      "STORAGE_MIME_MISMATCH"
     );
   }
 }
@@ -88,7 +91,7 @@ export async function assertImageMatchesDeclaredType(
 export async function optimizeBuffer(
   buffer: Buffer,
   type: ImageType,
-  declaredMime?: string,
+  declaredMime?: string
 ): Promise<{ webpBuffer: Buffer; avifBuffer: Buffer }> {
   if (declaredMime) {
     await assertImageMatchesDeclaredType(buffer, declaredMime);
@@ -102,7 +105,7 @@ export async function optimizeBuffer(
       `Sharp could not parse the buffer as an image: ${(error as Error).message}`,
       "",
       "",
-      "STORAGE_IMAGE_UNDECODABLE",
+      "STORAGE_IMAGE_UNDECODABLE"
     );
   }
 
@@ -112,7 +115,7 @@ export async function optimizeBuffer(
       `Unsupported image format: ${metadata.format ?? "unknown"}`,
       "",
       "",
-      "STORAGE_MIME_UNSUPPORTED",
+      "STORAGE_MIME_UNSUPPORTED"
     );
   }
 
@@ -144,9 +147,7 @@ export async function optimizeBuffer(
  * @returns The new key (with .webp extension)
  */
 export async function optimizeImage(key: string, type: ImageType): Promise<string> {
-  const original = await s3.send(
-    new GetObjectCommand({ Bucket: BUCKETS.BRAND_ASSETS, Key: key })
-  );
+  const original = await s3.send(new GetObjectCommand({ Bucket: BUCKETS.BRAND_ASSETS, Key: key }));
 
   if (!original.Body) {
     throw new StorageError(
@@ -168,11 +169,15 @@ export async function optimizeImage(key: string, type: ImageType): Promise<strin
     const metadata = await sharp(buffer).metadata();
     const supportedFormats = ["jpeg", "jpg", "png", "webp", "avif", "tiff"];
     if (!metadata.format || !supportedFormats.includes(metadata.format)) {
-      console.warn(`[storage] Unsupported image format: ${metadata.format}. Skipping optimization for ${key}.`);
+      console.warn(
+        `[storage] Unsupported image format: ${metadata.format}. Skipping optimization for ${key}.`
+      );
       return key;
     }
   } catch (error) {
-    console.warn(`[storage] Failed to process image metadata for ${key}. Skipping optimization. Reason: ${(error as Error).message}`);
+    console.warn(
+      `[storage] Failed to process image metadata for ${key}. Skipping optimization. Reason: ${(error as Error).message}`
+    );
     return key;
   }
 

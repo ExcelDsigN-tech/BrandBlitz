@@ -111,9 +111,7 @@ describe("GET /admin/challenges", () => {
   });
 
   it("returns 401 from authenticate middleware when unauthenticated", async () => {
-    const response = await request(app)
-      .get("/admin/challenges")
-      .expect(401);
+    const response = await request(app).get("/admin/challenges").expect(401);
 
     expect(response.body.error).toBeDefined();
   });
@@ -223,7 +221,7 @@ describe("GET /admin/challenges", () => {
 describe("GET /admin/challenges/:id/fraud", () => {
   it("returns 200 with all fraud_flags rows associated with the given challengeId", async () => {
     const challengeId = "challenge-123";
-    
+
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -268,7 +266,7 @@ describe("GET /admin/challenges/:id/fraud", () => {
 
   it("each item in the response includes sessionId, userId, username, flagReason, and flaggedAt fields", async () => {
     const challengeId = "challenge-123";
-    
+
     mockQuery.mockResolvedValueOnce({
       rows: [
         {
@@ -301,7 +299,7 @@ describe("GET /admin/challenges/:id/fraud", () => {
 
   it("a challenge with no fraud flags returns 200 with an empty data array", async () => {
     const challengeId = "challenge-123";
-    
+
     mockQuery.mockResolvedValueOnce({ rows: [] });
     mockQuery.mockResolvedValueOnce({ rows: [{ total: 0 }] });
     mockQuery.mockResolvedValueOnce({ rows: [{ id: challengeId }] });
@@ -317,7 +315,7 @@ describe("GET /admin/challenges/:id/fraud", () => {
 
   it("requesting fraud flags for a non-existent challengeId returns 404", async () => {
     const challengeId = "challenge-123";
-    
+
     mockQuery.mockResolvedValueOnce({ rows: [] });
     mockQuery.mockResolvedValueOnce({ rows: [{ total: 0 }] });
     mockQuery.mockResolvedValueOnce({ rows: [] }); // Challenge doesn't exist
@@ -332,7 +330,7 @@ describe("GET /admin/challenges/:id/fraud", () => {
 
   it("a non-admin authenticated request returns 403 from require-admin middleware", async () => {
     const challengeId = "challenge-123";
-    
+
     const response = await request(app)
       .get(`/admin/challenges/${challengeId}/fraud`)
       .set("Authorization", `Bearer ${userToken()}`)
@@ -343,17 +341,15 @@ describe("GET /admin/challenges/:id/fraud", () => {
 
   it("an unauthenticated request returns 401", async () => {
     const challengeId = "challenge-123";
-    
-    const response = await request(app)
-      .get(`/admin/challenges/${challengeId}/fraud`)
-      .expect(401);
+
+    const response = await request(app).get(`/admin/challenges/${challengeId}/fraud`).expect(401);
 
     expect(response.body.error).toBeDefined();
   });
 
   it("the page and limit query parameters correctly paginate results and out-of-range values return 400", async () => {
     const challengeId = "challenge-123";
-    
+
     const response = await request(app)
       .get(`/admin/challenges/${challengeId}/fraud?page=0`)
       .set("Authorization", `Bearer ${adminToken()}`)
@@ -364,7 +360,7 @@ describe("GET /admin/challenges/:id/fraud", () => {
 
   it("pagination with limit > 100 returns 400", async () => {
     const challengeId = "challenge-123";
-    
+
     const response = await request(app)
       .get(`/admin/challenges/${challengeId}/fraud?limit=101`)
       .set("Authorization", `Bearer ${adminToken()}`)
@@ -375,7 +371,7 @@ describe("GET /admin/challenges/:id/fraud", () => {
 
   it("pagination works correctly with custom values", async () => {
     const challengeId = "challenge-123";
-    
+
     mockQuery.mockResolvedValueOnce({ rows: [] });
     mockQuery.mockResolvedValueOnce({ rows: [{ total: 0 }] });
     mockQuery.mockResolvedValueOnce({ rows: [{ id: challengeId }] });

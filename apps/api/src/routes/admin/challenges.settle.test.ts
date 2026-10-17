@@ -79,27 +79,23 @@ describe("POST /admin/challenges/:id/settle", () => {
     mockEnqueuePayout.mockResolvedValueOnce(undefined);
     mockQuery.mockResolvedValueOnce({ rows: [] });
 
-    const response = await request(app)
-      .post(`/admin/challenges/${challengeId}/settle`)
-      .expect(202);
+    const response = await request(app).post(`/admin/challenges/${challengeId}/settle`).expect(202);
 
     expect(response.body.message).toBeDefined();
     expect(mockEnqueuePayout).toHaveBeenCalledTimes(1);
     expect(mockEnqueuePayout.mock.calls[0][0]).toBe(challengeId);
     expect(mockQuery).toHaveBeenCalledTimes(1);
-    expect(mockQuery).toHaveBeenCalledWith(
-      expect.stringContaining("INSERT INTO audit_log"),
-      [adminUserId, challengeId]
-    );
+    expect(mockQuery).toHaveBeenCalledWith(expect.stringContaining("INSERT INTO audit_log"), [
+      adminUserId,
+      challengeId,
+    ]);
     expect(mockQuery.mock.calls[0][0]).toContain("challenge_settle");
   });
 
   it("returns 409 and does not enqueue a duplicate job when the challenge is already settled", async () => {
     mockGetChallengeById.mockResolvedValueOnce({ id: challengeId, status: "settled" });
 
-    const response = await request(app)
-      .post(`/admin/challenges/${challengeId}/settle`)
-      .expect(409);
+    const response = await request(app).post(`/admin/challenges/${challengeId}/settle`).expect(409);
 
     expect(response.body.error).toBe("Challenge already settled");
     expect(mockEnqueuePayout).not.toHaveBeenCalled();
@@ -109,9 +105,7 @@ describe("POST /admin/challenges/:id/settle", () => {
   it("returns 403 for a non-admin authenticated request", async () => {
     mocks.user = { sub: "user-456", role: "user" };
 
-    const response = await request(app)
-      .post(`/admin/challenges/${challengeId}/settle`)
-      .expect(403);
+    const response = await request(app).post(`/admin/challenges/${challengeId}/settle`).expect(403);
 
     expect(response.body.error).toBe("Forbidden");
     expect(mockEnqueuePayout).not.toHaveBeenCalled();
@@ -120,9 +114,7 @@ describe("POST /admin/challenges/:id/settle", () => {
   it("returns 401 for an unauthenticated request", async () => {
     mocks.user = null;
 
-    const response = await request(app)
-      .post(`/admin/challenges/${challengeId}/settle`)
-      .expect(401);
+    const response = await request(app).post(`/admin/challenges/${challengeId}/settle`).expect(401);
 
     expect(response.body.error).toBeDefined();
     expect(mockEnqueuePayout).not.toHaveBeenCalled();
@@ -131,9 +123,7 @@ describe("POST /admin/challenges/:id/settle", () => {
   it("returns 404 when settling a non-existent challengeId", async () => {
     mockGetChallengeById.mockResolvedValueOnce(null);
 
-    const response = await request(app)
-      .post(`/admin/challenges/${challengeId}/settle`)
-      .expect(404);
+    const response = await request(app).post(`/admin/challenges/${challengeId}/settle`).expect(404);
 
     expect(response.body.error).toBe("Challenge not found");
     expect(mockEnqueuePayout).not.toHaveBeenCalled();
@@ -144,9 +134,7 @@ describe("POST /admin/challenges/:id/settle", () => {
     mockGetChallengeById.mockResolvedValueOnce({ id: challengeId, status: "ended" });
     mockEnqueuePayout.mockRejectedValueOnce(new Error("queue unavailable"));
 
-    const response = await request(app)
-      .post(`/admin/challenges/${challengeId}/settle`)
-      .expect(500);
+    const response = await request(app).post(`/admin/challenges/${challengeId}/settle`).expect(500);
 
     expect(response.body.error).toBeDefined();
     expect(mockQuery).not.toHaveBeenCalled();

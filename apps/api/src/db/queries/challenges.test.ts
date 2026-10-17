@@ -99,9 +99,7 @@ describeIntegration("challenges db queries", () => {
         )
         `);
 
-    await query(
-      `CREATE INDEX idx_challenges_deposit_memo ON challenges (deposit_memo)`
-    );
+    await query(`CREATE INDEX idx_challenges_deposit_memo ON challenges (deposit_memo)`);
 
     // Challenge questions table
     await query(`
@@ -416,15 +414,11 @@ describeIntegration("challenges db queries", () => {
     };
 
     // Insert round 1 first
-    await challenges.insertChallengeQuestions([
-      { ...baseQuestion, round: 1 as const },
-    ]);
+    await challenges.insertChallengeQuestions([{ ...baseQuestion, round: 1 as const }]);
 
     // Attempt to insert round 1 again should violate the unique constraint
     await expect(
-      challenges.insertChallengeQuestions([
-        { ...baseQuestion, round: 1 as const },
-      ])
+      challenges.insertChallengeQuestions([{ ...baseQuestion, round: 1 as const }])
     ).rejects.toThrow();
   });
 

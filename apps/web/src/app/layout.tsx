@@ -66,8 +66,8 @@ const SRI_HASHES: Record<string, string> = {
   // "https://cdn.example.com/script.js": "sha384-abc123...",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  const nonce = getCspNonce();
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const nonce = await getCspNonce();
 
   return (
     <html lang="en" className={inter.className}>

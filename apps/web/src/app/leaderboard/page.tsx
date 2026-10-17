@@ -49,19 +49,16 @@ async function getGlobalLeaderboard(): Promise<{
 
 function LeaderboardSkeleton() {
   return (
-    <div className="border-b border-[var(--border)] last:border-0 px-6 py-4 space-y-4">
+    <div className="space-y-4 border-b border-[var(--border)] px-6 py-4 last:border-0">
       {Array.from({ length: 6 }).map((_, idx) => (
-        <div
-          key={idx}
-          className="grid grid-cols-[80px_1fr_120px_120px] gap-4 items-center"
-        >
+        <div key={idx} className="grid grid-cols-[80px_1fr_120px_120px] items-center gap-4">
           <Skeleton className="h-5 w-10" />
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-8 rounded-full" />
             <Skeleton className="h-4 w-36" />
           </div>
-          <Skeleton className="h-4 w-20 ml-auto" />
-          <Skeleton className="h-4 w-16 ml-auto" />
+          <Skeleton className="ml-auto h-4 w-20" />
+          <Skeleton className="ml-auto h-4 w-16" />
         </div>
       ))}
     </div>

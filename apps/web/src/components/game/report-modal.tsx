@@ -83,9 +83,13 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
         <DialogHeader>
           <DialogTitle>Report Challenge</DialogTitle>
           <DialogDescription>
-            Help us keep BrandBlitz safe. Select a reason for your report.
-            {" "}
-            <a href="/docs/guides/reporting-a-challenge" className="underline" target="_blank" rel="noopener noreferrer">
+            Help us keep BrandBlitz safe. Select a reason for your report.{" "}
+            <a
+              href="/docs/guides/reporting-a-challenge"
+              className="underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               Learn more
             </a>
           </DialogDescription>
@@ -99,7 +103,7 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
                   key={opt.value}
                   className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors ${
                     reason === opt.value
-                      ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                      ? "bg-[var(--primary)]/5 border-[var(--primary)]"
                       : "border-[var(--border)] hover:bg-[var(--muted)]"
                   }`}
                 >
@@ -118,9 +122,7 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
                         : "border-[var(--muted-foreground)]"
                     }`}
                   >
-                    {reason === opt.value && (
-                      <span className="h-2 w-2 rounded-full bg-white" />
-                    )}
+                    {reason === opt.value && <span className="h-2 w-2 rounded-full bg-white" />}
                   </span>
                   {opt.label}
                 </label>
@@ -128,7 +130,10 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
             </div>
 
             <div className="mt-4">
-              <label htmlFor="report-note" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+              <label
+                htmlFor="report-note"
+                className="mb-1 block text-sm font-medium text-[var(--foreground)]"
+              >
                 Additional details (optional)
               </label>
               <textarea
@@ -156,7 +161,12 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
           </fieldset>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button type="submit" variant="destructive" disabled={!canSubmit}>

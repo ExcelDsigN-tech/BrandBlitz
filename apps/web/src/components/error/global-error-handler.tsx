@@ -5,7 +5,7 @@ import { toast } from "@/lib/toast";
 
 /**
  * GlobalErrorHandler - Catches unhandled promise rejections globally
- * 
+ *
  * This component adds a window.addEventListener('unhandledrejection') handler
  * to log unhandled promise rejections and display a user-facing error toast.
  * This addresses issue #366 where async errors thrown in useEffect callbacks
@@ -21,7 +21,8 @@ export function GlobalErrorHandler() {
       console.error("Unhandled promise rejection:", event.reason);
 
       // Show user-facing error toast
-      const errorMessage = event.reason?.message || event.reason?.toString() || "An unexpected error occurred";
+      const errorMessage =
+        event.reason?.message || event.reason?.toString() || "An unexpected error occurred";
       toast.error(errorMessage);
 
       // Report to monitoring service (Sentry, etc.) if available

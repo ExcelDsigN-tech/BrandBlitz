@@ -66,9 +66,9 @@ describe("verifyWebhook middleware", () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const payload = JSON.stringify({ test: "data" });
       const rawBody = Buffer.from(payload, "utf8");
-      
+
       const expectedSignature = signWebhookPayload(rawBody, timestamp, WEBHOOK_SECRET);
-      
+
       req.headers = {
         "x-webhook-signature": `sha256=${expectedSignature}`,
         "x-webhook-timestamp": timestamp.toString(),
@@ -86,9 +86,9 @@ describe("verifyWebhook middleware", () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const payload = JSON.stringify({ test: "data" });
       const rawBody = Buffer.from(payload, "utf8");
-      
+
       const wrongSignature = "0".repeat(64);
-      
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": `sha256=${wrongSignature}`,
@@ -108,9 +108,13 @@ describe("verifyWebhook middleware", () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const originalPayload = JSON.stringify({ amount: "100" });
       const tamperedPayload = JSON.stringify({ amount: "999999" });
-      
-      const validSignature = signWebhookPayload(Buffer.from(originalPayload), timestamp, WEBHOOK_SECRET);
-      
+
+      const validSignature = signWebhookPayload(
+        Buffer.from(originalPayload),
+        timestamp,
+        WEBHOOK_SECRET
+      );
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": `sha256=${validSignature}`,
@@ -130,14 +134,14 @@ describe("verifyWebhook middleware", () => {
       // Verify that the implementation uses Buffer-based comparison
       const timestamp = Math.floor(Date.now() / 1000);
       const payload = "test";
-      
+
       const signature1 = signWebhookPayload(payload, timestamp, WEBHOOK_SECRET);
       const signature2 = signWebhookPayload(payload, timestamp, WEBHOOK_SECRET);
-      
+
       // Both should be hex strings that can be compared with timingSafeEqual
       expect(signature1).toBe(signature2);
       expect(signature1).toMatch(/^[a-fA-F0-9]{64}$/);
-      
+
       // Verify buffers can be created and compared
       const buf1 = Buffer.from(signature1, "hex");
       const buf2 = Buffer.from(signature2, "hex");
@@ -147,7 +151,7 @@ describe("verifyWebhook middleware", () => {
     it("rejects signature with wrong length without revealing expected signature", async () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const payload = JSON.stringify({ test: "data" });
-      
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": "sha256=abc123",
@@ -169,7 +173,7 @@ describe("verifyWebhook middleware", () => {
       const staleTimestamp = Math.floor(Date.now() / 1000) - 400;
       const payload = JSON.stringify({ test: "data" });
       const signature = signWebhookPayload(payload, staleTimestamp, WEBHOOK_SECRET);
-      
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": `sha256=${signature}`,
@@ -189,7 +193,7 @@ describe("verifyWebhook middleware", () => {
       const futureTimestamp = Math.floor(Date.now() / 1000) + 400;
       const payload = JSON.stringify({ test: "data" });
       const signature = signWebhookPayload(payload, futureTimestamp, WEBHOOK_SECRET);
-      
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": `sha256=${signature}`,
@@ -209,11 +213,11 @@ describe("verifyWebhook middleware", () => {
   describe("replay attack prevention", () => {
     it("accepts first request with webhook ID", async () => {
       mocks.redisSet.mockResolvedValue("OK");
-      
+
       const timestamp = Math.floor(Date.now() / 1000);
       const payload = JSON.stringify({ test: "data" });
       const signature = signWebhookPayload(payload, timestamp, WEBHOOK_SECRET);
-      
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": `sha256=${signature}`,
@@ -236,11 +240,11 @@ describe("verifyWebhook middleware", () => {
 
     it("rejects duplicate webhook ID", async () => {
       mocks.redisSet.mockResolvedValue(null);
-      
+
       const timestamp = Math.floor(Date.now() / 1000);
       const payload = JSON.stringify({ test: "data" });
       const signature = signWebhookPayload(payload, timestamp, WEBHOOK_SECRET);
-      
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": `sha256=${signature}`,
@@ -275,7 +279,7 @@ describe("verifyWebhook middleware", () => {
     it("rejects when raw body is unavailable", async () => {
       const timestamp = Math.floor(Date.now() / 1000);
       const signature = signWebhookPayload("test", timestamp, WEBHOOK_SECRET);
-      
+
       req.headers = {
         "x-webhook-secret": WEBHOOK_SECRET,
         "x-webhook-signature": `sha256=${signature}`,

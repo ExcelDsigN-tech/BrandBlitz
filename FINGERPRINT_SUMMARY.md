@@ -5,11 +5,13 @@
 Wired FingerprintJS Pro visitorId into the warmup-start payload for anti-cheat device fingerprinting.
 
 ## Problem
+
 - `deviceId: undefined` was sent in warmup-start, leaving anti-cheat blind
 - Backend couldn't detect multi-account farming
 - No device fingerprinting was happening
 
 ## Solution
+
 - Integrated FingerprintJS Pro for stable device identification
 - Created provider + hook pattern for clean integration
 - Graceful fallback if FingerprintJS unavailable
@@ -17,34 +19,45 @@ Wired FingerprintJS Pro visitorId into the warmup-start payload for anti-cheat d
 ## Changes
 
 ### 1. FingerprintProvider (NEW)
+
 **File**: `apps/web/src/components/providers/fingerprint-provider.tsx`
+
 - Initializes FingerprintJS Pro on app load
 - Sets up global `fpPromise` for hook access
 - Handles missing config gracefully
 
 ### 2. useFingerprint Hook (NEW)
+
 **File**: `apps/web/src/hooks/use-fingerprint.ts`
+
 - Retrieves visitorId from FingerprintJS
 - Returns null if not configured or fails
 - Non-blocking — game proceeds regardless
 
 ### 3. Root Layout Update
+
 **File**: `apps/web/src/app/layout.tsx`
+
 - Wrapped app with `<FingerprintProvider>`
 - Positioned before `<AuthBoundary>` for early initialization
 
 ### 4. Challenge Page Update
+
 **File**: `apps/web/src/app/(game)/challenge/[id]/challenge-page.tsx`
+
 - Calls `useFingerprint()` to get visitorId
 - Sends as `deviceId` in warmup-start payload
 - Included in dependency array for reactivity
 
 ### 5. Environment Variable
+
 **File**: `.env.example`
+
 - Added `NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY`
 - Optional — fingerprinting disabled if not set
 
 ### 6. Tests (NEW)
+
 - **Unit**: `apps/web/src/hooks/use-fingerprint.test.ts`
   - Verifies hook returns null when not configured
   - Verifies SDK not called during tests
@@ -80,6 +93,7 @@ Flags multi-account farming attempts
 ## Graceful Degradation
 
 If FingerprintJS fails:
+
 - `visitorId` is null
 - `deviceId: null` sent in warmup-start
 - Backend flags for manual review
@@ -88,16 +102,19 @@ If FingerprintJS fails:
 ## Testing
 
 ### Unit Tests
+
 ```bash
 npm run test -- use-fingerprint.test.ts
 ```
 
 ### E2E Tests
+
 ```bash
 npm run e2e -- fingerprint.spec.ts
 ```
 
 ### Manual Testing
+
 1. Set `NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY` in `.env.local`
 2. Play a challenge
 3. Check DevTools Network → POST `/warmup-start`
@@ -108,6 +125,7 @@ npm run e2e -- fingerprint.spec.ts
 Get your FingerprintJS public key from: https://dashboard.fingerprint.com
 
 Add to `.env.local` or production env:
+
 ```bash
 NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY=your-key-here
 ```
@@ -121,7 +139,7 @@ NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY=your-key-here
 ✅ Graceful failure handling (null marker)  
 ✅ Vitest: component renders without calling FP SDK  
 ✅ Playwright: POST body contains non-empty deviceId  
-✅ Documented NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY in .env.example  
+✅ Documented NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY in .env.example
 
 ## Files Modified
 

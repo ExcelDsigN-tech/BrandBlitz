@@ -77,9 +77,9 @@ Once every question across all three rounds has `approved = true`, the progress 
 
 ## Summary of API Endpoints
 
-| Endpoint | Method | Effect |
-|----------|--------|--------|
-| `/brands/:id/questions/preview` | GET | List all questions for review |
-| `/brands/:id/questions/:questionId/approve` | POST | Mark question as approved |
-| `/brands/:id/questions/:questionId/regenerate` | POST | Delete and regenerate the question |
-| `/brands/:id/questions/:questionId/flag` | POST | Mark question as flagged (sets `approved = false`) |
+| Endpoint                                       | Method | Effect                                             |
+| ---------------------------------------------- | ------ | -------------------------------------------------- |
+| `/brands/:id/questions/preview`                | GET    | List all questions for review                      |
+| `/brands/:id/questions/:questionId/approve`    | POST   | Mark question as approved                          |
+| `/brands/:id/questions/:questionId/regenerate` | POST   | Delete and regenerate the question                 |
+| `/brands/:id/questions/:questionId/flag`       | POST   | Mark question as flagged (sets `approved = false`) |

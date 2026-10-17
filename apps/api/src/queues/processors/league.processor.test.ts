@@ -68,7 +68,7 @@ describe("league worker start-week handling", () => {
       expect.objectContaining({
         jobId: "league:start-week:deferred:2026-07-27",
         delay: 30 * 60 * 1000,
-      }),
+      })
     );
   });
 

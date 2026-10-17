@@ -38,7 +38,8 @@ export class ConnectionPoolSimulator {
   active = 0;
   waiting = 0;
   peakWaiting = 0;
-  private queue: { resolve: () => void; reject: (err: Error) => void; timer: NodeJS.Timeout }[] = [];
+  private queue: { resolve: () => void; reject: (err: Error) => void; timer: NodeJS.Timeout }[] =
+    [];
 
   constructor(max = 10, connectionTimeoutMs = 5000, queryDurationMs = 4) {
     this.max = max;
@@ -138,7 +139,7 @@ export async function simulateSessionStartBurst(options: {
       arrivalDelayMs = Math.random() * (windowMs * 0.2);
     } else {
       // Remaining spread across the rest of the window
-      arrivalDelayMs = (windowMs * 0.2) + Math.random() * (windowMs * 0.8);
+      arrivalDelayMs = windowMs * 0.2 + Math.random() * (windowMs * 0.8);
     }
 
     return { id: i, arrivalDelayMs };
@@ -247,7 +248,9 @@ async function run() {
 
   console.log("\n--- Scenario 1: Baseline (Unshaped burst) ---");
   console.log(`Completed: ${baseline.completedRequests} / ${baseline.totalRequests}`);
-  console.log(`Failed / Timed out: ${baseline.failedRequests} (Connection timeouts: ${baseline.connectionTimeouts})`);
+  console.log(
+    `Failed / Timed out: ${baseline.failedRequests} (Connection timeouts: ${baseline.connectionTimeouts})`
+  );
   console.log(`Peak Pool Waiting Queue: ${baseline.peakPoolWaiting}`);
   console.log(`DB Row-Lock Contention Events: ${baseline.rowLockContentionEvents}`);
   console.log(`p50 Latency: ${baseline.p50Ms} ms`);
@@ -271,7 +274,9 @@ async function run() {
 
   console.log("\n--- Scenario 2: Mitigated (Rate-shaping + Pool 20 + Challenge Cache) ---");
   console.log(`Completed: ${optimized.completedRequests} / ${optimized.totalRequests}`);
-  console.log(`Failed / Throttled: ${optimized.failedRequests} (Connection timeouts: ${optimized.connectionTimeouts})`);
+  console.log(
+    `Failed / Throttled: ${optimized.failedRequests} (Connection timeouts: ${optimized.connectionTimeouts})`
+  );
   console.log(`Peak Pool Waiting Queue: ${optimized.peakPoolWaiting}`);
   console.log(`DB Row-Lock Contention Events: ${optimized.rowLockContentionEvents}`);
   console.log(`p50 Latency: ${optimized.p50Ms} ms`);

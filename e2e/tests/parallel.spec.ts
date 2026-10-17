@@ -3,7 +3,10 @@ import { seedActiveChallenge, signInWithMockGoogle } from "./helpers";
 import { WARMUP_MIN_SECONDS } from "../../apps/web/src/components/game/constants";
 
 test.describe("Parallel Game Sessions E2E", () => {
-  test("two parallel browser contexts play same challenge without interference", async ({ browser, request }) => {
+  test("two parallel browser contexts play same challenge without interference", async ({
+    browser,
+    request,
+  }) => {
     test.setTimeout(60000); // under 60 seconds
 
     const seeded = await seedActiveChallenge(request, {
@@ -28,12 +31,12 @@ test.describe("Parallel Game Sessions E2E", () => {
         page2,
         { email: "player2@example.com", name: "Player Two" },
         `/challenge/${seeded.challengeId}`
-      )
+      ),
     ]);
 
     await Promise.all([
       page1.waitForURL(`**/challenge/${seeded.challengeId}`),
-      page2.waitForURL(`**/challenge/${seeded.challengeId}`)
+      page2.waitForURL(`**/challenge/${seeded.challengeId}`),
     ]);
 
     const startButton1 = page1.getByRole("button", { name: "Start Challenge →" });
@@ -41,13 +44,10 @@ test.describe("Parallel Game Sessions E2E", () => {
 
     await Promise.all([
       expect(startButton1).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 }),
-      expect(startButton2).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 })
+      expect(startButton2).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 }),
     ]);
 
-    await Promise.all([
-      startButton1.click(),
-      startButton2.click()
-    ]);
+    await Promise.all([startButton1.click(), startButton2.click()]);
 
     // Submit different answers
     for (const round of [1, 2, 3]) {
@@ -62,14 +62,14 @@ test.describe("Parallel Game Sessions E2E", () => {
       // Player 1 picks A, Player 2 picks B
       await Promise.all([
         page1.getByRole("button", { name: /^A/ }).click(),
-        page2.getByRole("button", { name: /^B/ }).click()
+        page2.getByRole("button", { name: /^B/ }).click(),
       ]);
     }
 
     // Wait for completion
     await Promise.all([
       expect(page1.getByRole("heading", { name: "Challenge Complete!" })).toBeVisible(),
-      expect(page2.getByRole("heading", { name: "Challenge Complete!" })).toBeVisible()
+      expect(page2.getByRole("heading", { name: "Challenge Complete!" })).toBeVisible(),
     ]);
 
     // Verify leaderboard rankings (independent scores)
@@ -83,7 +83,7 @@ test.describe("Parallel Game Sessions E2E", () => {
     // Closing one context does not affect the other's state
     // To test this properly, we can close context1 and assert context2 is still fine
     await context1.close();
-    
+
     // Assert page2 is still fully usable
     await page2.getByRole("link", { name: "Global Leaderboard" }).click();
     await expect(page2.getByText("Player One")).toBeVisible();

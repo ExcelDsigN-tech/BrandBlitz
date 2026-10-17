@@ -12,15 +12,15 @@ export function StreakBadge({ streak, label = "Streak", showIcon = true }: Strea
   const displayText = `${normalizedStreak}-day streak`;
 
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--primary)]/10 px-3 py-1 text-sm font-semibold text-[var(--primary)]">
+    <div className="bg-[var(--primary)]/10 inline-flex items-center gap-2 rounded-full border border-[var(--border)] px-3 py-1 text-sm font-semibold text-[var(--primary)]">
       {showIcon ? (
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--primary)]/15 motion-safe:animate-pulse motion-reduce:animate-none">
+        <span className="bg-[var(--primary)]/15 inline-flex h-6 w-6 items-center justify-center rounded-full motion-safe:animate-pulse motion-reduce:animate-none">
           <span aria-hidden="true">🔥</span>
         </span>
       ) : null}
       <span className="leading-none">
         <span className="block text-[var(--foreground)]">{displayText}</span>
-        <span className="text-[var(--muted-foreground)] text-xs">{label}</span>
+        <span className="text-xs text-[var(--muted-foreground)]">{label}</span>
       </span>
     </div>
   );

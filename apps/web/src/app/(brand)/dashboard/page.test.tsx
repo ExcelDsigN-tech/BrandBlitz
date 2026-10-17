@@ -100,8 +100,8 @@ describe("DashboardPage", () => {
       expect(screen.getByText("Nova Reach")).toBeInTheDocument();
     });
 
-    const keyWarnings = consoleError.mock.calls.filter((args) =>
-      typeof args[0] === "string" && args[0].toLowerCase().includes("key prop")
+    const keyWarnings = consoleError.mock.calls.filter(
+      (args) => typeof args[0] === "string" && args[0].toLowerCase().includes("key prop")
     );
     expect(keyWarnings).toHaveLength(0);
 

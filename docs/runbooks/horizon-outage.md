@@ -12,12 +12,12 @@ One or more of:
 
 ## Impact
 
-| Component | Effect |
-| --- | --- |
+| Component         | Effect                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
 | Challenge payouts | **Blocked** — BullMQ jobs retry with exponential backoff; recipients are not paid until Horizon recovers |
-| Balance checks | **Degraded** — hot-wallet balance reads fail; deposit monitoring halted |
-| New challenges | **Unaffected** if Horizon is only used post-game |
-| Leaderboards / UI | **Unaffected** — served from PostgreSQL |
+| Balance checks    | **Degraded** — hot-wallet balance reads fail; deposit monitoring halted                                  |
+| New challenges    | **Unaffected** if Horizon is only used post-game                                                         |
+| Leaderboards / UI | **Unaffected** — served from PostgreSQL                                                                  |
 
 ## Diagnosis
 

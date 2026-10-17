@@ -25,10 +25,7 @@ function fallbackResponse(): NextResponse {
   });
 }
 
-export async function GET(
-  _req: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
   // Fetch challenge data — fall back gracefully if unavailable
@@ -56,45 +53,49 @@ export async function GET(
 
   try {
     return new ImageResponse(
-      (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",
+          height: "100%",
+          background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
+          fontFamily: "sans-serif",
+          padding: "48px",
+        }}
+      >
+        {logoUrl && (
+          // next/image can't render inside Satori's ImageResponse
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={logoUrl}
+            alt={safeBrandName}
+            width={80}
+            height={80}
+            style={{ borderRadius: "50%", marginBottom: "24px", objectFit: "cover" }}
+          />
+        )}
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            width: "100%",
-            height: "100%",
-            background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-            fontFamily: "sans-serif",
-            padding: "48px",
+            fontSize: 48,
+            fontWeight: 700,
+            color: "#f8fafc",
+            textAlign: "center",
+            lineHeight: 1.2,
           }}
         >
-          {logoUrl && (
-            // next/image can't render inside Satori's ImageResponse
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={logoUrl}
-              alt={safeBrandName}
-              width={80}
-              height={80}
-              style={{ borderRadius: "50%", marginBottom: "24px", objectFit: "cover" }}
-            />
-          )}
-          <div style={{ fontSize: 48, fontWeight: 700, color: "#f8fafc", textAlign: "center", lineHeight: 1.2 }}>
-            {safeBrandName} Challenge
-          </div>
-          <div style={{ fontSize: 28, color: "#22d3ee", marginTop: "16px", fontWeight: 600 }}>
-            Win {prizePool} USDC
-          </div>
-          <div style={{ fontSize: 18, color: "#94a3b8", marginTop: "12px", textAlign: "center" }}>
-            Compete in a 45-second brand challenge. Top players win USDC instantly.
-          </div>
-          <div style={{ marginTop: "32px", fontSize: 14, color: "#475569" }}>
-            brandblitz.gg
-          </div>
+          {safeBrandName} Challenge
         </div>
-      ),
+        <div style={{ fontSize: 28, color: "#22d3ee", marginTop: "16px", fontWeight: 600 }}>
+          Win {prizePool} USDC
+        </div>
+        <div style={{ fontSize: 18, color: "#94a3b8", marginTop: "12px", textAlign: "center" }}>
+          Compete in a 45-second brand challenge. Top players win USDC instantly.
+        </div>
+        <div style={{ marginTop: "32px", fontSize: 14, color: "#475569" }}>brandblitz.gg</div>
+      </div>,
       { width: 1200, height: 630 }
     );
   } catch {
