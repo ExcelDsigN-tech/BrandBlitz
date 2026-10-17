@@ -12,11 +12,11 @@ One or more of:
 
 ## Impact
 
-| Component | Effect |
-| --- | --- |
+| Component       | Effect                                          |
+| --------------- | ----------------------------------------------- |
 | Payout delivery | **Delayed** — winning users do not receive USDC |
-| Challenge UX | Users see pending state indefinitely |
-| Data integrity | **No data loss** — jobs are durable in Redis |
+| Challenge UX    | Users see pending state indefinitely            |
+| Data integrity  | **No data loss** — jobs are durable in Redis    |
 
 ## Diagnosis
 

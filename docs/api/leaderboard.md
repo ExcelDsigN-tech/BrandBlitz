@@ -4,12 +4,12 @@ Leaderboard endpoints expose global, per-challenge, and live-streaming rankings.
 
 ## Authentication
 
-| Endpoint | Auth |
-|---|---|
-| `GET /leaderboard/global` | None (public) |
-| `GET /leaderboard/:challengeId` | Optional (`authenticateOptional`) — pass token for `friends` scope |
-| `GET /leaderboard/:challengeId/export.csv` | Optional — enables CSV download |
-| `GET /leaderboard/stream` | None (public) |
+| Endpoint                                   | Auth                                                               |
+| ------------------------------------------ | ------------------------------------------------------------------ |
+| `GET /leaderboard/global`                  | None (public)                                                      |
+| `GET /leaderboard/:challengeId`            | Optional (`authenticateOptional`) — pass token for `friends` scope |
+| `GET /leaderboard/:challengeId/export.csv` | Optional — enables CSV download                                    |
+| `GET /leaderboard/stream`                  | None (public)                                                      |
 
 ---
 
@@ -19,10 +19,10 @@ Cross-challenge leaderboard. Aggregates top scores across the 10 most recent act
 
 ### Query Parameters
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `sort_by` | `score` \| `earned` | `score` | Sort order |
-| `limit` | integer | `100` | Max entries (capped at 100) |
+| Param     | Type                | Default | Description                 |
+| --------- | ------------------- | ------- | --------------------------- |
+| `sort_by` | `score` \| `earned` | `score` | Sort order                  |
+| `limit`   | integer             | `100`   | Max entries (capped at 100) |
 
 ### Example Request
 
@@ -44,7 +44,7 @@ curl https://api.brandblitz.io/leaderboard/global?limit=10
       "league": "gold",
       "avatarUrl": "https://assets.brandblitz.io/avatars/u0a8...png",
       "totalScore": 450,
-      "totalEarned": 12.50
+      "totalEarned": 12.5
     }
   ],
   "nextCursor": null,
@@ -60,12 +60,12 @@ Paginated leaderboard for a single challenge. Returns up to 100 sessions per pag
 
 ### Query Parameters
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `sort_by` | `score` \| `earned` | `score` | Sort order |
-| `limit` | integer | `100` | Max entries per page (capped at 100) |
-| `cursor` | string | — | Keyset cursor for next page (from `nextCursor`) |
-| `scope` | `global` \| `friends` | `global` | `friends` filters to your referral network |
+| Param     | Type                  | Default  | Description                                     |
+| --------- | --------------------- | -------- | ----------------------------------------------- |
+| `sort_by` | `score` \| `earned`   | `score`  | Sort order                                      |
+| `limit`   | integer               | `100`    | Max entries per page (capped at 100)            |
+| `cursor`  | string                | —        | Keyset cursor for next page (from `nextCursor`) |
+| `scope`   | `global` \| `friends` | `global` | `friends` filters to your referral network      |
 
 ### Example Request
 
@@ -98,6 +98,7 @@ curl https://api.brandblitz.io/leaderboard/c0a80001-...?limit=10
 ```
 
 **Notes:**
+
 - Both `sessions` and `data` are returned for backward compatibility; they contain identical arrays.
 - Use `nextCursor` for pagination. An empty/null `nextCursor` means no more pages.
 - When `scope=friends`, the leaderboard only includes users in your referral network. Requires a valid token.
@@ -134,11 +135,11 @@ Server-Sent Events (SSE) endpoint. Pushes leaderboard snapshots at a configurabl
 
 ### Query Parameters
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `challengeId` | string | — | If provided, streams a single challenge; otherwise streams top-10 across active challenges |
-| `intervalMs` | integer | `2000` | Snapshot interval in ms (min 500, max 30000) |
-| `sort_by` | `score` \| `earned` | `score` | Sort order (validated but not yet used in stream output) |
+| Param         | Type                | Default | Description                                                                                |
+| ------------- | ------------------- | ------- | ------------------------------------------------------------------------------------------ |
+| `challengeId` | string              | —       | If provided, streams a single challenge; otherwise streams top-10 across active challenges |
+| `intervalMs`  | integer             | `2000`  | Snapshot interval in ms (min 500, max 30000)                                               |
+| `sort_by`     | `score` \| `earned` | `score` | Sort order (validated but not yet used in stream output)                                   |
 
 ### Example — Streaming with curl
 
@@ -164,7 +165,7 @@ Each snapshot is a `message` event with a JSON payload:
       "league": "gold",
       "avatarUrl": "https://assets.brandblitz.io/avatars/u0a8...png",
       "totalScore": 450,
-      "totalEarned": 12.50,
+      "totalEarned": 12.5,
       "endedAt": "2026-08-25T14:00:00.000Z"
     }
   ],
@@ -186,7 +187,7 @@ Each snapshot is a `message` event with a JSON payload:
       "league": "gold",
       "avatarUrl": "https://assets.brandblitz.io/avatars/u0a8...png",
       "totalScore": 450,
-      "totalEarned": 12.50
+      "totalEarned": 12.5
     }
   ],
   "updatedAt": "2026-08-25T14:30:00.000Z"
@@ -211,7 +212,9 @@ The `useLiveLeaderboard` hook in the web app demonstrates production-grade recon
 let attempts = 0;
 function connect() {
   const source = new EventSource(url);
-  source.onmessage = () => { attempts = 0; };
+  source.onmessage = () => {
+    attempts = 0;
+  };
   source.onerror = () => {
     source.close();
     if (attempts >= 10) return; // give up
@@ -246,7 +249,7 @@ interface LeaderboardEntry {
 
 ### Error Responses
 
-| Status | Body | Trigger |
-|---|---|---|
-| `400` | `{ "error": "Invalid leaderboard sort..." }` | Invalid `sort_by` value |
-| `429` | `{ "error": "Too many requests..." }` | Rate limit exceeded |
+| Status | Body                                         | Trigger                 |
+| ------ | -------------------------------------------- | ----------------------- |
+| `400`  | `{ "error": "Invalid leaderboard sort..." }` | Invalid `sort_by` value |
+| `429`  | `{ "error": "Too many requests..." }`        | Rate limit exceeded     |

@@ -40,11 +40,7 @@ vi.mock("../index", () => ({
   pool: { connect: vi.fn(async () => hoisted.client) },
 }));
 
-import {
-  anonymizeUser,
-  GDPR_ERASURE_ACTION,
-  GDPR_ERASURE_CLEARED_COLUMNS,
-} from "./gdpr";
+import { anonymizeUser, GDPR_ERASURE_ACTION, GDPR_ERASURE_CLEARED_COLUMNS } from "./gdpr";
 
 function findStatement(re: RegExp): Captured | undefined {
   return hoisted.captured.find((c) => re.test(c.text));

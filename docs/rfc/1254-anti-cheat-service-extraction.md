@@ -9,13 +9,13 @@ tolerance, round-score bounds, session-start lockout). This makes the fraud rule
 unit-test independent of an Express request/response cycle, and hard to reuse from
 anywhere that isn't already inside this middleware chain — most concretely, the admin
 fraud-review surface (`apps/api/src/routes/admin/fraud.ts`) can only list and update
-*already-recorded* flags today; it has no way to re-run the actual decision logic against
+_already-recorded_ flags today; it has no way to re-run the actual decision logic against
 a session (e.g. "would this reaction time still trip a flag under today's thresholds?").
 
 This mirrors the exact shape of [RFC 1264](./1264-scoring-engine-extraction.md) (scoring
 engine extraction) — that RFC's own Open Questions section asked whether anti-cheat logic
 should move into the scoring engine or stay separate. This RFC proposes anti-cheat gets
-the *same treatment*, as its own standalone service, kept separate from scoring (they
+the _same treatment_, as its own standalone service, kept separate from scoring (they
 overlap conceptually — a flagged session can affect whether a score counts — but fraud
 detection and score calculation are different concerns with different inputs).
 
@@ -65,22 +65,22 @@ apps/api/src/middleware/anti-cheat.ts (484 lines)
 
 ### Which parts are pure business logic vs Express-specific plumbing
 
-| Function | Pure decision logic | Express/req-response plumbing |
-| --- | --- | --- |
-| `detectClockSkew` | `Math.abs(serverTime - clientTimestamp) > MAX_CLOCK_SKEW_MS` | `req.body` read, `next()`, `throw createError(...)` |
-| `validateReactionTime` | Threshold comparisons against `BOT_REACTION_THRESHOLD_MS` / tunable `min`/`max` | `req.body` read, `next()` |
-| `validateRoundScore` | `roundScore` range check against `MAX_ROUND_SCORE` | `req.body` read, `next()`, `throw createError(...)` |
-| `assertValidTotalScore` | Already pure — no change needed | — |
-| `enforceOneSessionPerChallenge` | The *decision* ("is there already an active session?") is really "ask the DB", not computable in isolation | Fully DB- and Express-coupled; **not** a good extraction candidate as-is |
-| `validateDeviceFingerprint` | `computeFingerprint()` itself is pure | Session lookup + comparison against stored fingerprint is DB-coupled |
-| `requireSessionStartAllowed` (lockout) | The threshold/window comparison is a pure decision given a count | Redis counter increment/read is an external side effect, not pure |
-| `recordFraudFlag` | The flag `type`/`details`/`severity` shape it builds *is* useful to extract | The DB write and `req` context extraction are plumbing |
+| Function                               | Pure decision logic                                                                                        | Express/req-response plumbing                                            |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `detectClockSkew`                      | `Math.abs(serverTime - clientTimestamp) > MAX_CLOCK_SKEW_MS`                                               | `req.body` read, `next()`, `throw createError(...)`                      |
+| `validateReactionTime`                 | Threshold comparisons against `BOT_REACTION_THRESHOLD_MS` / tunable `min`/`max`                            | `req.body` read, `next()`                                                |
+| `validateRoundScore`                   | `roundScore` range check against `MAX_ROUND_SCORE`                                                         | `req.body` read, `next()`, `throw createError(...)`                      |
+| `assertValidTotalScore`                | Already pure — no change needed                                                                            | —                                                                        |
+| `enforceOneSessionPerChallenge`        | The _decision_ ("is there already an active session?") is really "ask the DB", not computable in isolation | Fully DB- and Express-coupled; **not** a good extraction candidate as-is |
+| `validateDeviceFingerprint`            | `computeFingerprint()` itself is pure                                                                      | Session lookup + comparison against stored fingerprint is DB-coupled     |
+| `requireSessionStartAllowed` (lockout) | The threshold/window comparison is a pure decision given a count                                           | Redis counter increment/read is an external side effect, not pure        |
+| `recordFraudFlag`                      | The flag `type`/`details`/`severity` shape it builds _is_ useful to extract                                | The DB write and `req` context extraction are plumbing                   |
 
 Roughly: the **fixed-threshold comparisons** (clock skew, reaction time, round score) are
 cleanly pure today — they take a number and a threshold and return a decision, with no
 DB or Express dependency once the threshold itself is resolved. The **stateful checks**
 (one-session-per-challenge, fingerprint-against-stored-session, lockout-counter) are
-inherently *not* pure — they need a data source (DB row, Redis counter). This RFC treats
+inherently _not_ pure — they need a data source (DB row, Redis counter). This RFC treats
 those two groups differently rather than forcing everything into one pure module.
 
 ## Proposed Architecture
@@ -112,12 +112,24 @@ export interface RoundScoreInput {
 
 export type FraudDecision =
   | { flagged: false }
-  | { flagged: true; type: string; severity: "info" | "warning" | "critical"; details: Record<string, unknown>; blocking: boolean };
+  | {
+      flagged: true;
+      type: string;
+      severity: "info" | "warning" | "critical";
+      details: Record<string, unknown>;
+      blocking: boolean;
+    };
 
 // Pure functions: no side effects, no DB/Redis calls, no req/res
-export function evaluateClockSkew(input: ClockSkewInput): FraudDecision { /* ... */ }
-export function evaluateReactionTime(input: ReactionTimeInput): FraudDecision[] { /* ... */ }
-export function evaluateRoundScore(input: RoundScoreInput): FraudDecision { /* ... */ }
+export function evaluateClockSkew(input: ClockSkewInput): FraudDecision {
+  /* ... */
+}
+export function evaluateReactionTime(input: ReactionTimeInput): FraudDecision[] {
+  /* ... */
+}
+export function evaluateRoundScore(input: RoundScoreInput): FraudDecision {
+  /* ... */
+}
 
 // The stateful checks (session lockout, fingerprint match) stay OUT of this pure
 // module — see "Stateful checks" below.
@@ -133,7 +145,7 @@ the tunable human range).
 `enforceOneSessionPerChallenge`, `validateDeviceFingerprint`'s DB half, and
 `requireSessionStartAllowed` depend on external state (DB row, Redis counter). Rather
 than force these into the pure module, define narrow interfaces the service depends on,
-so the *decision* logic can still be tested with an in-memory fake instead of a real
+so the _decision_ logic can still be tested with an in-memory fake instead of a real
 DB/Redis connection:
 
 ```typescript
@@ -145,11 +157,13 @@ export interface SessionLockoutStore {
 export function evaluateSessionStartLockout(
   failureCount: number,
   config: SessionStartLockoutConfig
-): FraudDecision { /* pure: count vs threshold */ }
+): FraudDecision {
+  /* pure: count vs threshold */
+}
 ```
 
 The store interface is implemented once for real (Redis) and once as an in-memory fake
-for tests — the *counting/threshold decision* itself becomes pure and testable without
+for tests — the _counting/threshold decision_ itself becomes pure and testable without
 either.
 
 ### Middleware Layer Becomes a Thin Adapter
@@ -195,7 +209,7 @@ already-resolved numbers.
 
 This is the concrete payoff. `apps/api/src/routes/admin/fraud.ts` today can only list and
 `PATCH` the status of flags already written by the middleware at request time — it can't
-ask "would this session still get flagged under the *current* thresholds?" A new
+ask "would this session still get flagged under the _current_ thresholds?" A new
 admin endpoint becomes straightforward once the decision logic doesn't need an Express
 request:
 
@@ -217,7 +231,7 @@ router.post("/re-evaluate/:sessionId", async (req, res) => {
 
 Batch re-scoring (re-running every session in a date range against updated thresholds
 after a rule change) follows the same shape: load sessions, call the pure functions,
-report what *would* flag today without needing to fabricate a fake Express request per
+report what _would_ flag today without needing to fabricate a fake Express request per
 session the way re-running the current middleware directly would require.
 
 ## Test Migration Plan
@@ -237,7 +251,11 @@ describe("evaluateReactionTime", () => {
       maxHumanMs: 30_000,
     });
     expect(decisions).toContainEqual(
-      expect.objectContaining({ flagged: true, blocking: true, type: "reaction_time_bot_threshold" })
+      expect.objectContaining({
+        flagged: true,
+        blocking: true,
+        type: "reaction_time_bot_threshold",
+      })
     );
   });
 
@@ -301,7 +319,7 @@ tests.
    the shape to record) while the DB write itself stays in the middleware? This RFC's
    `FraudDecision` type effectively proposes yes, but the exact division of labor is
    worth confirming against how `admin/fraud.ts` would want to consume decisions that
-   were *not* written to the DB (the re-evaluation case).
+   were _not_ written to the DB (the re-evaluation case).
 2. Per RFC 1264's own open question: should fraud decisions factor into the scoring
    engine's output (e.g. a flagged round scores 0), or should scoring stay unaware of
    fraud entirely and rely on the caller to check both? This RFC assumes the latter

@@ -142,7 +142,8 @@ export default function ReferralsPage() {
     );
   }
 
-  const referralUrl = typeof window !== "undefined" ? `${window.location.origin}?ref=${data.referralCode}` : "";
+  const referralUrl =
+    typeof window !== "undefined" ? `${window.location.origin}?ref=${data.referralCode}` : "";
   const twitterShareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     `Join me on BrandBlitz! Use my referral link: ${referralUrl}`
   )}`;
@@ -241,10 +242,7 @@ export default function ReferralsPage() {
               </thead>
               <tbody>
                 {data.referredUsers.map((user) => (
-                  <tr
-                    key={user.id}
-                    className="border-b border-[var(--border)] last:border-0"
-                  >
+                  <tr key={user.id} className="border-b border-[var(--border)] last:border-0">
                     <td className="px-6 py-3">
                       <div className="flex items-center gap-3">
                         {user.avatarUrl ? (
@@ -256,15 +254,13 @@ export default function ReferralsPage() {
                             className="h-8 w-8 rounded-full object-cover"
                           />
                         ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)]/10 text-xs font-semibold">
+                          <div className="bg-[var(--primary)]/10 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold">
                             {user.displayName.charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div>
                           <p className="font-medium">{user.displayName}</p>
-                          <p className="text-xs text-[var(--muted-foreground)]">
-                            @{user.username}
-                          </p>
+                          <p className="text-xs text-[var(--muted-foreground)]">@{user.username}</p>
                         </div>
                       </div>
                     </td>
@@ -294,11 +290,7 @@ export default function ReferralsPage() {
             <EmptyState
               title="No referrals yet"
               description="Share your referral link to start earning bonuses when your friends join."
-              action={
-                <Button onClick={handleCopyLink}>
-                  Copy Referral Link
-                </Button>
-              }
+              action={<Button onClick={handleCopyLink}>Copy Referral Link</Button>}
             />
           </CardContent>
         </Card>

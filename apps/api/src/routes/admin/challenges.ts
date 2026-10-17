@@ -3,7 +3,11 @@ import { z } from "zod";
 import { authenticate } from "../../middleware/authenticate";
 import { requireAdmin } from "../../middleware/require-admin";
 import { createError } from "../../middleware/error";
-import { softDeleteChallenge, restoreChallenge, getChallengeById } from "../../db/queries/challenges";
+import {
+  softDeleteChallenge,
+  restoreChallenge,
+  getChallengeById,
+} from "../../db/queries/challenges";
 import { refundChallenge } from "../../services/refund";
 import { enqueuePayout } from "../../services/payout";
 import { query } from "../../db/index";
@@ -19,11 +23,33 @@ router.use(requireAdmin);
  * including draft and archived challenges not visible through public routes.
  */
 router.get("/", async (req, res) => {
-  const { page = 1, limit = 20, status } = z.object({
-    page: z.string().optional().transform((val) => val ? parseInt(val, 10) : 1),
-    limit: z.string().optional().transform((val) => val ? parseInt(val, 10) : 20),
-    status: z.enum(["active", "pending_deposit", "ended", "settled", "cancelled", "refunded", "payout_failed"]).optional(),
-  }).parse(req.query);
+  const {
+    page = 1,
+    limit = 20,
+    status,
+  } = z
+    .object({
+      page: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 1)),
+      limit: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 20)),
+      status: z
+        .enum([
+          "active",
+          "pending_deposit",
+          "ended",
+          "settled",
+          "cancelled",
+          "refunded",
+          "payout_failed",
+        ])
+        .optional(),
+    })
+    .parse(req.query);
 
   // Validate pagination parameters
   if (page < 1 || limit < 1 || limit > 100) {
@@ -81,10 +107,18 @@ router.get("/", async (req, res) => {
  */
 router.get("/:id/fraud", async (req, res) => {
   const { id: challengeId } = z.object({ id: z.string().uuid() }).parse(req.params);
-  const { page = 1, limit = 20 } = z.object({
-    page: z.string().optional().transform((val) => val ? parseInt(val, 10) : 1),
-    limit: z.string().optional().transform((val) => val ? parseInt(val, 10) : 20),
-  }).parse(req.query);
+  const { page = 1, limit = 20 } = z
+    .object({
+      page: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 1)),
+      limit: z
+        .string()
+        .optional()
+        .transform((val) => (val ? parseInt(val, 10) : 20)),
+    })
+    .parse(req.query);
 
   // Validate pagination parameters
   if (page < 1 || limit < 1 || limit > 100) {

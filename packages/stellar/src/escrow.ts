@@ -83,10 +83,11 @@ export class EscrowClient {
       .build();
 
     tx.sign(signer);
-    const result = await withRetry(
-      () => this.sorobanServer.sendTransaction(tx),
-      { maxAttempts: 5, baseDelayMs: 250, maxDelayMs: 30_000 }
-    );
+    const result = await withRetry(() => this.sorobanServer.sendTransaction(tx), {
+      maxAttempts: 5,
+      baseDelayMs: 250,
+      maxDelayMs: 30_000,
+    });
 
     if (result.status === "ERROR") {
       throw new Error(`Initialize failed: ${result.error_details}`);
@@ -103,11 +104,7 @@ export class EscrowClient {
    * @param amountStroops - Amount in stroops (1 USDC = 10^7 stroops)
    * @param signerSecret - Depositor's secret key for signing
    */
-  async deposit(
-    depositor: string,
-    amountStroops: bigint,
-    signerSecret: string
-  ): Promise<string> {
+  async deposit(depositor: string, amountStroops: bigint, signerSecret: string): Promise<string> {
     const signer = Keypair.fromSecret(signerSecret);
     const account = await this.horizonServer.loadAccount(signer.publicKey());
 
@@ -128,17 +125,14 @@ export class EscrowClient {
                 new Address(depositor).toScVal(),
                 BigInt(0),
                 xdr.Int64.fromString("0"),
-                xdr.SignerKey.signerKeyTypeEd25519(
-                  Keypair.fromSecret(signerSecret).rawPublicKey()
-                ),
+                xdr.SignerKey.signerKeyTypeEd25519(Keypair.fromSecret(signerSecret).rawPublicKey()),
                 xdr.Int64.fromString("0"),
                 xdr.SorobanSignaturePayload.sorobanSignaturePayloadEnvelope(
                   xdr.EnvelopeTypeTx.txTypeTransaction(),
                   xdr.TransactionEnvelope.txTypeV0(
                     xdr.TransactionV0Envelope.create({
                       tx: xdr.TransactionV0.create({
-                        sourceAccountEd25519: Keypair.fromSecret(signerSecret)
-                          .rawPublicKey(),
+                        sourceAccountEd25519: Keypair.fromSecret(signerSecret).rawPublicKey(),
                         fee: 100000,
                         seqNum: xdr.SequenceNumber.create(BigInt(0)),
                         timeBounds: xdr.TimeBounds.create({
@@ -162,10 +156,11 @@ export class EscrowClient {
       .build();
 
     tx.sign(signer);
-    const result = await withRetry(
-      () => this.sorobanServer.sendTransaction(tx),
-      { maxAttempts: 5, baseDelayMs: 250, maxDelayMs: 30_000 }
-    );
+    const result = await withRetry(() => this.sorobanServer.sendTransaction(tx), {
+      maxAttempts: 5,
+      baseDelayMs: 250,
+      maxDelayMs: 30_000,
+    });
 
     if (result.status === "ERROR") {
       throw new Error(`Deposit failed: ${result.error_details}`);
@@ -187,10 +182,7 @@ export class EscrowClient {
 
     // Convert recipients to Soroban format
     const recipientScVals = recipients.map((r) =>
-      nativeToScVal(
-        [new Address(r.address).toScVal(), Number(r.amountStroops)],
-        { type: "vec" }
-      )
+      nativeToScVal([new Address(r.address).toScVal(), Number(r.amountStroops)], { type: "vec" })
     );
 
     const tx = new TransactionBuilder(account, {
@@ -199,10 +191,7 @@ export class EscrowClient {
     })
       .addOperation(
         Operation.invokeHostFunction({
-          func: this.contract.call(
-            "settle",
-            nativeToScVal(recipientScVals, { type: "vec" })
-          ),
+          func: this.contract.call("settle", nativeToScVal(recipientScVals, { type: "vec" })),
           auth: [],
         })
       )
@@ -210,10 +199,11 @@ export class EscrowClient {
       .build();
 
     tx.sign(signer);
-    const result = await withRetry(
-      () => this.sorobanServer.sendTransaction(tx),
-      { maxAttempts: 5, baseDelayMs: 250, maxDelayMs: 30_000 }
-    );
+    const result = await withRetry(() => this.sorobanServer.sendTransaction(tx), {
+      maxAttempts: 5,
+      baseDelayMs: 250,
+      maxDelayMs: 30_000,
+    });
 
     if (result.status === "ERROR") {
       throw new Error(`Settle failed: ${result.error_details}`);
@@ -246,10 +236,11 @@ export class EscrowClient {
       .build();
 
     tx.sign(signer);
-    const result = await withRetry(
-      () => this.sorobanServer.sendTransaction(tx),
-      { maxAttempts: 5, baseDelayMs: 250, maxDelayMs: 30_000 }
-    );
+    const result = await withRetry(() => this.sorobanServer.sendTransaction(tx), {
+      maxAttempts: 5,
+      baseDelayMs: 250,
+      maxDelayMs: 30_000,
+    });
 
     if (result.status === "ERROR") {
       throw new Error(`Refund failed: ${result.error_details}`);
@@ -367,18 +358,12 @@ export class EscrowClient {
       };
 
       const recipientScVals = recipients.map((r) =>
-        nativeToScVal(
-          [new Address(r.address).toScVal(), Number(r.amount)],
-          { type: "vec" }
-        )
+        nativeToScVal([new Address(r.address).toScVal(), Number(r.amount)], { type: "vec" })
       );
 
       tx.addOperation(
         Operation.invokeHostFunction({
-          func: this.contract.call(
-            "settle",
-            nativeToScVal(recipientScVals, { type: "vec" })
-          ),
+          func: this.contract.call("settle", nativeToScVal(recipientScVals, { type: "vec" })),
           auth: [],
         })
       );
@@ -388,11 +373,9 @@ export class EscrowClient {
 
     // DO NOT SIGN YET - this is for external co-signers
     const xdrUnsigned = built.toEnvelope().toXDR("base64");
-    
+
     // Hash for signing attestation
-    const hash = createHash("sha256")
-      .update(xdrUnsigned, "utf-8")
-      .digest("hex");
+    const hash = createHash("sha256").update(xdrUnsigned, "utf-8").digest("hex");
 
     return { xdrUnsigned, operationHash: hash };
   }

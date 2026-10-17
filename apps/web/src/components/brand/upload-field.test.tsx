@@ -34,22 +34,31 @@ vi.mock("@/lib/api", () => ({
 function makePngFile(sizeBytes: number, name = "test.png"): File {
   const buf = new Uint8Array(sizeBytes);
   // PNG magic bytes: 89 50 4E 47 0D 0A 1A 0A
-  buf[0] = 0x89; buf[1] = 0x50; buf[2] = 0x4e; buf[3] = 0x47;
-  buf[4] = 0x0d; buf[5] = 0x0a; buf[6] = 0x1a; buf[7] = 0x0a;
+  buf[0] = 0x89;
+  buf[1] = 0x50;
+  buf[2] = 0x4e;
+  buf[3] = 0x47;
+  buf[4] = 0x0d;
+  buf[5] = 0x0a;
+  buf[6] = 0x1a;
+  buf[7] = 0x0a;
   return new File([buf], name, { type: "image/png" });
 }
 
 /** Build a File that claims to be PNG but has EXE magic bytes (MZ header). */
 function makeSpoofedPngFile(name = "evil.png"): File {
   const buf = new Uint8Array(12);
-  buf[0] = 0x4d; buf[1] = 0x5a; // MZ — Windows PE header
+  buf[0] = 0x4d;
+  buf[1] = 0x5a; // MZ — Windows PE header
   return new File([buf], name, { type: "image/png" });
 }
 
 /** Build a File with JPEG magic bytes. */
 function makeJpegFile(sizeBytes: number, name = "test.jpg"): File {
   const buf = new Uint8Array(sizeBytes);
-  buf[0] = 0xff; buf[1] = 0xd8; buf[2] = 0xff;
+  buf[0] = 0xff;
+  buf[1] = 0xd8;
+  buf[2] = 0xff;
   return new File([buf], name, { type: "image/jpeg" });
 }
 

@@ -7,7 +7,11 @@ import {
 import type { NetworkName } from "@brandblitz/stellar";
 import { EscrowClient, type EscrowRecipient } from "@brandblitz/stellar";
 import { getLeaderboard } from "../db/queries/sessions";
-import { getChallengeById, updateChallengeStatus, getEndedBatchedChallenges } from "../db/queries/challenges";
+import {
+  getChallengeById,
+  updateChallengeStatus,
+  getEndedBatchedChallenges,
+} from "../db/queries/challenges";
 import { createPayout, updatePayoutStatus } from "../db/queries/payouts";
 import { incrementUserEarnings } from "../db/queries/users";
 import { rankWinners } from "./scoring";
@@ -260,10 +264,13 @@ export async function processPayout(challengeId: string): Promise<void> {
   }
 
   if (recipients.length === 0) {
-    logger.info("No remaining payout recipients to process (already settled or no eligible winners)", {
-      challengeId,
-      rankedCount: ranked.length,
-    });
+    logger.info(
+      "No remaining payout recipients to process (already settled or no eligible winners)",
+      {
+        challengeId,
+        rankedCount: ranked.length,
+      }
+    );
     await updateChallengeStatus(challengeId, "settled");
     return;
   }
@@ -513,4 +520,3 @@ export async function processBatchPayout(): Promise<{
     await redis.del(lockKey);
   }
 }
-

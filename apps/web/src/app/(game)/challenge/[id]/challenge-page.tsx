@@ -22,6 +22,7 @@ import { ReportModal } from "@/components/game/report-modal";
 import { FirstRunTutorial } from "@/components/game/first-run-tutorial";
 import { ChallengeTeamsPanel } from "@/components/challenge/challenge-teams-panel";
 import { ChallengeChatPanel } from "@/components/challenge/challenge-chat-panel";
+import { ChallengeRatingPrompt } from "@/components/game/challenge-rating-prompt";
 
 const WarmupPhase = dynamic(
   () => import("@/components/game/warmup-phase").then((m) => m.WarmupPhase),
@@ -690,6 +691,7 @@ export function ChallengePage({ params }: Props) {
             challengeStatus={challenge?.status ?? "active"}
             isLoggedIn={Boolean(session?.user)}
           />
+        </div>
         <div className="px-6 pb-10">
           <ChallengeRatingPrompt challengeId={challengeId} apiToken={apiToken} />
         </div>

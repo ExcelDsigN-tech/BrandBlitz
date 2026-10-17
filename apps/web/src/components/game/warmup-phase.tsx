@@ -27,17 +27,20 @@ export function WarmupPhase({ challenge, apiToken, onComplete, deviceId }: Warmu
 
   useEffect(() => {
     const api = createApiClient(apiToken);
-    api.post(
-      `/sessions/${challenge.id}/warmup-start`,
-      {},
-      deviceId ? { headers: { "X-Device-Id": deviceId } } : undefined,
-    ).then((res) => {
-      if (res.data?.unlockAt) {
-        setDeadlineAt(res.data.unlockAt);
-      }
-    }).catch(() => {
-      setStatusMessage("Failed to initialize warmup. Please refresh.");
-    });
+    api
+      .post(
+        `/sessions/${challenge.id}/warmup-start`,
+        {},
+        deviceId ? { headers: { "X-Device-Id": deviceId } } : undefined
+      )
+      .then((res) => {
+        if (res.data?.unlockAt) {
+          setDeadlineAt(res.data.unlockAt);
+        }
+      })
+      .catch(() => {
+        setStatusMessage("Failed to initialize warmup. Please refresh.");
+      });
   }, [apiToken, challenge.id, deviceId]);
 
   const handleStartChallenge = async () => {
@@ -57,7 +60,10 @@ export function WarmupPhase({ challenge, apiToken, onComplete, deviceId }: Warmu
         onComplete(data.challengeToken);
       });
     } catch (error: any) {
-      if (error?.response?.status === 400 && typeof error?.response?.data?.remainingMs === "number") {
+      if (
+        error?.response?.status === 400 &&
+        typeof error?.response?.data?.remainingMs === "number"
+      ) {
         setStatusMessage(
           `Not yet ready. Please wait ${Math.ceil(error.response.data.remainingMs / 1000)} more seconds and try again.`
         );
@@ -71,12 +77,12 @@ export function WarmupPhase({ challenge, apiToken, onComplete, deviceId }: Warmu
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-6"
+      className="flex min-h-screen flex-col items-center justify-center p-6"
       style={{
         background: `linear-gradient(135deg, ${challenge.primary_color ?? "var(--primary)"} 0%, ${challenge.secondary_color ?? "var(--background)"} 100%)`,
       }}
     >
-      <div className="max-w-lg w-full bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl p-8 space-y-6">
+      <div className="w-full max-w-lg space-y-6 rounded-2xl bg-white/90 p-8 shadow-2xl backdrop-blur-sm">
         {/* Brand logo */}
         {challenge.logo_url && (
           <div className="flex justify-center">
@@ -86,25 +92,23 @@ export function WarmupPhase({ challenge, apiToken, onComplete, deviceId }: Warmu
               width={120}
               height={120}
               sizes="120px"
-              className="object-contain rounded-xl"
+              className="rounded-xl object-contain"
               priority
             />
           </div>
         )}
 
         {/* Brand name */}
-        <h1 className="text-3xl font-bold text-center text-slate-900">
-          {challenge.brand_name}
-        </h1>
+        <h1 className="text-center text-3xl font-bold text-slate-900">{challenge.brand_name}</h1>
 
         {challenge.tagline ? (
           <p className="text-center text-base font-medium text-slate-700">{challenge.tagline}</p>
         ) : null}
 
         {/* Warmup instructions */}
-        <p className="text-center text-slate-600 text-sm">
-          Study this brand carefully — you&#39;ll be tested on it in a moment.
-          Top scorers win USDC instantly.
+        <p className="text-center text-sm text-slate-600">
+          Study this brand carefully — you&#39;ll be tested on it in a moment. Top scorers win USDC
+          instantly.
         </p>
 
         {/* Countdown */}
@@ -118,14 +122,12 @@ export function WarmupPhase({ challenge, apiToken, onComplete, deviceId }: Warmu
           {unlocked ? (
             <p
               role="status"
-              className="text-center text-sm font-semibold text-green-700 mt-2 motion-safe:animate-pulse motion-reduce:animate-none"
+              className="mt-2 text-center text-sm font-semibold text-green-700 motion-safe:animate-pulse motion-reduce:animate-none"
             >
               <span aria-hidden="true">✓ </span>Ready!
             </p>
           ) : (
-            <p className="text-center text-xs text-slate-500 mt-2">
-              Study time remaining
-            </p>
+            <p className="mt-2 text-center text-xs text-slate-500">Study time remaining</p>
           )}
         </div>
 
@@ -137,7 +139,13 @@ export function WarmupPhase({ challenge, apiToken, onComplete, deviceId }: Warmu
           className="w-full text-lg transition-all duration-500"
           style={{ backgroundColor: challenge.primary_color ?? undefined }}
         >
-          {submitting ? "Starting..." : isPaused ? "Paused — Wait to resume" : unlocked ? "Start Challenge →" : "Preparing..."}
+          {submitting
+            ? "Starting..."
+            : isPaused
+              ? "Paused — Wait to resume"
+              : unlocked
+                ? "Start Challenge →"
+                : "Preparing..."}
         </Button>
 
         {statusMessage ? (

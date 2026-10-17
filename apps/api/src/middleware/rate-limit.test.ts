@@ -52,7 +52,7 @@ function makeApp(limiter: Limiter, userSub?: string) {
 /** Fires `n` requests from `ip`, all expected to succeed (200). */
 async function exhaust(app: express.Express, ip: string, n: number) {
   const responses = await Promise.all(
-    Array.from({ length: n }, () => request(app).get("/").set("X-Forwarded-For", ip)),
+    Array.from({ length: n }, () => request(app).get("/").set("X-Forwarded-For", ip))
   );
   responses.forEach((res, i) => {
     expect(res.status, `request ${i + 1}/${n} should be 200`).toBe(200);
@@ -64,7 +64,9 @@ async function exhaust(app: express.Express, ip: string, n: number) {
 describe("apiLimiter — 200 req / 15 min", () => {
   let ip: string;
 
-  beforeEach(() => { ip = nextIp(); });
+  beforeEach(() => {
+    ip = nextIp();
+  });
 
   it("allows exactly 200 requests and blocks the 201st with 429", async () => {
     const app = makeApp(apiLimiter);
@@ -84,7 +86,9 @@ describe("apiLimiter — 200 req / 15 min", () => {
 describe("authLimiter — 10 req / 15 min", () => {
   let ip: string;
 
-  beforeEach(() => { ip = nextIp(); });
+  beforeEach(() => {
+    ip = nextIp();
+  });
 
   it("allows exactly 10 requests and blocks the 11th with 429", async () => {
     const app = makeApp(authLimiter);
@@ -111,7 +115,9 @@ describe("authLimiter — 10 req / 15 min", () => {
 describe("challengeStartLimiter — 5 req / 1 h", () => {
   let ip: string;
 
-  beforeEach(() => { ip = nextIp(); });
+  beforeEach(() => {
+    ip = nextIp();
+  });
 
   it("allows exactly 5 requests and blocks the 6th with 429", async () => {
     const app = makeApp(challengeStartLimiter);
@@ -131,7 +137,9 @@ describe("challengeStartLimiter — 5 req / 1 h", () => {
 describe("uploadLimiter — 20 req / 1 h", () => {
   let ip: string;
 
-  beforeEach(() => { ip = nextIp(); });
+  beforeEach(() => {
+    ip = nextIp();
+  });
 
   it("allows exactly 20 requests and blocks the 21st with 429", async () => {
     const app = makeApp(uploadLimiter);
@@ -235,7 +243,9 @@ describe("key derivation", () => {
 // ─── Window reset ──────────────────────────────────────────────────────────────
 
 describe("window reset", () => {
-  afterEach(() => { vi.useRealTimers(); });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 
   it("counter resets after the window expires and allows requests again", async () => {
     vi.useFakeTimers();
@@ -305,9 +315,16 @@ describe("Redis store error — fail open", () => {
     app.use(failClosedLimiter);
     app.get("/", (_req, res) => res.json({ ok: true }));
     // Add a minimal error handler so the test app returns a response
-    app.use((_err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-      res.status(500).json({ error: "store error" });
-    });
+    app.use(
+      (
+        _err: unknown,
+        _req: express.Request,
+        res: express.Response,
+        _next: express.NextFunction
+      ) => {
+        res.status(500).json({ error: "store error" });
+      }
+    );
 
     const res = await request(app).get("/");
     expect(res.status).toBe(500);

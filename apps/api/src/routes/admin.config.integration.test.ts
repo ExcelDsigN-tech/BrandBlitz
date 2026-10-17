@@ -41,16 +41,16 @@ const describeIntegration = originalDatabaseUrl ? describe : describe.skip;
 async function startServer(): Promise<{ server: Server; baseUrl: string }> {
   const app = express();
   app.use(express.json());
-  
+
   app.use("/admin/config", adminConfigRoutes);
-  
+
   // We need an endpoint with apiLimiter. /challenges is fine, but we'll mock it if it's too complex.
   // Actually, we can just use the rate-limit middleware directly on a dummy route to keep the test focused.
   const { apiLimiter } = await import("../middleware/rate-limit");
   app.get("/test-limited", apiLimiter, (_req, res) => {
     res.json({ ok: true });
   });
-  
+
   app.use(errorHandler);
 
   const server = app.listen(0);
@@ -72,7 +72,7 @@ describeIntegration("Admin Config Update - Rate Limit", () => {
 
   beforeAll(async () => {
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
-    
+
     await query(`
       CREATE TABLE app_config (
         key TEXT PRIMARY KEY,
@@ -111,7 +111,7 @@ describeIntegration("Admin Config Update - Rate Limit", () => {
       `INSERT INTO users (email, display_name, role) VALUES ('admin@test.invalid', 'Admin', 'admin') RETURNING id`
     );
     adminUserId = adminRes.rows[0].id;
-    
+
     const regRes = await query<{ id: string }>(
       `INSERT INTO users (email, display_name, role) VALUES ('user@test.invalid', 'User', 'user') RETURNING id`
     );
@@ -148,8 +148,8 @@ describeIntegration("Admin Config Update - Rate Limit", () => {
         "x-test-user-id": adminUserId,
       },
       body: JSON.stringify({
-        value: { limit: 2 }
-      })
+        value: { limit: 2 },
+      }),
     });
     expect(patchRes.status).toBe(200);
 
@@ -157,9 +157,9 @@ describeIntegration("Admin Config Update - Rate Limit", () => {
     // Actually, our getApiRateLimit cache is TTL based. We might have to wait 10s or reset the TTL?
     // In our test environment, we might want to wait slightly or since it's the first time it fetches, it might just work if it wasn't fetched yet.
     // Wait, the test initializes the server before fetching, so the cache might be empty, and it will fetch instantly.
-    
+
     const userA = randomUUID(); // Random user ID so they have their own rate limit bucket
-    
+
     // Request 1: Should succeed
     const r1 = await fetch(`${baseUrl}/test-limited`, { headers: { "x-test-user-id": userA } });
     expect(r1.status).toBe(200);
@@ -173,7 +173,9 @@ describeIntegration("Admin Config Update - Rate Limit", () => {
     expect(r3.status).toBe(429);
 
     // Verify audit log
-    const auditRes = await query(`SELECT * FROM audit_log WHERE entity = 'app_config' AND entity_key = 'rate_limit_requests_per_minute'`);
+    const auditRes = await query(
+      `SELECT * FROM audit_log WHERE entity = 'app_config' AND entity_key = 'rate_limit_requests_per_minute'`
+    );
     expect(auditRes.rows.length).toBeGreaterThan(0);
     expect(auditRes.rows[0].actor_id).toBe(adminUserId);
     expect(auditRes.rows[0].after.limit).toBe(2);
@@ -185,7 +187,7 @@ describeIntegration("Admin Config Update - Rate Limit", () => {
         "Content-Type": "application/json",
         "x-test-user-id": regularUserId, // regular user
       },
-      body: JSON.stringify({ value: { limit: 100 } })
+      body: JSON.stringify({ value: { limit: 100 } }),
     });
     expect(nonAdminRes.status).toBe(403);
   });

@@ -5,7 +5,7 @@ import { useState, useCallback } from "react";
 export function useSubmitting() {
   const [submitting, setSubmitting] = useState(false);
 
-  const wrap = useCallback(async <T,>(fn: () => Promise<T>): Promise<T> => {
+  const wrap = useCallback(async <T>(fn: () => Promise<T>): Promise<T> => {
     setSubmitting(true);
     try {
       return await fn();

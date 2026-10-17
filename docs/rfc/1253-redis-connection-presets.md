@@ -3,7 +3,7 @@
 ## Problem Statement
 
 `apps/api/src/lib/redis.ts` constructs a single `ioredis` client with
-`maxRetriesPerRequest: null` — a setting BullMQ *requires* (it manages its own retry
+`maxRetriesPerRequest: null` — a setting BullMQ _requires_ (it manages its own retry
 behavior; ioredis's own bounded retry logic conflicts with BullMQ's if left enabled).
 `apps/api/src/lib/cache.ts` and every queue file in `apps/api/src/queues/` (`payout`,
 `gdpr-erasure`, `referral-bonus`, `leaderboard-refresh`, `recurring-challenges`,
@@ -12,7 +12,7 @@ behavior; ioredis's own bounded retry logic conflicts with BullMQ's if left enab
 too) all import and reuse this same `redis` export.
 
 **Correcting the premise:** on inspection, these do **not** currently construct
-*independent* connection options that could drift apart from each other — every one of
+_independent_ connection options that could drift apart from each other — every one of
 them imports the same singleton and passes `connection: redis` (or calls `redis.get`/
 `redis.set` directly, in `cache.ts`'s case). There's no risk today of one queue silently
 picking a different `maxRetriesPerRequest` than another.
@@ -42,17 +42,17 @@ apps/api/src/lib/redis.ts
 
 Every other consumer imports this same instance — none construct their own options:
 
-| File | Usage |
-| --- | --- |
-| `lib/cache.ts` | `redis.get`/`redis.set`/`redis.del` directly (the `cached()` stampede-protection wrapper) |
-| `queues/payout.queue.ts` | `connection: redis` (Queue + Worker) |
-| `queues/gdpr-erasure.queue.ts` | `connection: redis` (Worker, via `gdprErasureWorkerOptions`) |
-| `queues/referral-bonus.queue.ts` | `connection: redis` |
-| `queues/leaderboard-refresh.queue.ts` | `connection: redis` (Queue + a second Worker `connection: redis` at a separate call site) |
-| `queues/recurring-challenges.queue.ts` | `connection: redis` |
-| `queues/league.queue.ts` | `connection: redis` |
-| `queues/archive.queue.ts` | `connection: redis` (Queue + a second Worker `connection: redis` at a separate call site) |
-| `queues/session-timeout.queue.ts` | `connection: redis` |
+| File                                        | Usage                                                                                                                        |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `lib/cache.ts`                              | `redis.get`/`redis.set`/`redis.del` directly (the `cached()` stampede-protection wrapper)                                    |
+| `queues/payout.queue.ts`                    | `connection: redis` (Queue + Worker)                                                                                         |
+| `queues/gdpr-erasure.queue.ts`              | `connection: redis` (Worker, via `gdprErasureWorkerOptions`)                                                                 |
+| `queues/referral-bonus.queue.ts`            | `connection: redis`                                                                                                          |
+| `queues/leaderboard-refresh.queue.ts`       | `connection: redis` (Queue + a second Worker `connection: redis` at a separate call site)                                    |
+| `queues/recurring-challenges.queue.ts`      | `connection: redis`                                                                                                          |
+| `queues/league.queue.ts`                    | `connection: redis`                                                                                                          |
+| `queues/archive.queue.ts`                   | `connection: redis` (Queue + a second Worker `connection: redis` at a separate call site)                                    |
+| `queues/session-timeout.queue.ts`           | `connection: redis`                                                                                                          |
 | `stellarSequenceStore` (also in `redis.ts`) | `redis.get`/`set`/`del`/`incr` — a third, unrelated consumer (Stellar sequence-number coordination, not caching or queueing) |
 
 ### Why BullMQ needs different options than the cache client
@@ -160,7 +160,7 @@ site again — it's the one thing every consumer would need to change either way
 1. **Correctness**: the cache client stops silently inheriting a retry-forever setting
    that was never chosen for it, tuned instead for BullMQ's blocking-wait workers.
 2. **Documented intent**: `redis-connection-options.ts` is a single place that states,
-   in one comment each, *why* BullMQ and the cache client need different settings —
+   in one comment each, _why_ BullMQ and the cache client need different settings —
    currently that reasoning lives only in a one-line comment in `redis.ts` and nowhere
    explains the cache side of the trade-off at all.
 3. **Foundation for observability**: distinguishing the two clients is what makes it

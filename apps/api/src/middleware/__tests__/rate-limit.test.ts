@@ -50,7 +50,7 @@ function makeApp(limiter: Limiter, userSub?: string) {
 
 async function exhaust(app: express.Express, ip: string, n: number) {
   const responses = await Promise.all(
-    Array.from({ length: n }, () => request(app).get("/").set("X-Forwarded-For", ip)),
+    Array.from({ length: n }, () => request(app).get("/").set("X-Forwarded-For", ip))
   );
   responses.forEach((res, i) => {
     expect(res.status, `request ${i + 1}/${n} should be 200`).toBe(200);
@@ -133,9 +133,7 @@ describe("rate-limit — Issue #403", () => {
       await exhaust(app, clientIp, 10);
 
       // Same client IP in a different chain position → still blocked
-      const over = await request(app)
-        .get("/")
-        .set("X-Forwarded-For", `${clientIp}, 99.99.99.99`);
+      const over = await request(app).get("/").set("X-Forwarded-For", `${clientIp}, 99.99.99.99`);
       expect(over.status).toBe(429);
     });
 
@@ -302,15 +300,12 @@ describe("rate-limit — Issue #403", () => {
       const phone = "+15551234567";
       const responses = await Promise.all(
         Array.from({ length: 3 }, () =>
-          request(app).post("/").send({ phone }).set("X-Forwarded-For", nextIp()),
-        ),
+          request(app).post("/").send({ phone }).set("X-Forwarded-For", nextIp())
+        )
       );
       responses.forEach((r) => expect(r.status).toBe(200));
 
-      const over = await request(app)
-        .post("/")
-        .send({ phone })
-        .set("X-Forwarded-For", nextIp());
+      const over = await request(app).post("/").send({ phone }).set("X-Forwarded-For", nextIp());
       expect(over.status).toBe(429);
     });
   });

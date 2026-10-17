@@ -44,7 +44,7 @@ re-litigate the decision.
 - **No drift channel**: the schema lives in SQL files, not in a
   TypeScript model that has to be kept in lock-step. The runtime
   query layer ([sql-template-strings](https://www.npmjs.com/package/sql-template-strings)
-  + a thin type generator) reads from the live schema.
+  - a thin type generator) reads from the live schema.
 - **Operational simplicity**: zero new third-party tools in the
   production runbook. `pnpm migrate` is just a thin wrapper around
   `psql`.
@@ -53,7 +53,7 @@ Considered alternatives:
 
 - **Prisma migrate**: tempting because of the model-first DX, but
   adoption would force us to express our existing schema in
-  `schema.prisma` then *generate* migrations from it. Net loss in
+  `schema.prisma` then _generate_ migrations from it. Net loss in
   reviewability for non-trivial migrations.
 - **Drizzle migrate**: similar trade-off; the generator is
   cleaner than Prisma's, but we still pay the model-first cost.

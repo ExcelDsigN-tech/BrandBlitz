@@ -1,24 +1,24 @@
-import fs from 'fs';
-import path from 'path';
-import zlib from 'zlib';
+import fs from "fs";
+import path from "path";
+import zlib from "zlib";
 
-const chunksDir = 'apps/web/.next/static/chunks';
-const baselinePath = 'docs/perf/bundle-baseline.txt';
+const chunksDir = "apps/web/.next/static/chunks";
+const baselinePath = "docs/perf/bundle-baseline.txt";
 
 if (!fs.existsSync(baselinePath)) {
-  console.log('No baseline found, skipping budget check.');
+  console.log("No baseline found, skipping budget check.");
   process.exit(0);
 }
 
-const baselineText = fs.readFileSync(baselinePath, 'utf-8');
-const baselineLines = baselineText.split('\n').slice(4); // Skip header
+const baselineText = fs.readFileSync(baselinePath, "utf-8");
+const baselineLines = baselineText.split("\n").slice(4); // Skip header
 
 const baselineSizes = {};
 let totalBaselineGzip = 0;
 
 for (const line of baselineLines) {
   if (!line.trim()) continue;
-  const parts = line.split('|').map(p => p.trim());
+  const parts = line.split("|").map((p) => p.trim());
   if (parts.length === 3) {
     const file = parts[0];
     const gzip = parseInt(parts[2], 10);
@@ -33,12 +33,12 @@ function getFiles(dir) {
   let results = [];
   if (!fs.existsSync(dir)) return results;
   const list = fs.readdirSync(dir);
-  list.forEach(file => {
+  list.forEach((file) => {
     file = path.join(dir, file);
     const stat = fs.statSync(file);
     if (stat && stat.isDirectory()) {
       results = results.concat(getFiles(file));
-    } else if (file.endsWith('.js')) {
+    } else if (file.endsWith(".js")) {
       results.push(file);
     }
   });
@@ -63,9 +63,9 @@ if (totalBaselineGzip > 0) {
   console.log(`Difference: ${diff} bytes (${percentage.toFixed(2)}%)`);
 
   if (percentage > 10) {
-    console.error('::warning::Bundle size regressed by more than 10%!');
+    console.error("::warning::Bundle size regressed by more than 10%!");
     // If strict failure is required, we could exit 1. The AC says "CI warns"
   } else {
-    console.log('Bundle size is within budget.');
+    console.log("Bundle size is within budget.");
   }
 }

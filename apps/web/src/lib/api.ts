@@ -124,6 +124,7 @@ export interface Challenge {
     | "refunded";
   starts_at: string;
   ends_at: string | null;
+  participant_count?: number;
   // joined fields
   brand_name?: string;
   tagline?: string;

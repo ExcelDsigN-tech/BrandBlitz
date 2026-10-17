@@ -27,9 +27,9 @@ nginx/templates/nginx.prod.conf.template
 
 ## Required environment variable
 
-| Variable   | Example            | Description                                                       |
-|------------|--------------------|-------------------------------------------------------------------|
-| `DOMAIN`   | `brandblitz.io`    | Public domain — substituted into `server_name` and TLS cert paths |
+| Variable | Example         | Description                                                       |
+| -------- | --------------- | ----------------------------------------------------------------- |
+| `DOMAIN` | `brandblitz.io` | Public domain — substituted into `server_name` and TLS cert paths |
 
 Set it in your deploy environment or `.env` file. The prod compose passes it through:
 

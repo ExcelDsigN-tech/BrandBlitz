@@ -62,9 +62,7 @@ describe("Performance Benchmarks", () => {
       const promises = Array.from({ length: batchSize }, async (_, i) => {
         const start = performance.now();
         // Increased latency under load
-        await new Promise((r) =>
-          setTimeout(r, Math.random() * 150 + 100)
-        );
+        await new Promise((r) => setTimeout(r, Math.random() * 150 + 100));
         delays.push(performance.now() - start);
       });
 
@@ -90,9 +88,7 @@ describe("Performance Benchmarks", () => {
       const promises = Array.from({ length: batchSize }, async (_, i) => {
         const start = performance.now();
         // Under extreme load, latency increases significantly
-        await new Promise((r) =>
-          setTimeout(r, Math.random() * 300 + 200)
-        );
+        await new Promise((r) => setTimeout(r, Math.random() * 300 + 200));
         delays.push(performance.now() - start);
       });
 
@@ -153,18 +149,14 @@ describe("Performance Benchmarks", () => {
         const retryDelay = Math.random() < 0.1 ? 200 : 0;
         if (retryDelay > 0) sequenceRetries++;
 
-        await new Promise((r) =>
-          setTimeout(r, Math.random() * 120 + 60 + retryDelay)
-        );
+        await new Promise((r) => setTimeout(r, Math.random() * 120 + 60 + retryDelay));
         latencies.push(performance.now() - start);
       });
 
       await Promise.all(promises);
 
       const avg = latencies.reduce((a, b) => a + b) / latencies.length;
-      const p95 = latencies.sort((a, b) => a - b)[
-        Math.floor(latencies.length * 0.95)
-      ];
+      const p95 = latencies.sort((a, b) => a - b)[Math.floor(latencies.length * 0.95)];
 
       logger.info(
         {
@@ -192,21 +184,15 @@ describe("Performance Benchmarks", () => {
         const retryDelay = Math.random() < 0.25 ? 300 : 0;
         if (retryDelay > 0) sequenceRetries++;
 
-        await new Promise((r) =>
-          setTimeout(r, Math.random() * 200 + 100 + retryDelay)
-        );
+        await new Promise((r) => setTimeout(r, Math.random() * 200 + 100 + retryDelay));
         latencies.push(performance.now() - start);
       });
 
       await Promise.all(promises);
 
       const avg = latencies.reduce((a, b) => a + b) / latencies.length;
-      const p95 = latencies.sort((a, b) => a - b)[
-        Math.floor(latencies.length * 0.95)
-      ];
-      const p99 = latencies.sort((a, b) => a - b)[
-        Math.floor(latencies.length * 0.99)
-      ];
+      const p95 = latencies.sort((a, b) => a - b)[Math.floor(latencies.length * 0.95)];
+      const p99 = latencies.sort((a, b) => a - b)[Math.floor(latencies.length * 0.99)];
 
       logger.info(
         {
@@ -238,8 +224,7 @@ describe("Performance Benchmarks", () => {
       // Simulate transaction building
       let totalSize = 0;
       for (const recipient of recipients) {
-        totalSize +=
-          recipient.address.length + recipient.amount.length + 100; // overhead
+        totalSize += recipient.address.length + recipient.amount.length + 100; // overhead
       }
 
       const endMem = process.memoryUsage().heapUsed / 1024 / 1024;
@@ -266,8 +251,7 @@ describe("Performance Benchmarks", () => {
 
       let totalSize = 0;
       for (const recipient of recipients) {
-        totalSize +=
-          recipient.address.length + recipient.amount.length + 100;
+        totalSize += recipient.address.length + recipient.amount.length + 100;
       }
 
       const endMem = process.memoryUsage().heapUsed / 1024 / 1024;
@@ -294,8 +278,7 @@ describe("Performance Benchmarks", () => {
 
       let totalSize = 0;
       for (const recipient of recipients) {
-        totalSize +=
-          recipient.address.length + recipient.amount.length + 100;
+        totalSize += recipient.address.length + recipient.amount.length + 100;
       }
 
       const endMem = process.memoryUsage().heapUsed / 1024 / 1024;

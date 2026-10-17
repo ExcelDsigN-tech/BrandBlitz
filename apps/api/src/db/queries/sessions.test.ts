@@ -224,10 +224,7 @@ describeIntegration("sessions db queries", () => {
 
     const flagged = await sessions.getSession(userId, challengeId);
     expect(flagged?.flagged).toBe(true);
-    expect(flagged?.flag_reasons).toEqual([
-      "superhuman_reaction_time",
-      "multi_account_device",
-    ]);
+    expect(flagged?.flag_reasons).toEqual(["superhuman_reaction_time", "multi_account_device"]);
   });
 
   it("getLeaderboard excludes flagged and practice sessions and orders by score then finish time", async () => {

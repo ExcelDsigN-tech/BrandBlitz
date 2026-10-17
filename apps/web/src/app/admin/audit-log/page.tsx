@@ -9,12 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -217,9 +212,7 @@ export default function AdminAuditLogPage() {
     <main className="mx-auto max-w-6xl px-6 py-12">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Audit Log</h1>
-        <p className="text-sm text-[var(--muted-foreground)]">
-          View and search all admin actions
-        </p>
+        <p className="text-sm text-[var(--muted-foreground)]">View and search all admin actions</p>
       </div>
 
       <Card className="mb-8">
@@ -240,20 +233,12 @@ export default function AdminAuditLogPage() {
 
             <div>
               <label className="mb-2 block text-sm font-medium">From Date</label>
-              <Input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-              />
+              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium">To Date</label>
-              <Input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-              />
+              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
 
             <div>
@@ -268,10 +253,7 @@ export default function AdminAuditLogPage() {
           </div>
 
           <div className="mt-4 flex gap-2">
-            <Button
-              onClick={() => loadEntries(1)}
-              disabled={loading}
-            >
+            <Button onClick={() => loadEntries(1)} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
             <Button
@@ -291,9 +273,7 @@ export default function AdminAuditLogPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Entries ({pagination.total})
-          </CardTitle>
+          <CardTitle>Entries ({pagination.total})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {entries.length > 0 ? (
@@ -324,10 +304,7 @@ export default function AdminAuditLogPage() {
                   </thead>
                   <tbody>
                     {entries.map((entry) => (
-                      <tr
-                        key={entry.id}
-                        className="border-b border-[var(--border)] last:border-0"
-                      >
+                      <tr key={entry.id} className="border-b border-[var(--border)] last:border-0">
                         <td className="px-6 py-3 font-medium">
                           {entry.actor_username ? (
                             <Badge variant="secondary">{entry.actor_username}</Badge>
@@ -338,9 +315,7 @@ export default function AdminAuditLogPage() {
                         <td className="px-6 py-3">
                           <Badge variant="default">{entry.action}</Badge>
                         </td>
-                        <td className="px-6 py-3 text-[var(--muted-foreground)]">
-                          {entry.entity}
-                        </td>
+                        <td className="px-6 py-3 text-[var(--muted-foreground)]">{entry.entity}</td>
                         <td className="px-6 py-3 text-[var(--muted-foreground)]">
                           {entry.entity_key || "—"}
                         </td>
@@ -351,9 +326,7 @@ export default function AdminAuditLogPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              setExpandedId(expandedId === entry.id ? null : entry.id)
-                            }
+                            onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
                           >
                             {expandedId === entry.id ? "Hide" : "Show"}
                           </Button>
@@ -392,7 +365,7 @@ export default function AdminAuditLogPage() {
                           {entry.before && (
                             <div>
                               <h3 className="mb-2 font-semibold">Before</h3>
-                              <pre className="rounded bg-slate-900 p-4 text-xs text-white overflow-auto max-h-64">
+                              <pre className="max-h-64 overflow-auto rounded bg-slate-900 p-4 text-xs text-white">
                                 {JSON.stringify(entry.before, null, 2)}
                               </pre>
                             </div>
@@ -400,7 +373,7 @@ export default function AdminAuditLogPage() {
                           {entry.after && (
                             <div>
                               <h3 className="mb-2 font-semibold">After</h3>
-                              <pre className="rounded bg-slate-900 p-4 text-xs text-white overflow-auto max-h-64">
+                              <pre className="max-h-64 overflow-auto rounded bg-slate-900 p-4 text-xs text-white">
                                 {JSON.stringify(entry.after, null, 2)}
                               </pre>
                             </div>

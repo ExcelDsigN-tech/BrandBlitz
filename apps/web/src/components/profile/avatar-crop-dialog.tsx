@@ -230,13 +230,15 @@ export function AvatarCropDialog({
           {!imageSrc ? (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] p-6 transition-colors hover:border-[var(--primary)] hover:bg-[var(--muted)]/20"
+              className="hover:bg-[var(--muted)]/20 flex h-64 w-full cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] p-6 transition-colors hover:border-[var(--primary)]"
             >
               <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[var(--muted)] text-2xl">
                 📷
               </div>
-              <p className="mt-3 font-medium text-sm">Click or drag image to upload</p>
-              <p className="mt-1 text-xs text-[var(--muted-foreground)]">PNG, JPG, or WebP up to 1MB</p>
+              <p className="mt-3 text-sm font-medium">Click or drag image to upload</p>
+              <p className="mt-1 text-xs text-[var(--muted-foreground)]">
+                PNG, JPG, or WebP up to 1MB
+              </p>
             </div>
           ) : (
             <div className="flex flex-col items-center gap-4">
@@ -248,7 +250,7 @@ export function AvatarCropDialog({
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                className="cursor-move rounded-full border border-[var(--border)] shadow-sm bg-neutral-900"
+                className="cursor-move rounded-full border border-[var(--border)] bg-neutral-900 shadow-sm"
               />
 
               <div className="w-full space-y-1">

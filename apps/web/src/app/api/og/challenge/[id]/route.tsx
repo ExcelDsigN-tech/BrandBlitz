@@ -42,8 +42,7 @@ export async function validateAndFetchLogo(
   try {
     const parsed = new URL(logoUrl);
     // Only permit https: (or http: on localhost in test/dev)
-    const isLocalhost =
-      parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
+    const isLocalhost = parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1";
     if (parsed.protocol !== "https:" && !(isLocalhost && parsed.protocol === "http:")) {
       return null;
     }
@@ -100,16 +99,11 @@ export async function resolveOgBranding(
   challenge: any,
   searchParams?: URLSearchParams
 ): Promise<ResolvedOgBranding> {
-  const rawBrandName =
-    searchParams?.get("brand_name") || challenge?.brand_name || "BrandBlitz";
-  const rawPrizePool =
-    searchParams?.get("pool_amount") || challenge?.pool_amount_usdc || "0";
-  const rawPrimary =
-    searchParams?.get("primary_color") || challenge?.primary_color;
-  const rawSecondary =
-    searchParams?.get("secondary_color") || challenge?.secondary_color;
-  const rawLogoUrl =
-    searchParams?.get("logo_url") || challenge?.logo_url;
+  const rawBrandName = searchParams?.get("brand_name") || challenge?.brand_name || "BrandBlitz";
+  const rawPrizePool = searchParams?.get("pool_amount") || challenge?.pool_amount_usdc || "0";
+  const rawPrimary = searchParams?.get("primary_color") || challenge?.primary_color;
+  const rawSecondary = searchParams?.get("secondary_color") || challenge?.secondary_color;
+  const rawLogoUrl = searchParams?.get("logo_url") || challenge?.logo_url;
 
   const brandName = typeof rawBrandName === "string" ? rawBrandName.slice(0, 50) : "BrandBlitz";
   const prizePool = typeof rawPrizePool === "string" ? rawPrizePool.slice(0, 20) : "0";
@@ -145,7 +139,7 @@ function fallbackResponse(): NextResponse {
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
-) {
+): Promise<Response> {
   const { id } = await params;
 
   let challengeData: any = null;
@@ -168,90 +162,88 @@ export async function GET(
 
   try {
     return new ImageResponse(
-      (
+      <div
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          width: "100%",
+          height: "100%",
+          background: `linear-gradient(135deg, ${branding.primaryColor} 0%, #0f172a 60%, ${branding.secondaryColor} 100%)`,
+          fontFamily: "sans-serif",
+          padding: "48px",
+        }}
+      >
         <div
           style={{
             display: "flex",
             flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
+            backgroundColor: "rgba(15, 23, 42, 0.85)",
+            borderRadius: "24px",
+            border: `2px solid ${branding.secondaryColor}`,
+            padding: "48px 64px",
+            maxWidth: "1000px",
             width: "100%",
-            height: "100%",
-            background: `linear-gradient(135deg, ${branding.primaryColor} 0%, #0f172a 60%, ${branding.secondaryColor} 100%)`,
-            fontFamily: "sans-serif",
-            padding: "48px",
+            boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
           }}
         >
+          {branding.logoDataUrl && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logoDataUrl}
+              alt={branding.safeBrandName}
+              width={88}
+              height={88}
+              style={{ borderRadius: "50%", marginBottom: "20px", objectFit: "cover" }}
+            />
+          )}
           <div
             style={{
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: "rgba(15, 23, 42, 0.85)",
-              borderRadius: "24px",
-              border: `2px solid ${branding.secondaryColor}`,
-              padding: "48px 64px",
-              maxWidth: "1000px",
-              width: "100%",
-              boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+              fontSize: 48,
+              fontWeight: 800,
+              color: "#f8fafc",
+              textAlign: "center",
+              lineHeight: 1.2,
             }}
           >
-            {branding.logoDataUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={branding.logoDataUrl}
-                alt={branding.safeBrandName}
-                width={88}
-                height={88}
-                style={{ borderRadius: "50%", marginBottom: "20px", objectFit: "cover" }}
-              />
-            )}
-            <div
-              style={{
-                fontSize: 48,
-                fontWeight: 800,
-                color: "#f8fafc",
-                textAlign: "center",
-                lineHeight: 1.2,
-              }}
-            >
-              {branding.safeBrandName} Challenge
-            </div>
-            <div
-              style={{
-                fontSize: 32,
-                color: branding.secondaryColor,
-                marginTop: "16px",
-                fontWeight: 700,
-              }}
-            >
-              Win {branding.safePrizePool} USDC
-            </div>
-            <div
-              style={{
-                fontSize: 18,
-                color: "#94a3b8",
-                marginTop: "12px",
-                textAlign: "center",
-              }}
-            >
-              Compete in a 45-second brand challenge. Top players win USDC instantly.
-            </div>
-            <div
-              style={{
-                marginTop: "28px",
-                fontSize: 14,
-                letterSpacing: "1px",
-                color: "#64748b",
-                textTransform: "uppercase",
-              }}
-            >
-              brandblitz.gg
-            </div>
+            {branding.safeBrandName} Challenge
+          </div>
+          <div
+            style={{
+              fontSize: 32,
+              color: branding.secondaryColor,
+              marginTop: "16px",
+              fontWeight: 700,
+            }}
+          >
+            Win {branding.safePrizePool} USDC
+          </div>
+          <div
+            style={{
+              fontSize: 18,
+              color: "#94a3b8",
+              marginTop: "12px",
+              textAlign: "center",
+            }}
+          >
+            Compete in a 45-second brand challenge. Top players win USDC instantly.
+          </div>
+          <div
+            style={{
+              marginTop: "28px",
+              fontSize: 14,
+              letterSpacing: "1px",
+              color: "#64748b",
+              textTransform: "uppercase",
+            }}
+          >
+            brandblitz.gg
           </div>
         </div>
-      ),
+      </div>,
       { width: 1200, height: 630 }
     );
   } catch {

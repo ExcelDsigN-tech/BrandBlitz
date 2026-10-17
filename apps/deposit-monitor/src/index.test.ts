@@ -17,7 +17,7 @@ describe("Deposit Monitor", () => {
   it("should initialize cursor on first run", async () => {
     vi.spyOn(redis, "get").mockResolvedValue(null);
     const setSpy = vi.spyOn(redis, "set").mockResolvedValue("OK");
-    
+
     (stellar.fetchDepositEvents as any).mockResolvedValue({
       events: [],
       latestLedger: 1000,
@@ -36,7 +36,7 @@ describe("Deposit Monitor", () => {
   it("should process events and update cursor", async () => {
     vi.spyOn(redis, "get").mockResolvedValue("1000");
     const setSpy = vi.spyOn(redis, "set").mockResolvedValue("OK");
-    
+
     const mockEvent = {
       txHash: "hash123",
       amount: "100",
@@ -65,7 +65,7 @@ describe("Deposit Monitor", () => {
   it("should not update cursor if webhook fails", async () => {
     vi.spyOn(redis, "get").mockResolvedValue("1000");
     const setSpy = vi.spyOn(redis, "set");
-    
+
     const mockEvent = {
       txHash: "hash123",
       amount: "100",

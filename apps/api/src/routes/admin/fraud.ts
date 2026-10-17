@@ -23,16 +23,20 @@ const ListQuerySchema = CursorQuerySchema.extend({
   message: "Use ?cursor for pagination. Legacy ?page parameter is no longer supported.",
 });
 
-const PatchBodySchema = z.object({
-  status: z.enum(["resolved", "escalated"]),
-  reason: z.string().min(1, "Resolution reason is required"),
-}).strict();
+const PatchBodySchema = z
+  .object({
+    status: z.enum(["resolved", "escalated"]),
+    reason: z.string().min(1, "Resolution reason is required"),
+  })
+  .strict();
 
-const FraudScoreOverrideBodySchema = z.object({
-  // null clears a previously set override, reverting to the computed score.
-  score: z.number().int().min(0).nullable(),
-  reason: z.string().min(1, "Override reason is required"),
-}).strict();
+const FraudScoreOverrideBodySchema = z
+  .object({
+    // null clears a previously set override, reverting to the computed score.
+    score: z.number().int().min(0).nullable(),
+    reason: z.string().min(1, "Override reason is required"),
+  })
+  .strict();
 
 /**
  * GET /admin/fraud-flags
@@ -95,12 +99,7 @@ router.patch("/:id", async (req, res) => {
   const existing = await getFraudFlagById(req.params.id);
   if (!existing) throw createError("Fraud flag not found", 404, "NOT_FOUND");
 
-  const updated = await updateFraudFlagStatus(
-    req.params.id,
-    status,
-    reason,
-    req.user!.sub
-  );
+  const updated = await updateFraudFlagStatus(req.params.id, status, reason, req.user!.sub);
 
   res.json({
     id: updated!.id,
@@ -119,12 +118,7 @@ router.patch("/:id", async (req, res) => {
 router.post("/users/:userId/score-override", async (req, res) => {
   const { score, reason } = FraudScoreOverrideBodySchema.parse(req.body);
 
-  const updated = await setFraudScoreOverride(
-    req.params.userId,
-    score,
-    reason,
-    req.user!.sub
-  );
+  const updated = await setFraudScoreOverride(req.params.userId, score, reason, req.user!.sub);
   if (!updated) throw createError("User not found", 404, "NOT_FOUND");
 
   res.json({

@@ -9,10 +9,7 @@ import {
 } from "../../db/queries/referral-payouts";
 import { referralBonusQueue } from "../referral-bonus.queue";
 import { forwardToDlq, referralBonusDlqQueue } from "../dlq";
-import {
-  auditReferralBonusSkipped,
-  isFraudSession,
-} from "../../services/referrals";
+import { auditReferralBonusSkipped, isFraudSession } from "../../services/referrals";
 import { getSession } from "../../db/queries/sessions";
 
 const SHUTDOWN_TIMEOUT_MS = 30000; // 30 seconds
@@ -22,7 +19,7 @@ export const referralBonusWorkerOptions = {
 } as const;
 
 export async function processReferralBonusJob(
-  job: Job<{ referralPayoutId: string }>,
+  job: Job<{ referralPayoutId: string }>
 ): Promise<void> {
   const payout = await findReferralPayoutById(job.data.referralPayoutId);
   if (!payout) {
@@ -47,7 +44,7 @@ export async function processReferralBonusJob(
         payout.id,
         "failed",
         undefined,
-        "Referral bonus skipped because session was flagged as fraud",
+        "Referral bonus skipped because session was flagged as fraud"
       );
       await auditReferralBonusSkipped({
         sessionId: session.id,
@@ -70,7 +67,7 @@ export async function processReferralBonusJob(
       payout.id,
       "failed",
       undefined,
-      "Missing Stellar address for referral bonus payout",
+      "Missing Stellar address for referral bonus payout"
     );
     return;
   }
@@ -89,17 +86,12 @@ export async function processReferralBonusJob(
     config.HOT_WALLET_SECRET,
     `referral-${payout.id}`,
     config.STELLAR_NETWORK,
-    { sequenceStore: stellarSequenceStore },
+    { sequenceStore: stellarSequenceStore }
   );
 
   const firstResult = results[0];
   if (!firstResult) {
-    await updateReferralPayoutStatus(
-      payout.id,
-      "failed",
-      undefined,
-      "No Stellar response",
-    );
+    await updateReferralPayoutStatus(payout.id, "failed", undefined, "No Stellar response");
     return;
   }
 
@@ -116,17 +108,15 @@ export async function processReferralBonusJob(
     payout.id,
     "failed",
     undefined,
-    firstResult.error ?? "Referral bonus payout failed",
+    firstResult.error ?? "Referral bonus payout failed"
   );
 }
 
-export function createReferralBonusWorker(
-  WorkerImpl: typeof Worker = Worker,
-): Worker {
+export function createReferralBonusWorker(WorkerImpl: typeof Worker = Worker): Worker {
   const worker = new WorkerImpl(
     referralBonusQueue.name,
     processReferralBonusJob,
-    referralBonusWorkerOptions,
+    referralBonusWorkerOptions
   );
 
   setupGracefulShutdown(worker, "referral-bonus");

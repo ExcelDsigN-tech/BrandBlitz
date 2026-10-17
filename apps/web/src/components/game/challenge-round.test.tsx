@@ -7,7 +7,11 @@ import type { ChallengeQuestion } from "@/lib/api";
 let capturedOnExpire: (() => void) | undefined;
 
 vi.mock("./countdown-timer", () => ({
-  CountdownTimer: (props: { durationSeconds: number; onExpire?: () => void; className?: string }) => {
+  CountdownTimer: (props: {
+    durationSeconds: number;
+    onExpire?: () => void;
+    className?: string;
+  }) => {
     capturedOnExpire = props.onExpire;
     return <div data-testid="countdown-timer">{props.durationSeconds}</div>;
   },
@@ -96,7 +100,10 @@ describe("ChallengeRound", () => {
     );
 
     expect(screen.getByLabelText("Submitting answer")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "B: Adidas" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "B: Adidas" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
     for (const button of screen.getAllByRole("button", { name: /^[A-D]:/ })) {
       expect(button).toBeDisabled();
     }
@@ -113,7 +120,9 @@ describe("ChallengeRound", () => {
       />
     );
 
-    rerender(<ChallengeRound question={buildQuestion()} round={1} onAnswer={onAnswer} answerState={null} />);
+    rerender(
+      <ChallengeRound question={buildQuestion()} round={1} onAnswer={onAnswer} answerState={null} />
+    );
     fireEvent.click(screen.getByText("Reebok"));
 
     expect(onAnswer).toHaveBeenCalledTimes(1);
@@ -219,9 +228,7 @@ describe("ChallengeRound", () => {
     expect(onAnswer).toHaveBeenCalledTimes(1);
 
     vi.setSystemTime(now + 10000);
-    rerender(
-      <ChallengeRound question={buildQuestion()} round={2} onAnswer={onAnswer} />
-    );
+    rerender(<ChallengeRound question={buildQuestion()} round={2} onAnswer={onAnswer} />);
 
     vi.setSystemTime(now + 10000 + 1200);
     fireEvent.click(screen.getByText("Adidas"));
@@ -245,7 +252,7 @@ describe("ChallengeRound", () => {
           round={1}
           onAnswer={vi.fn()}
           answerError="500 Internal Server Error: ERR_CONN_REFUSED"
-        />,
+        />
       );
       expect(screen.getByRole("alert")).toBeInTheDocument();
       expect(screen.getByText(/Could not submit your answer/i)).toBeInTheDocument();
@@ -254,13 +261,16 @@ describe("ChallengeRound", () => {
 
     it("does not render the banner when answerError is null/undefined", () => {
       const { rerender } = render(
-        <ChallengeRound question={buildQuestion()} round={1} onAnswer={vi.fn()} answerError={null} />,
+        <ChallengeRound
+          question={buildQuestion()}
+          round={1}
+          onAnswer={vi.fn()}
+          answerError={null}
+        />
       );
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
-      rerender(
-        <ChallengeRound question={buildQuestion()} round={1} onAnswer={vi.fn()} />,
-      );
+      rerender(<ChallengeRound question={buildQuestion()} round={1} onAnswer={vi.fn()} />);
       expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     });
 
@@ -273,7 +283,7 @@ describe("ChallengeRound", () => {
           onAnswer={vi.fn()}
           answerError="server 500"
           onRetry={onRetry}
-        />,
+        />
       );
       fireEvent.click(screen.getByRole("button", { name: /retry/i }));
       expect(onRetry).toHaveBeenCalledTimes(1);
@@ -286,7 +296,7 @@ describe("ChallengeRound", () => {
           round={1}
           onAnswer={vi.fn()}
           answerError="permanent failure"
-        />,
+        />
       );
       expect(screen.getByRole("alert")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: /retry/i })).not.toBeInTheDocument();

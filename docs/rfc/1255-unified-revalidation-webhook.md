@@ -6,7 +6,7 @@ Two separate Next.js route handlers exist for on-demand ISR revalidation, each w
 own auth check:
 
 - `apps/web/src/app/api/revalidate/route.ts` — generic, accepts `{ secret, paths[],
-  tags[] }`, checks `body.secret !== REVALIDATION_SECRET`.
+tags[] }`, checks `body.secret !== REVALIDATION_SECRET`.
 - `apps/web/src/app/api/revalidate/leaderboard/route.ts` — single-purpose, hardcodes
   `revalidatePath("/leaderboard")`, checks `secret !== REVALIDATE_SECRET`.
 
@@ -27,6 +27,7 @@ route handler shaped like the leaderboard one, growing this duplication further.
 ## Current State
 
 ### `apps/web/src/app/api/revalidate/route.ts`
+
 ```typescript
 export async function POST(request: NextRequest) {
   const body = await request.json();
@@ -38,10 +39,12 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ success: true });
 }
 ```
+
 Accepts arbitrary `paths[]`/`tags[]` — already general-purpose in shape. Uses
 `process.env.REVALIDATION_SECRET`.
 
 ### `apps/web/src/app/api/revalidate/leaderboard/route.ts`
+
 ```typescript
 export async function POST(request: Request) {
   const { secret } = await request.json();
@@ -52,10 +55,12 @@ export async function POST(request: Request) {
   return NextResponse.json({ revalidated: true, path: "/leaderboard", timestamp: ... });
 }
 ```
+
 Single-purpose. Uses `process.env.REVALIDATE_SECRET` — a **different variable name**
 than the generic endpoint.
 
 ### `apps/api/src/lib/revalidate.ts`
+
 ```typescript
 export async function revalidateLeaderboard(): Promise<void> {
   if (!config.NEXT_REVALIDATE_URL || !config.REVALIDATE_SECRET) { ... return; }
@@ -65,6 +70,7 @@ export async function revalidateLeaderboard(): Promise<void> {
   });
 }
 ```
+
 Only calls the leaderboard-specific route. There is no `revalidateTag`/`revalidatePath`
 generic caller anywhere in `apps/api` today — the generic endpoint is unused by any
 in-repo caller, despite existing and being reachable.
@@ -89,7 +95,10 @@ interface RevalidateRequest {
 
 export async function POST(request: NextRequest) {
   if (!REVALIDATE_SECRET) {
-    return NextResponse.json({ error: "Server misconfigured: REVALIDATE_SECRET not set" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Server misconfigured: REVALIDATE_SECRET not set" },
+      { status: 500 }
+    );
   }
 
   let body: RevalidateRequest;
@@ -105,10 +114,16 @@ export async function POST(request: NextRequest) {
 
   const revalidated = { paths: [] as string[], tags: [] as string[] };
   for (const path of body.paths ?? []) {
-    if (typeof path === "string") { revalidatePath(path); revalidated.paths.push(path); }
+    if (typeof path === "string") {
+      revalidatePath(path);
+      revalidated.paths.push(path);
+    }
   }
   for (const tag of body.tags ?? []) {
-    if (typeof tag === "string") { revalidateTag(tag); revalidated.tags.push(tag); }
+    if (typeof tag === "string") {
+      revalidateTag(tag);
+      revalidated.tags.push(tag);
+    }
   }
 
   return NextResponse.json({ revalidated, timestamp: new Date().toISOString() });
@@ -134,12 +149,19 @@ export async function revalidate(input: { tags?: string[]; paths?: string[] }): 
       body: JSON.stringify({ secret: config.REVALIDATE_SECRET, ...input }),
     });
     if (!response.ok) {
-      logger.warn("Revalidation failed", { status: response.status, statusText: response.statusText, input });
+      logger.warn("Revalidation failed", {
+        status: response.status,
+        statusText: response.statusText,
+        input,
+      });
       return;
     }
     logger.info("Revalidated", { input, data: await response.json() });
   } catch (error) {
-    logger.error("Failed to trigger revalidation", { error: error instanceof Error ? error.message : String(error), input });
+    logger.error("Failed to trigger revalidation", {
+      error: error instanceof Error ? error.message : String(error),
+      input,
+    });
   }
 }
 

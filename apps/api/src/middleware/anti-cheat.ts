@@ -34,10 +34,8 @@ async function getThresholds(): Promise<AntiCheatThresholds> {
 
     const config = await getConfig(THRESHOLDS_CONFIG_KEY);
     const thresholds: AntiCheatThresholds = {
-      min_human_reaction_ms:
-        (config?.min_human_reaction_ms as number) ?? MIN_HUMAN_REACTION_MS,
-      max_human_reaction_ms:
-        (config?.max_human_reaction_ms as number) ?? MAX_HUMAN_REACTION_MS,
+      min_human_reaction_ms: (config?.min_human_reaction_ms as number) ?? MIN_HUMAN_REACTION_MS,
+      max_human_reaction_ms: (config?.max_human_reaction_ms as number) ?? MAX_HUMAN_REACTION_MS,
     };
 
     await redis.set(THRESHOLDS_CACHE_KEY, JSON.stringify(thresholds), "EX", CACHE_TTL_SECONDS);
@@ -245,7 +243,14 @@ export async function enforceOneSessionPerChallenge(
        WHERE EXISTS (SELECT 1 FROM del)
        ON CONFLICT (user_id, challenge_id) DO NOTHING
        RETURNING *`,
-      [userId, challengeId, deviceId ?? null, isPractice, options.rows[0]?.variant_id, options.rows[0]?.tier_id]
+      [
+        userId,
+        challengeId,
+        deviceId ?? null,
+        isPractice,
+        options.rows[0]?.variant_id,
+        options.rows[0]?.tier_id,
+      ]
     );
     const fresh = result.rows[0] ?? null;
     if (!fresh) {

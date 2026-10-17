@@ -8,11 +8,11 @@ When a player opens a challenge they enter a **warmup phase** before any questio
 
 ## Warmup Duration
 
-| Constant | Value | Canonical source | Web copy |
-|---|---|---|---|---|
-| `WARMUP_MIN_SECONDS` | **20 s** | `packages/stellar/src/constants.ts` | `apps/web/src/components/game/constants.ts` |
-| `ROUND_SECONDS` | **15 s** | `packages/stellar/src/constants.ts` | `apps/web/src/components/game/constants.ts` |
-| `TOTAL_ROUNDS` / `MAX_ROUNDS` | **3** | `packages/stellar/src/constants.ts` (`MAX_ROUNDS`) | `apps/web/src/components/game/constants.ts` (`TOTAL_ROUNDS`) |
+| Constant                      | Value    | Canonical source                                   | Web copy                                                     |
+| ----------------------------- | -------- | -------------------------------------------------- | ------------------------------------------------------------ |
+| `WARMUP_MIN_SECONDS`          | **20 s** | `packages/stellar/src/constants.ts`                | `apps/web/src/components/game/constants.ts`                  |
+| `ROUND_SECONDS`               | **15 s** | `packages/stellar/src/constants.ts`                | `apps/web/src/components/game/constants.ts`                  |
+| `TOTAL_ROUNDS` / `MAX_ROUNDS` | **3**    | `packages/stellar/src/constants.ts` (`MAX_ROUNDS`) | `apps/web/src/components/game/constants.ts` (`TOTAL_ROUNDS`) |
 
 > **Kept in sync via a parity test**: The web client declares these values as independent literals (not re-exports) to avoid pulling the `@stellar/stellar-sdk` dependency into the browser bundle. A parity test at `apps/web/src/components/game/constants.test.ts` imports both the canonical and web copies and asserts equality on every `pnpm test` run. The values **must** be kept identical; change the canonical constant in `packages/stellar/src/constants.ts` first, then update the web copy in `apps/web/src/components/game/constants.ts`.
 
@@ -32,14 +32,14 @@ When a player opens a challenge they enter a **warmup phase** before any questio
 
 The `Challenge` object passed to `WarmupPhase` may contain any combination of the following fields:
 
-| Field | UI element | Required? |
-|---|---|---|
-| `brand_name` | `<h1>` heading | ✅ always shown |
-| `logo_url` | `<Image>` (120 × 120 px) | optional — hidden when absent |
-| `tagline` | `<p>` below heading | optional — hidden when absent |
-| `primary_color` | gradient start + button background | optional — falls back to `var(--primary)` |
-| `secondary_color` | gradient end | optional — falls back to `var(--background)` |
-| `pool_amount_usdc` | prize-pool label at bottom | ✅ always shown |
+| Field              | UI element                         | Required?                                    |
+| ------------------ | ---------------------------------- | -------------------------------------------- |
+| `brand_name`       | `<h1>` heading                     | ✅ always shown                              |
+| `logo_url`         | `<Image>` (120 × 120 px)           | optional — hidden when absent                |
+| `tagline`          | `<p>` below heading                | optional — hidden when absent                |
+| `primary_color`    | gradient start + button background | optional — falls back to `var(--primary)`    |
+| `secondary_color`  | gradient end                       | optional — falls back to `var(--background)` |
+| `pool_amount_usdc` | prize-pool label at bottom         | ✅ always shown                              |
 
 ---
 
@@ -71,11 +71,11 @@ This prevents accidental scoring from silent defaults and preserves fair outcome
 
 ## Test coverage
 
-| Layer | File | What is tested |
-|---|---|---|
-| Vitest (unit) | `apps/web/src/components/game/warmup-phase.test.tsx` | Counts down from `WARMUP_MIN_SECONDS`; button disabled until zero; unlock enables button |
-| Playwright (e2e) | `e2e/tests/game.spec.ts` | Button disabled at page load; enabled within `WARMUP_MIN_SECONDS + 5 s` |
-| Playwright (e2e) | `e2e/tests/payout-settlement.spec.ts` | Full warmup → play → session complete → challenge settlement → payouts row created with correct status |
+| Layer            | File                                                 | What is tested                                                                                         |
+| ---------------- | ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Vitest (unit)    | `apps/web/src/components/game/warmup-phase.test.tsx` | Counts down from `WARMUP_MIN_SECONDS`; button disabled until zero; unlock enables button               |
+| Playwright (e2e) | `e2e/tests/game.spec.ts`                             | Button disabled at page load; enabled within `WARMUP_MIN_SECONDS + 5 s`                                |
+| Playwright (e2e) | `e2e/tests/payout-settlement.spec.ts`                | Full warmup → play → session complete → challenge settlement → payouts row created with correct status |
 
 ---
 

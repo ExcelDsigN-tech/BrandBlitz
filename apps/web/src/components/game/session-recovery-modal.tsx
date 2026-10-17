@@ -54,7 +54,9 @@ export function SessionRecoveryModal({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
     if (event.key !== "Tab") return;
 
-    const buttons = Array.from(dialogRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []);
+    const buttons = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLButtonElement>("button") ?? []
+    );
     if (buttons.length === 0) return;
 
     const first = buttons[0];
@@ -84,7 +86,11 @@ export function SessionRecoveryModal({
       >
         <div className="space-y-2">
           <h2 id="session-recovery-title" className="text-xl font-semibold">
-            {expired ? "Session expired" : confirmingForfeit ? "Forfeit session?" : "Resume challenge?"}
+            {expired
+              ? "Session expired"
+              : confirmingForfeit
+                ? "Forfeit session?"
+                : "Resume challenge?"}
           </h2>
           <p id="session-recovery-description" className="text-sm text-[var(--muted-foreground)]">
             {expired

@@ -11,12 +11,12 @@ BrandBlitz pays real USDC from real prize pools. To protect the pool for honest 
 
 ## What Gets Checked
 
-| Behavior | What we look at | What happens |
-|---|---|---|
-| Answering impossibly fast | A reaction time under **80 ms** | The answer is rejected outright (`403 Forbidden`) and the round is not saved |
-| Very fast answers | A reaction time between **80–150 ms** | The round still counts, but the session is recorded with a fraud flag |
-| Extreme lag / stalled rounds | A reaction time over **30 seconds** | The round still counts, but the session is recorded with a fraud flag |
-| Many accounts on one device | **3 or more accounts** from the same device fingerprint within 24 hours | The sessions are recorded with a fraud flag |
+| Behavior                     | What we look at                                                         | What happens                                                                 |
+| ---------------------------- | ----------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Answering impossibly fast    | A reaction time under **80 ms**                                         | The answer is rejected outright (`403 Forbidden`) and the round is not saved |
+| Very fast answers            | A reaction time between **80–150 ms**                                   | The round still counts, but the session is recorded with a fraud flag        |
+| Extreme lag / stalled rounds | A reaction time over **30 seconds**                                     | The round still counts, but the session is recorded with a fraud flag        |
+| Many accounts on one device  | **3 or more accounts** from the same device fingerprint within 24 hours | The sessions are recorded with a fraud flag                                  |
 
 A few things worth knowing:
 

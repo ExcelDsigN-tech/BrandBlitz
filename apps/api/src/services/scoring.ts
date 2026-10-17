@@ -60,9 +60,7 @@ async function withTransaction<T>(callback: (client: PoolClient) => Promise<T>):
 
 function isLockTimeout(error: unknown): boolean {
   return (
-    typeof error === "object" &&
-    error !== null &&
-    (error as { code?: string }).code === "55P03"
+    typeof error === "object" && error !== null && (error as { code?: string }).code === "55P03"
   );
 }
 
@@ -109,7 +107,11 @@ export async function completeWarmupWithLock(params: {
       if (unlockAt) {
         const remainingMs = parseInt(unlockAt, 10) - nowMs();
         if (remainingMs > 0) {
-          const error = createServiceError("Warm-up minimum not yet elapsed", 400, "WARMUP_TOO_FAST");
+          const error = createServiceError(
+            "Warm-up minimum not yet elapsed",
+            400,
+            "WARMUP_TOO_FAST"
+          );
           (error as any).remainingMs = remainingMs;
           throw error;
         }
@@ -132,7 +134,11 @@ export async function completeWarmupWithLock(params: {
     });
   } catch (error) {
     if (isLockTimeout(error)) {
-      throw createServiceError("Warm-up completion is already in progress", 409, "WARMUP_LOCK_TIMEOUT");
+      throw createServiceError(
+        "Warm-up completion is already in progress",
+        409,
+        "WARMUP_LOCK_TIMEOUT"
+      );
     }
     throw error;
   }
@@ -222,10 +228,7 @@ export interface SessionSummary {
   endedAt: string;
 }
 
-export function rankWinners(
-  sessions: SessionSummary[],
-  topN?: number
-): SessionSummary[] {
+export function rankWinners(sessions: SessionSummary[], topN?: number): SessionSummary[] {
   const sorted = [...sessions].sort((a, b) => {
     if (b.totalScore !== a.totalScore) return b.totalScore - a.totalScore;
 

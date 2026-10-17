@@ -61,12 +61,12 @@ Authenticated, rate-limited catalog with cursor pagination.
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `limit` | int (1–100) | 20 | Page size |
-| `cursor` | string | — | Opaque continuation token |
-| `search` | string | — | Case-insensitive name filter |
-| `status` | `active` \| `inactive` \| `pending` | — | Filter by challenge-derived status |
+| Param    | Type                                | Default | Description                        |
+| -------- | ----------------------------------- | ------- | ---------------------------------- |
+| `limit`  | int (1–100)                         | 20      | Page size                          |
+| `cursor` | string                              | —       | Opaque continuation token          |
+| `search` | string                              | —       | Case-insensitive name filter       |
+| `status` | `active` \| `inactive` \| `pending` | —       | Filter by challenge-derived status |
 
 **Response `200`:**
 
@@ -134,17 +134,17 @@ Optimizes uploaded images server-side (converts to WebP).
 }
 ```
 
-| Field | Required | Validation |
-|---|---|---|
-| `name` | yes | 1–100 chars, no HTML tags |
-| `logoKey` | no | S3 key for logo image |
-| `primaryColor` | no | Hex `#rrggbb` |
-| `secondaryColor` | no | Hex `#rrggbb` |
-| `tagline` | no | Max 100 chars |
-| `brandStory` | no | Max 500 chars |
-| `usp` | no | Max 200 chars |
-| `productImage1Key` | no | S3 key for product image 1 |
-| `productImage2Key` | no | S3 key for product image 2 |
+| Field              | Required | Validation                 |
+| ------------------ | -------- | -------------------------- |
+| `name`             | yes      | 1–100 chars, no HTML tags  |
+| `logoKey`          | no       | S3 key for logo image      |
+| `primaryColor`     | no       | Hex `#rrggbb`              |
+| `secondaryColor`   | no       | Hex `#rrggbb`              |
+| `tagline`          | no       | Max 100 chars              |
+| `brandStory`       | no       | Max 500 chars              |
+| `usp`              | no       | Max 200 chars              |
+| `productImage1Key` | no       | S3 key for product image 1 |
+| `productImage2Key` | no       | S3 key for product image 2 |
 
 **Response `201`:** `{ brand: { ... } }`
 
@@ -180,6 +180,7 @@ The `question_template` lets brand owners override question text and prompt type
 **Response `200`:** `{ brand: { ... } }`
 
 **Errors:**
+
 - `422` `INVALID_QUESTION_TEMPLATE` — malformed `question_template` shape
 
 ---
@@ -211,10 +212,10 @@ Aggregated analytics for the brand's challenges.
 
 **Query params:**
 
-| Param | Type | Description |
-|---|---|---|
+| Param  | Type         | Description         |
+| ------ | ------------ | ------------------- |
 | `from` | ISO datetime | Start of date range |
-| `to` | ISO datetime | End of date range |
+| `to`   | ISO datetime | End of date range   |
 
 **Response `200`:**
 
@@ -225,12 +226,13 @@ Aggregated analytics for the brand's challenges.
     "total_sessions": 1200,
     "total_participants": 800,
     "avg_score": 210.5,
-    "total_paid_out_usdc": 500.00
+    "total_paid_out_usdc": 500.0
   }
 }
 ```
 
 **Errors:**
+
 - `400` — invalid `from` or `to` date
 
 ---
@@ -250,7 +252,7 @@ Aggregated challenge stats for the brand dashboard. Uses a database view for eff
     "active_challenges": 2,
     "total_sessions": 1200,
     "total_participants": 800,
-    "total_paid_out_usdc": 500.00
+    "total_paid_out_usdc": 500.0
   }
 }
 ```
@@ -276,12 +278,12 @@ Create a new challenge and auto-generate questions from the brand kit.
 }
 ```
 
-| Field | Required | Validation |
-|---|---|---|
-| `brandId` | yes | UUID, must be owned by caller |
-| `poolAmountUsdc` | yes | Regex `^\d+(\.\d{1,7})?$`, minimum 100 USDC |
-| `maxPlayers` | no | Positive integer |
-| `endsAt` | yes | ISO datetime, must be >1 hour in the future |
+| Field            | Required | Validation                                  |
+| ---------------- | -------- | ------------------------------------------- |
+| `brandId`        | yes      | UUID, must be owned by caller               |
+| `poolAmountUsdc` | yes      | Regex `^\d+(\.\d{1,7})?$`, minimum 100 USDC |
+| `maxPlayers`     | no       | Positive integer                            |
+| `endsAt`         | yes      | ISO datetime, must be >1 hour in the future |
 
 **Response `201`:**
 
@@ -305,6 +307,7 @@ Create a new challenge and auto-generate questions from the brand kit.
 ```
 
 **Errors:**
+
 - `400` `ENDS_AT_PAST` — end time is in the past
 - `400` `ENDS_AT_TOO_SOON` — duration must be at least 1 hour
 - `403` — not brand owner
@@ -454,13 +457,13 @@ Create a recurring challenge template that auto-spawns challenges on a schedule.
 }
 ```
 
-| `recurrenceRule` | Description |
-|---|---|
-| `daily` | Every day |
-| `weekly` | Every week |
-| `biweekly` | Every 2 weeks |
-| `monthly` | Every month |
-| `custom` | Custom cron expression (requires `recurrenceCron`) |
+| `recurrenceRule` | Description                                        |
+| ---------------- | -------------------------------------------------- |
+| `daily`          | Every day                                          |
+| `weekly`         | Every week                                         |
+| `biweekly`       | Every 2 weeks                                      |
+| `monthly`        | Every month                                        |
+| `custom`         | Custom cron expression (requires `recurrenceCron`) |
 
 **Response `201`:** `{ template: { ... } }`
 
@@ -484,9 +487,9 @@ Preview upcoming auto-generated challenges from active templates.
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `limit` | int (1–20) | 5 | Number of upcoming challenges to return |
+| Param   | Type       | Default | Description                             |
+| ------- | ---------- | ------- | --------------------------------------- |
+| `limit` | int (1–20) | 5       | Number of upcoming challenges to return |
 
 **Response `200`:** `{ upcoming: [ ... ] }`
 
@@ -501,6 +504,7 @@ Pause a template. Existing spawned challenges are unaffected.
 **Response `200`:** `{ template: { ... } }`
 
 **Errors:**
+
 - `400` `INVALID_STATE` — template is not active
 
 ---
@@ -514,6 +518,7 @@ Resume a paused template.
 **Response `200`:** `{ template: { ... } }`
 
 **Errors:**
+
 - `400` `INVALID_STATE` — template is not paused
 
 ---
@@ -546,11 +551,11 @@ Register an outbound webhook subscription for challenge lifecycle events.
 }
 ```
 
-| Field | Required | Validation |
-|---|---|---|
-| `url` | yes | Valid URL |
-| `secret` | no | Min 16 chars |
-| `eventTypes` | no | Array of event type strings |
+| Field        | Required | Validation                  |
+| ------------ | -------- | --------------------------- |
+| `url`        | yes      | Valid URL                   |
+| `secret`     | no       | Min 16 chars                |
+| `eventTypes` | no       | Array of event type strings |
 
 **Response `201`:** `{ webhook: { ... } }`
 
@@ -578,12 +583,12 @@ View delivery status and logs per brand.
 
 ## Error Responses
 
-| Status | Code | Meaning |
-|---|---|---|
-| `400` | `ENDS_AT_PAST` | Challenge end time is in the past |
-| `400` | `ENDS_AT_TOO_SOON` | Challenge must be at least 1 hour |
-| `400` | `INVALID_STATE` | Template not in expected state |
-| `403` | — | Not brand owner (or admin for delete/template routes) |
-| `404` | — | Brand, question, or template not found |
-| `422` | `INVALID_QUESTION_TEMPLATE` | Malformed `question_template` |
-| `422` | `VALIDATION_ERROR` | Invalid request body fields |
+| Status | Code                        | Meaning                                               |
+| ------ | --------------------------- | ----------------------------------------------------- |
+| `400`  | `ENDS_AT_PAST`              | Challenge end time is in the past                     |
+| `400`  | `ENDS_AT_TOO_SOON`          | Challenge must be at least 1 hour                     |
+| `400`  | `INVALID_STATE`             | Template not in expected state                        |
+| `403`  | —                           | Not brand owner (or admin for delete/template routes) |
+| `404`  | —                           | Brand, question, or template not found                |
+| `422`  | `INVALID_QUESTION_TEMPLATE` | Malformed `question_template`                         |
+| `422`  | `VALIDATION_ERROR`          | Invalid request body fields                           |

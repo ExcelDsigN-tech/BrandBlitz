@@ -29,9 +29,7 @@ function rowToTemplate(row: Record<string, unknown>): ChallengeTemplate {
     pool_amount_usdc: String(row.pool_amount_usdc),
     pool_amount_stroops: String(row.pool_amount_stroops),
     max_players:
-      row.max_players !== null && row.max_players !== undefined
-        ? Number(row.max_players)
-        : null,
+      row.max_players !== null && row.max_players !== undefined ? Number(row.max_players) : null,
     duration_hours: Number(row.duration_hours),
     recurrence_rule: row.recurrence_rule as RecurrenceRule,
     recurrence_cron:
@@ -49,9 +47,7 @@ function rowToTemplate(row: Record<string, unknown>): ChallengeTemplate {
         ? String(row.last_spawned_at)
         : null,
     deleted_at:
-      row.deleted_at !== null && row.deleted_at !== undefined
-        ? String(row.deleted_at)
-        : null,
+      row.deleted_at !== null && row.deleted_at !== undefined ? String(row.deleted_at) : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
@@ -83,16 +79,14 @@ export async function createChallengeTemplate(data: {
       data.maxPlayers ?? null,
       data.durationHours,
       data.recurrenceRule,
-      data.recurrenceRule === "custom" ? data.recurrenceCron ?? null : null,
+      data.recurrenceRule === "custom" ? (data.recurrenceCron ?? null) : null,
       data.recurrenceTimezone ?? null,
     ]
   );
   return rowToTemplate(result.rows[0]);
 }
 
-export async function getChallengeTemplateById(
-  id: string
-): Promise<ChallengeTemplate | null> {
+export async function getChallengeTemplateById(id: string): Promise<ChallengeTemplate | null> {
   const result = await query<ChallengeTemplate>(
     `SELECT id, brand_id,
        pool_amount_usdc::text, pool_amount_stroops::text,
@@ -183,10 +177,7 @@ export async function softDeleteChallengeTemplate(id: string): Promise<void> {
   );
 }
 
-export async function markTemplateSpawned(
-  id: string,
-  period: string
-): Promise<void> {
+export async function markTemplateSpawned(id: string, period: string): Promise<void> {
   await query(
     `UPDATE challenge_templates
      SET last_spawned_period = $1, last_spawned_at = NOW(), updated_at = NOW()

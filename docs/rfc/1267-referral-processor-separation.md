@@ -73,7 +73,7 @@ export interface ReferralBonusEvaluation {
 /**
  * Evaluate if a referral bonus payout is eligible.
  * Pure business logic: no side effects, no job handling.
- * 
+ *
  * @param context ReferralBonusContext containing payout and session
  * @returns Evaluation with eligibility decision and audit log
  */
@@ -124,13 +124,11 @@ export async function evaluateReferralBonusEligibility(
 /**
  * Execute the referral bonus payout (side effects).
  * Called only after eligibility is confirmed.
- * 
+ *
  * @param referralPayoutId ID of payout to execute
  * @throws on DB error
  */
-export async function executeReferralBonus(
-  referralPayoutId: string
-): Promise<void> {
+export async function executeReferralBonus(referralPayoutId: string): Promise<void> {
   // Submit to stellar queue, update status
   // Existing payout logic stays here
 }
@@ -138,7 +136,7 @@ export async function executeReferralBonus(
 /**
  * Handle a referral bonus (evaluate, log, execute).
  * Orchestration: can be called from processor or admin tools.
- * 
+ *
  * @param referralPayoutId ID of payout
  */
 export async function processReferralBonus(
@@ -200,9 +198,7 @@ export async function processReferralBonusJob(
   job: Job<{ referralPayoutId: string }>
 ): Promise<void> {
   try {
-    const { processed, reason } = await processReferralBonus(
-      job.data.referralPayoutId
-    );
+    const { processed, reason } = await processReferralBonus(job.data.referralPayoutId);
 
     logger.info("Referral bonus processed", {
       referralPayoutId: job.data.referralPayoutId,
@@ -226,26 +222,22 @@ export async function processReferralBonusJob(
 }
 
 export async function createReferralBonusWorker() {
-  return new Worker(
-    referralBonusQueue.name,
-    processReferralBonusJob,
-    {
-      connection: config.redis,
-      ...referralBonusWorkerOptions,
-    }
-  );
+  return new Worker(referralBonusQueue.name, processReferralBonusJob, {
+    connection: config.redis,
+    ...referralBonusWorkerOptions,
+  });
 }
 ```
 
 ### Comparison
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Processor lines | ~80 | ~30 |
-| Business logic location | Processor | Service |
-| Testability | Needs BullMQ mock | Pure function test |
-| Reusability | Tightly coupled to queue | Callable from anywhere |
-| Audit logging | Inline in processor | Centralized in service |
+| Aspect                  | Before                   | After                  |
+| ----------------------- | ------------------------ | ---------------------- |
+| Processor lines         | ~80                      | ~30                    |
+| Business logic location | Processor                | Service                |
+| Testability             | Needs BullMQ mock        | Pure function test     |
+| Reusability             | Tightly coupled to queue | Callable from anywhere |
+| Audit logging           | Inline in processor      | Centralized in service |
 
 ## Test Migration
 
@@ -310,7 +302,7 @@ describe("processReferralBonusJob", () => {
     });
 
     await processReferralBonusJob(job);
-    
+
     expect(referralsService.processReferralBonus).toHaveBeenCalledWith("rp-123");
   });
 

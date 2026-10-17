@@ -198,6 +198,11 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # Keep these aligned with the web service's runtime environment values.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+        NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+        NEXT_PUBLIC_CDN_HOST: ${NEXT_PUBLIC_CDN_HOST:-}
     deploy:
       resources:
         limits:

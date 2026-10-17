@@ -13,6 +13,7 @@ BrandBlitz has two distinct configuration systems that look similar but serve di
 2. **DB-backed runtime-tunable config** (`apps/api/src/db/queries/config.ts`, `routes/admin/config.ts`)
 
 There is no documented boundary for which settings belong where, leading to:
+
 - New settings being added to the wrong layer
 - Confusion about which config system to use
 - Similar naming causing import errors
@@ -27,6 +28,7 @@ There is no documented boundary for which settings belong where, leading to:
 **Purpose:** Process-level configuration that must be set before the application starts.
 
 **Characteristics:**
+
 - Loaded from environment variables
 - Validated at boot time using Zod schemas
 - Application fails to start if invalid
@@ -34,6 +36,7 @@ There is no documented boundary for which settings belong where, leading to:
 - Type-safe access via `getConfig()`
 
 **Example Settings:**
+
 ```typescript
 {
   port: 3000,
@@ -61,6 +64,7 @@ There is no documented boundary for which settings belong where, leading to:
 ```
 
 **Validation:**
+
 ```typescript
 const configSchema = z.object({
   port: z.coerce.number().int().positive(),
@@ -80,6 +84,7 @@ const configSchema = z.object({
 **Purpose:** Application behavior configuration that can be changed at runtime by administrators.
 
 **Characteristics:**
+
 - Stored in PostgreSQL database
 - Can be changed via admin API without restart
 - May have per-user or per-league overrides
@@ -87,6 +92,7 @@ const configSchema = z.object({
 - Partial validation (some keys use `z.record(z.unknown())`)
 
 **Example Settings:**
+
 ```typescript
 {
   anti_cheat: {
@@ -111,6 +117,7 @@ const configSchema = z.object({
 ```
 
 **Validation (Current):**
+
 ```typescript
 // Discriminated union with unvalidated fallbacks
 const configUpdateSchema = z.discriminatedUnion("key", [
@@ -133,20 +140,24 @@ const configUpdateSchema = z.discriminatedUnion("key", [
 ### Problem Areas
 
 **Similar Names, Different Systems:**
+
 - `config.ts` exists in both `lib/` and `db/queries/`
 - `config-schema.ts` vs config validation in `routes/admin/config.ts`
 - Imports frequently target the wrong file
 
 **No Decision Boundary:**
+
 - Should `MAX_FILE_UPLOAD_SIZE` be env or DB config?
 - Should `STELLAR_NETWORK` be tunable at runtime?
 - No documented rule for making this choice
 
 **Conflated Admin Surface:**
+
 - `routes/admin/config.ts` mixes both concepts
 - Admin UI doesn't clarify which settings require restart
 
 **Validation Gaps:**
+
 - Several DB-backed configs use `z.record(z.unknown())`
 - No enforcement of required fields
 - Runtime changes can introduce invalid state
@@ -156,6 +167,7 @@ const configUpdateSchema = z.discriminatedUnion("key", [
 ### 1. Decision Rule: Where Settings Belong
 
 **Use Environment-Based Config When:**
+
 - ✅ Value is required to start the application (database URL, port)
 - ✅ Value is infrastructure-specific (hostnames, credentials)
 - ✅ Value rarely changes (once per deployment)
@@ -165,6 +177,7 @@ const configUpdateSchema = z.discriminatedUnion("key", [
 **Examples:** Database connection, Redis URL, JWT secret, Stellar network, port numbers
 
 **Use DB-Backed Config When:**
+
 - ✅ Value controls business logic or game rules
 - ✅ Value may need per-user or per-league overrides
 - ✅ Value changes frequently without code deploy
@@ -176,6 +189,7 @@ const configUpdateSchema = z.discriminatedUnion("key", [
 ### 2. Proposed Naming/Namespacing
 
 **Environment Config (Rename):**
+
 ```typescript
 // apps/api/src/lib/env-config.ts
 export const envConfig = getEnvConfig();
@@ -189,6 +203,7 @@ console.log(envConfig.database.host);
 ```
 
 **DB-Backed Config (Rename):**
+
 ```typescript
 // apps/api/src/db/queries/runtime-config.ts
 export async function getRuntimeConfig(key: string) {...}
@@ -203,6 +218,7 @@ const antiCheat = await getRuntimeConfig('anti_cheat');
 ```
 
 **Benefits:**
+
 - Unambiguous naming: `envConfig` vs `runtimeConfig`
 - No more accidental imports of wrong config
 - Clear separation visible in module paths
@@ -211,6 +227,7 @@ const antiCheat = await getRuntimeConfig('anti_cheat');
 ### 3. Per-Key Schema Modules
 
 **Current Problem:**
+
 ```typescript
 // All schemas in one discriminated union
 // New keys require editing a large union
@@ -221,6 +238,7 @@ const configUpdateSchema = z.discriminatedUnion("key", [
 ```
 
 **Proposed Registry Pattern:**
+
 ```typescript
 // apps/api/src/config-schemas/anti-cheat.schema.ts
 export const antiCheatSchema = z.object({
@@ -247,10 +265,10 @@ export const CONFIG_SCHEMAS = {
 } as const;
 
 export type ConfigKey = keyof typeof CONFIG_SCHEMAS;
-export type ConfigValue<K extends ConfigKey> = z.infer<typeof CONFIG_SCHEMAS[K]>;
+export type ConfigValue<K extends ConfigKey> = z.infer<(typeof CONFIG_SCHEMAS)[K]>;
 
 // apps/api/src/routes/admin/runtime-config.ts
-import { CONFIG_SCHEMAS } from '@/config-schemas';
+import { CONFIG_SCHEMAS } from "@/config-schemas";
 
 export async function updateConfig(key: ConfigKey, value: unknown) {
   const schema = CONFIG_SCHEMAS[key];
@@ -260,6 +278,7 @@ export async function updateConfig(key: ConfigKey, value: unknown) {
 ```
 
 **Benefits:**
+
 - One file per config key (easier to review)
 - No monolithic union to edit
 - Type-safe access: `ConfigValue<'anti_cheat'>`
@@ -269,22 +288,26 @@ export async function updateConfig(key: ConfigKey, value: unknown) {
 ### 4. Migration Plan
 
 **Phase 1: Audit Current Settings**
+
 - [ ] List all environment variables in use
 - [ ] List all DB-backed config keys in use
 - [ ] Identify settings in wrong layer
 
 **Phase 2: Close Validation Gaps**
+
 - [ ] Create schema for `league` config (currently `z.record(z.unknown())`)
 - [ ] Create schema for `payout` config (currently `z.record(z.unknown())`)
 - [ ] Add tests verifying all runtime config keys have real schemas
 
 **Phase 3: Rename Modules**
+
 - [ ] Rename `lib/config.ts` → `lib/env-config.ts`
 - [ ] Rename `db/queries/config.ts` → `db/queries/runtime-config.ts`
 - [ ] Update all imports across codebase
 - [ ] Run full test suite to catch breakages
 
 **Phase 4: Extract Per-Key Schemas**
+
 - [ ] Create `config-schemas/` directory
 - [ ] Move each config key to its own schema file
 - [ ] Build registry in `config-schemas/index.ts`
@@ -292,12 +315,14 @@ export async function updateConfig(key: ConfigKey, value: unknown) {
 - [ ] Remove discriminated union
 
 **Phase 5: Documentation**
+
 - [ ] Update README with decision rule
 - [ ] Document how to add new env config
 - [ ] Document how to add new runtime config
 - [ ] Add JSDoc comments to config functions
 
 **Rollout:**
+
 - One phase per PR to keep changes reviewable
 - Tests must pass at each phase
 - No breaking changes to API or behavior
@@ -306,13 +331,16 @@ export async function updateConfig(key: ConfigKey, value: unknown) {
 ### 5. Settings Potentially in Wrong Layer
 
 **Should Move to Environment Config:**
+
 - None identified (DB-backed configs are appropriately runtime-tunable)
 
 **Should Move to DB-Backed Config:**
+
 - `MAX_FILE_UPLOAD_SIZE` (currently env) - Could be tuned per deployment without restart
 - `SESSION_TIMEOUT_MS` (currently hardcoded) - Should be admin-tunable
 
 **Borderline Cases:**
+
 - `STELLAR_NETWORK` - Infrastructure concern (env) but affects behavior (runtime)
   - **Decision:** Keep as env - changing networks requires data migration
 - `REDIS_CACHE_TTL` - Performance tuning but infrastructure-related

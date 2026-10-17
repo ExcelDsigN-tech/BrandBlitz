@@ -28,8 +28,13 @@ export interface FraudFlagDetail extends FraudFlag {
 
 export async function getUserReports(opts: { status?: string; limit: number }) {
   const result = await query<{
-    id: string; reporter_id: string; reported_id: string; reason: string; details: string | null;
-    status: string; created_at: string;
+    id: string;
+    reporter_id: string;
+    reported_id: string;
+    reason: string;
+    details: string | null;
+    status: string;
+    created_at: string;
   }>(
     `SELECT id, reporter_id, reported_id, reason, details, status, created_at
      FROM user_reports
@@ -74,7 +79,7 @@ export async function getFraudFlags(opts: {
       "DESC",
       cursorValues.created_at,
       cursorValues.id as string,
-      2,
+      2
     );
     whereExtra = clause;
     params.push(cursorValues.created_at, cursorValues.id);
@@ -110,7 +115,7 @@ export async function getFraudFlags(opts: {
      ${whereExtra}
      ORDER BY ff.created_at DESC, ff.id DESC
      LIMIT $${params.length}`,
-    params,
+    params
   );
 
   const flags = rowsResult.rows;

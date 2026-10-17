@@ -33,7 +33,7 @@ async function getBrandDigestData(brandId: string, days: number): Promise<BrandD
     top_challenge_name: string | null;
     top_challenge_plays: number | null;
   }>(
-    `SELECT 
+    `SELECT
        b.id AS brand_id,
        b.name AS brand_name,
        b.contact_email AS email,
@@ -42,7 +42,7 @@ async function getBrandDigestData(brandId: string, days: number): Promise<BrandD
        COUNT(gs.id) FILTER (WHERE gs.completed_at IS NOT NULL) AS completed_plays,
        COALESCE(SUM(p.amount_usdc), 0) AS total_spend_usdc,
        (
-         SELECT ch.title 
+         SELECT ch.title
          FROM challenges ch
          JOIN game_sessions gss ON gss.challenge_id = ch.id
          WHERE ch.brand_id = b.id AND gss.created_at >= $2
@@ -73,8 +73,7 @@ async function getBrandDigestData(brandId: string, days: number): Promise<BrandD
   }
 
   const row = result[0];
-  const completionRate =
-    row.total_plays > 0 ? (row.completed_plays / row.total_plays) * 100 : 0;
+  const completionRate = row.total_plays > 0 ? (row.completed_plays / row.total_plays) * 100 : 0;
 
   return {
     brandId: row.brand_id,
@@ -160,7 +159,7 @@ export async function processBrandDigests(frequency: "daily" | "weekly" | "month
 
       // Mark as sent to prevent double-send on retry (idempotent)
       await query(
-        `UPDATE brand_digest_preferences 
+        `UPDATE brand_digest_preferences
          SET last_sent_at = NOW(), updated_at = NOW()
          WHERE brand_id = $1`,
         [brand_id]

@@ -24,9 +24,7 @@ describe("StreakHeatmap", () => {
   });
 
   it("assigns correct intensity level for zero sessions", () => {
-    const activity = [
-      { date: "2026-06-27", session_count: 0 },
-    ];
+    const activity = [{ date: "2026-06-27", session_count: 0 }];
 
     const { container } = render(<StreakHeatmap activity={activity} />);
     const cells = container.querySelectorAll(".bg-slate-100");
@@ -34,9 +32,7 @@ describe("StreakHeatmap", () => {
   });
 
   it("assigns correct intensity level for 1 session", () => {
-    const activity = [
-      { date: "2026-06-27", session_count: 1 },
-    ];
+    const activity = [{ date: "2026-06-27", session_count: 1 }];
 
     const { container } = render(<StreakHeatmap activity={activity} />);
     const cells = container.querySelectorAll(".bg-indigo-200");
@@ -77,9 +73,7 @@ describe("StreakHeatmap", () => {
   });
 
   it("fills full weeks with padding cells", () => {
-    const activity = [
-      { date: "2026-06-27", session_count: 1 },
-    ];
+    const activity = [{ date: "2026-06-27", session_count: 1 }];
 
     const { container } = render(<StreakHeatmap activity={activity} />);
     const allCells = container.querySelectorAll("[class*='h-3 w-3']");

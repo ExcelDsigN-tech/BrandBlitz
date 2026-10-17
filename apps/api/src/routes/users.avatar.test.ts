@@ -15,7 +15,9 @@ const mocks = vi.hoisted(() => ({
   deleteObject: vi.fn(),
   optimizeBuffer: vi.fn(),
   optimizeImage: vi.fn(),
-  getPublicUrl: vi.fn((bucket: string, key: string) => `https://cdn.brandblitz.io/${bucket}/${key}`),
+  getPublicUrl: vi.fn(
+    (bucket: string, key: string) => `https://cdn.brandblitz.io/${bucket}/${key}`
+  ),
 }));
 
 vi.mock("../db", () => ({
@@ -243,7 +245,10 @@ describe("POST /users/me/avatar (#1018)", () => {
       .send({ key: "avatars/new-presigned-upload.png" })
       .expect(200);
 
-    expect(mocks.optimizeImage).toHaveBeenCalledWith("avatars/new-presigned-upload.png", "user-avatar");
+    expect(mocks.optimizeImage).toHaveBeenCalledWith(
+      "avatars/new-presigned-upload.png",
+      "user-avatar"
+    );
     expect(mocks.query).toHaveBeenCalledWith(
       expect.stringContaining("UPDATE users SET avatar_url"),
       [expect.stringContaining("avatars/optimized.webp"), userId]

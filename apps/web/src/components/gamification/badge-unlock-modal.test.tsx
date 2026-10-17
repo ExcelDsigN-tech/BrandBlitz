@@ -7,14 +7,28 @@ const sessionStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value; },
-    clear: () => { store = {}; },
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    clear: () => {
+      store = {};
+    },
   };
 })();
 Object.defineProperty(window, "sessionStorage", { value: sessionStorageMock });
 
-const badge1: Badge = { id: "b1", name: "First Win", description: "You won your first challenge!", iconUrl: undefined };
-const badge2: Badge = { id: "b2", name: "Streak Master", description: "7-day streak!", iconUrl: undefined };
+const badge1: Badge = {
+  id: "b1",
+  name: "First Win",
+  description: "You won your first challenge!",
+  iconUrl: undefined,
+};
+const badge2: Badge = {
+  id: "b2",
+  name: "Streak Master",
+  description: "7-day streak!",
+  iconUrl: undefined,
+};
 
 describe("BadgeUnlockModal", () => {
   beforeEach(() => {
@@ -56,10 +70,10 @@ describe("BadgeUnlockModal", () => {
     vi.useFakeTimers();
     render(<BadgeUnlockModal badges={[badge1, badge2]} onClose={() => {}} />);
     expect(screen.getByText("First Win")).toBeTruthy();
-    
+
     const nextBtn = screen.getByRole("button", { name: /next badge/i });
     const prevBtn = screen.getByRole("button", { name: /previous badge/i });
-    
+
     expect((prevBtn as HTMLButtonElement).disabled).toBe(true);
     expect((nextBtn as HTMLButtonElement).disabled).toBe(false);
 

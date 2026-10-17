@@ -12,6 +12,9 @@ concurrency:
 env:
   REGISTRY: ghcr.io
   ORG: privexlabs
+  NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'https://brandblitz.app/api' }}
+  NEXTAUTH_URL: ${{ vars.NEXTAUTH_URL || 'https://brandblitz.app' }}
+  NEXT_PUBLIC_CDN_HOST: ${{ vars.NEXT_PUBLIC_CDN_HOST || 'assets.brandblitz.app' }}
 
 jobs:
   build-push:
@@ -20,9 +23,8 @@ jobs:
     permissions:
       contents: read
       packages: write
-      id-token: write   # required for cosign OIDC keyless signing
+      id-token: write # required for cosign OIDC keyless signing
       security-events: write # required to upload SARIF results to Security tab
-
 
     strategy:
       fail-fast: false
@@ -68,8 +70,22 @@ jobs:
           load: true
           push: false
           tags: brandblitz-${{ matrix.app }}:local
+          # Keep public build args aligned with apps/web/Dockerfile.
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}
+            NEXT_PUBLIC_CDN_HOST=${{ env.NEXT_PUBLIC_CDN_HOST }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/brandblitz-${{ matrix.app }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/brandblitz-${{ matrix.app }}:buildcache,mode=max
+
+      - name: Verify web API URL is baked into client bundle
+        if: matrix.app == 'web'
+        run: |
+          test -n "$NEXT_PUBLIC_API_URL"
+          docker run --rm \
+            -e "EXPECTED_API_URL=$NEXT_PUBLIC_API_URL" \
+            --entrypoint sh brandblitz-web:local \
+            -c 'grep -R -l -F -- "$EXPECTED_API_URL" /app/apps/web/.next/static'
 
       # To run the Trivy scan locally:
       #   docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image brandblitz-${{ matrix.app }}:local
@@ -87,7 +103,7 @@ jobs:
         uses: github/codeql-action/upload-sarif@v3
         if: always() && (steps.trivy.outcome == 'success' || steps.trivy.outcome == 'failure')
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"
           category: brandblitz-${{ matrix.app }}
 
       - name: Build and push ${{ matrix.app }}
@@ -99,11 +115,15 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          # Keep public build args aligned with apps/web/Dockerfile.
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
+            NEXTAUTH_URL=${{ env.NEXTAUTH_URL }}
+            NEXT_PUBLIC_CDN_HOST=${{ env.NEXT_PUBLIC_CDN_HOST }}
           cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/brandblitz-${{ matrix.app }}:buildcache
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.ORG }}/brandblitz-${{ matrix.app }}:buildcache,mode=max
           provenance: true
           sbom: true
-
 
       - name: Install cosign
         uses: sigstore/cosign-installer@v3

@@ -115,9 +115,7 @@ const challengeFixture: Challenge = {
   created_at: "2026-04-24T09:00:00.000Z",
 };
 
-function buildLeaderboardSession(
-  overrides: Partial<LeaderboardSession> = {}
-): LeaderboardSession {
+function buildLeaderboardSession(overrides: Partial<LeaderboardSession> = {}): LeaderboardSession {
   return {
     id: "session-1",
     user_id: "user-1",
@@ -203,7 +201,7 @@ describe("processPayout", () => {
     expect(mocks.submitBatchPayout).toHaveBeenCalledTimes(1);
 
     const [recipients] = mocks.submitBatchPayout.mock.calls[0] as [
-      Array<{ address: string; amount: string }>
+      Array<{ address: string; amount: string }>,
     ];
 
     expect(recipients.length).toBeGreaterThan(0);
@@ -230,7 +228,7 @@ describe("processPayout", () => {
     await processPayout("challenge-1");
 
     const [recipients] = mocks.submitBatchPayout.mock.calls[0] as [
-      Array<{ address: string; amount: string }>
+      Array<{ address: string; amount: string }>,
     ];
     expect(recipients).toEqual([
       {
@@ -271,7 +269,7 @@ describe("processPayout", () => {
     );
 
     const [recipients] = mocks.submitBatchPayout.mock.calls[0] as [
-      Array<{ address: string; amount: string }>
+      Array<{ address: string; amount: string }>,
     ];
 
     expect(recipients).toHaveLength(1);
@@ -296,8 +294,18 @@ describe("processPayout", () => {
       pool_amount_usdc: "20.0000000",
     });
     mocks.getLeaderboard.mockResolvedValue([
-      buildLeaderboardSession({ id: "session-1", user_id: "user-1", total_score: 100, stellar_address: "GUSER1" }),
-      buildLeaderboardSession({ id: "session-2", user_id: "user-2", total_score: 50, stellar_address: "GUSER2" }),
+      buildLeaderboardSession({
+        id: "session-1",
+        user_id: "user-1",
+        total_score: 100,
+        stellar_address: "GUSER1",
+      }),
+      buildLeaderboardSession({
+        id: "session-2",
+        user_id: "user-2",
+        total_score: 50,
+        stellar_address: "GUSER2",
+      }),
     ]);
     mocks.submitBatchPayout.mockResolvedValue([
       {
@@ -325,9 +333,23 @@ describe("processPayout", () => {
       undefined,
       "tx_failed"
     );
-    expect(mocks.updatePayoutStatus).toHaveBeenCalledWith("payout-user-1", "failed", undefined, "tx_failed");
-    expect(mocks.updatePayoutStatus).toHaveBeenCalledWith("payout-user-2", "failed", undefined, "tx_failed");
-    expect(mocks.updateChallengeStatus).toHaveBeenCalledWith("challenge-3", "payout_failed", undefined);
+    expect(mocks.updatePayoutStatus).toHaveBeenCalledWith(
+      "payout-user-1",
+      "failed",
+      undefined,
+      "tx_failed"
+    );
+    expect(mocks.updatePayoutStatus).toHaveBeenCalledWith(
+      "payout-user-2",
+      "failed",
+      undefined,
+      "tx_failed"
+    );
+    expect(mocks.updateChallengeStatus).toHaveBeenCalledWith(
+      "challenge-3",
+      "payout_failed",
+      undefined
+    );
   });
 
   it("rethrows retriable Stellar errors so the payout worker can retry", async () => {
@@ -353,7 +375,11 @@ describe("processPayout", () => {
   });
 
   it("returns early when the challenge is not in the ended state", async () => {
-    mocks.getChallengeById.mockResolvedValue({ ...challengeFixture, id: "challenge-4", status: "active" });
+    mocks.getChallengeById.mockResolvedValue({
+      ...challengeFixture,
+      id: "challenge-4",
+      status: "active",
+    });
 
     await processPayout("challenge-4");
 
@@ -371,8 +397,18 @@ describe("processPayout", () => {
       pool_amount_usdc: "0.0000002",
     });
     mocks.getLeaderboard.mockResolvedValue([
-      buildLeaderboardSession({ id: "session-1", user_id: "user-1", total_score: 9999999, stellar_address: "GUSER1" }),
-      buildLeaderboardSession({ id: "session-2", user_id: "user-2", total_score: 1, stellar_address: "GUSER2" }),
+      buildLeaderboardSession({
+        id: "session-1",
+        user_id: "user-1",
+        total_score: 9999999,
+        stellar_address: "GUSER1",
+      }),
+      buildLeaderboardSession({
+        id: "session-2",
+        user_id: "user-2",
+        total_score: 1,
+        stellar_address: "GUSER2",
+      }),
     ]);
     mocks.submitBatchPayout.mockResolvedValue([
       {
@@ -478,7 +514,12 @@ describe("processPayout", () => {
   it("failed payout always carries a non-empty error message from the Stellar result", async () => {
     mocks.getChallengeById.mockResolvedValue({ ...challengeFixture, id: "challenge-msg-1" });
     mocks.getLeaderboard.mockResolvedValue([
-      buildLeaderboardSession({ id: "session-1", user_id: "user-1", total_score: 100, stellar_address: "GUSER1" }),
+      buildLeaderboardSession({
+        id: "session-1",
+        user_id: "user-1",
+        total_score: 100,
+        stellar_address: "GUSER1",
+      }),
     ]);
     mocks.submitBatchPayout.mockResolvedValue([
       {
@@ -491,7 +532,12 @@ describe("processPayout", () => {
 
     await processPayout("challenge-msg-1");
 
-    const [, status, , errorMessage] = mocks.updatePayoutStatus.mock.calls[0] as [string, string, string, string];
+    const [, status, , errorMessage] = mocks.updatePayoutStatus.mock.calls[0] as [
+      string,
+      string,
+      string,
+      string,
+    ];
     expect(status).toBe("failed");
     expect(errorMessage).toBeTruthy();
     expect(errorMessage.length).toBeGreaterThan(0);
@@ -500,7 +546,12 @@ describe("processPayout", () => {
   it("failed payout uses a fallback message when Stellar result carries no error field", async () => {
     mocks.getChallengeById.mockResolvedValue({ ...challengeFixture, id: "challenge-msg-2" });
     mocks.getLeaderboard.mockResolvedValue([
-      buildLeaderboardSession({ id: "session-1", user_id: "user-1", total_score: 100, stellar_address: "GUSER1" }),
+      buildLeaderboardSession({
+        id: "session-1",
+        user_id: "user-1",
+        total_score: 100,
+        stellar_address: "GUSER1",
+      }),
     ]);
     mocks.submitBatchPayout.mockResolvedValue([
       {
@@ -513,7 +564,12 @@ describe("processPayout", () => {
 
     await processPayout("challenge-msg-2");
 
-    const [, status, , errorMessage] = mocks.updatePayoutStatus.mock.calls[0] as [string, string, string, string];
+    const [, status, , errorMessage] = mocks.updatePayoutStatus.mock.calls[0] as [
+      string,
+      string,
+      string,
+      string,
+    ];
     expect(status).toBe("failed");
     expect(errorMessage).toBeTruthy();
     expect(errorMessage.length).toBeGreaterThan(0);
@@ -532,7 +588,12 @@ describe("processPayout", () => {
     await processPayout("challenge-1");
 
     // updatePayoutStatus called with status "sent" and no error message (undefined → db writes "")
-    const [, status, , errorMessage] = mocks.updatePayoutStatus.mock.calls[0] as [string, string, string, string | undefined];
+    const [, status, , errorMessage] = mocks.updatePayoutStatus.mock.calls[0] as [
+      string,
+      string,
+      string,
+      string | undefined,
+    ];
     expect(status).toBe("sent");
     expect(errorMessage).toBeUndefined();
   });

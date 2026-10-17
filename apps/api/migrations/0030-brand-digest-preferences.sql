@@ -10,8 +10,8 @@ CREATE TABLE brand_digest_preferences (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_brand_digest_preferences_enabled_frequency 
-  ON brand_digest_preferences(enabled, frequency) 
+CREATE INDEX idx_brand_digest_preferences_enabled_frequency
+  ON brand_digest_preferences(enabled, frequency)
   WHERE enabled = TRUE;
 
 COMMENT ON TABLE brand_digest_preferences IS 'Brand opt-in preferences for scheduled email digests of challenge performance';

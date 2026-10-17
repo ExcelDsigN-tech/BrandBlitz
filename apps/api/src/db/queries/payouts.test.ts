@@ -160,9 +160,24 @@ describeIntegration("payouts db queries", () => {
     const brandId = await createBrand(userId);
     const challengeId = await createChallenge(brandId);
 
-    const p1 = await payouts.createPayout({ challengeId, userId, stellarAddress: "A", amountUsdc: "1.0" });
-    const p2 = await payouts.createPayout({ challengeId, userId, stellarAddress: "B", amountUsdc: "2.0" });
-    const p3 = await payouts.createPayout({ challengeId, userId, stellarAddress: "C", amountUsdc: "3.0" });
+    const p1 = await payouts.createPayout({
+      challengeId,
+      userId,
+      stellarAddress: "A",
+      amountUsdc: "1.0",
+    });
+    const p2 = await payouts.createPayout({
+      challengeId,
+      userId,
+      stellarAddress: "B",
+      amountUsdc: "2.0",
+    });
+    const p3 = await payouts.createPayout({
+      challengeId,
+      userId,
+      stellarAddress: "C",
+      amountUsdc: "3.0",
+    });
 
     const results = await payouts.getPendingPayouts(challengeId, 2);
     expect(results).toHaveLength(2);
@@ -176,7 +191,12 @@ describeIntegration("payouts db queries", () => {
     const challengeId = await createChallenge(brandId);
     const preciseAmount = "123.4567890";
 
-    const payout = await payouts.createPayout({ challengeId, userId, stellarAddress: "G", amountUsdc: preciseAmount });
+    const payout = await payouts.createPayout({
+      challengeId,
+      userId,
+      stellarAddress: "G",
+      amountUsdc: preciseAmount,
+    });
     expect(payout.amount_usdc).toBe(preciseAmount);
     expect(payout.amount_stroops).toBe("1234567890");
   });
@@ -187,8 +207,18 @@ describeIntegration("payouts db queries", () => {
     const brandId = await createBrand(userId1);
     const challengeId = await createChallenge(brandId);
 
-    const p1 = await payouts.createPayout({ challengeId, userId: userId1, stellarAddress: "GADDR1", amountUsdc: "10.0" });
-    const p2 = await payouts.createPayout({ challengeId, userId: userId2, stellarAddress: "GADDR2", amountUsdc: "20.0" });
+    const p1 = await payouts.createPayout({
+      challengeId,
+      userId: userId1,
+      stellarAddress: "GADDR1",
+      amountUsdc: "10.0",
+    });
+    const p2 = await payouts.createPayout({
+      challengeId,
+      userId: userId2,
+      stellarAddress: "GADDR2",
+      amountUsdc: "20.0",
+    });
 
     // Request in reverse order — results should match input order
     const results = await payouts.getPayoutsByIds([p2.id, p1.id]);

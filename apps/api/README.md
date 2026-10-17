@@ -186,31 +186,31 @@ one-shot run. Stop it with `Ctrl-C`.
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `PORT` | No | HTTP port (default: `3001`) |
-| `DATABASE_URL` | Yes | PostgreSQL connection string |
-| `REDIS_URL` | Yes | Redis connection string |
-| `JWT_SECRET` | Yes | HMAC secret for signing JWTs |
-| `GOOGLE_CLIENT_ID` | Yes | Google OAuth app client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | Google OAuth app client secret |
-| `STELLAR_NETWORK` | Yes | `testnet` or `public` |
-| `STELLAR_HORIZON_URL` | Yes | Horizon base URL |
-| `STELLAR_RPC_URL` | Yes | Soroban RPC URL |
-| `STELLAR_HOT_WALLET_SECRET` | Yes | Secret key for payout wallet |
-| `USDC_ISSUER` | Yes | USDC asset issuer address |
-| `S3_ENDPOINT` | Yes | S3-compatible endpoint |
-| `S3_REGION` | Yes | Region (e.g. `us-east-1`) |
-| `S3_ACCESS_KEY_ID` | Yes | S3 access key |
-| `S3_SECRET_ACCESS_KEY` | Yes | S3 secret key |
-| `S3_BUCKET` | Yes | Bucket name |
-| `S3_PUBLIC_URL` | Yes | Base URL for public asset access |
-| `S3_FORCE_PATH_STYLE` | No | `"true"` for MinIO (dev) |
-| `TWILIO_ACCOUNT_SID` | No | Twilio account SID |
-| `TWILIO_AUTH_TOKEN` | No | Twilio auth token |
-| `TWILIO_VERIFY_SERVICE_SID` | No | Twilio Verify service SID |
-| `WEBHOOK_SECRET` | Yes | `X-Webhook-Secret` header value |
-| `NEXTAUTH_URL` | Yes | Frontend base URL (for CORS) |
+| Variable                    | Required | Description                      |
+| --------------------------- | -------- | -------------------------------- |
+| `PORT`                      | No       | HTTP port (default: `3001`)      |
+| `DATABASE_URL`              | Yes      | PostgreSQL connection string     |
+| `REDIS_URL`                 | Yes      | Redis connection string          |
+| `JWT_SECRET`                | Yes      | HMAC secret for signing JWTs     |
+| `GOOGLE_CLIENT_ID`          | Yes      | Google OAuth app client ID       |
+| `GOOGLE_CLIENT_SECRET`      | Yes      | Google OAuth app client secret   |
+| `STELLAR_NETWORK`           | Yes      | `testnet` or `public`            |
+| `STELLAR_HORIZON_URL`       | Yes      | Horizon base URL                 |
+| `STELLAR_RPC_URL`           | Yes      | Soroban RPC URL                  |
+| `STELLAR_HOT_WALLET_SECRET` | Yes      | Secret key for payout wallet     |
+| `USDC_ISSUER`               | Yes      | USDC asset issuer address        |
+| `S3_ENDPOINT`               | Yes      | S3-compatible endpoint           |
+| `S3_REGION`                 | Yes      | Region (e.g. `us-east-1`)        |
+| `S3_ACCESS_KEY_ID`          | Yes      | S3 access key                    |
+| `S3_SECRET_ACCESS_KEY`      | Yes      | S3 secret key                    |
+| `S3_BUCKET`                 | Yes      | Bucket name                      |
+| `S3_PUBLIC_URL`             | Yes      | Base URL for public asset access |
+| `S3_FORCE_PATH_STYLE`       | No       | `"true"` for MinIO (dev)         |
+| `TWILIO_ACCOUNT_SID`        | No       | Twilio account SID               |
+| `TWILIO_AUTH_TOKEN`         | No       | Twilio auth token                |
+| `TWILIO_VERIFY_SERVICE_SID` | No       | Twilio Verify service SID        |
+| `WEBHOOK_SECRET`            | Yes      | `X-Webhook-Secret` header value  |
+| `NEXTAUTH_URL`              | Yes      | Frontend base URL (for CORS)     |
 
 ---
 
@@ -229,6 +229,7 @@ Authentication uses **Bearer JWTs** in the `Authorization` header. The JWT paylo
 Called by next-auth after Google OAuth. Creates or updates the user in the database, issues an API JWT.
 
 **Body:**
+
 ```json
 {
   "googleId": "1234567890",
@@ -239,6 +240,7 @@ Called by next-auth after Google OAuth. Creates or updates the user in the datab
 ```
 
 **Response `200`:**
+
 ```json
 {
   "token": "<jwt>",
@@ -255,6 +257,7 @@ Returns the authenticated user's profile.
 **Headers:** `Authorization: Bearer <token>`
 
 **Response `200`:**
+
 ```json
 {
   "user": {
@@ -277,6 +280,7 @@ Returns the authenticated user's profile.
 List active challenges. Supports `?limit=N&offset=N&brandId=uuid`.
 
 **Response `200`:**
+
 ```json
 {
   "challenges": [
@@ -301,6 +305,7 @@ List active challenges. Supports `?limit=N&offset=N&brandId=uuid`.
 Returns challenge details plus the 3 questions for this challenge. **Correct answers are withheld** — only `questionText`, `optionA/B/C/D`, and `round` are returned.
 
 **Response `200`:**
+
 ```json
 {
   "challenge": { "id": "...", "brandName": "...", ... },
@@ -324,6 +329,7 @@ Returns challenge details plus the 3 questions for this challenge. **Correct ans
 Returns the top scores for a specific challenge.
 
 **Response `200`:**
+
 ```json
 {
   "leaderboard": [
@@ -379,6 +385,7 @@ Transitions session to `active`. Requires the `challengeToken` from `warmup-comp
 Submit an answer for round 1, 2, or 3. Round must be submitted in order. The server validates the answer and returns the score immediately.
 
 **Body:**
+
 ```json
 {
   "selectedOption": "B",
@@ -387,6 +394,7 @@ Submit an answer for round 1, 2, or 3. Round must be submitted in order. The ser
 ```
 
 **Response `200`:**
+
 ```json
 {
   "correct": true,
@@ -416,6 +424,7 @@ Returns a single brand kit. Owners get full details; public access gets limited 
 Creates a new brand kit. Triggers background image optimisation (WebP, resized) via `packages/storage`.
 
 **Body:**
+
 ```json
 {
   "name": "Acme Corp",
@@ -436,6 +445,7 @@ Creates a new brand kit. Triggers background image optimisation (WebP, resized) 
 Creates a challenge for a brand kit, generates 3 quiz questions from the brand's content, and returns deposit instructions.
 
 **Body:**
+
 ```json
 {
   "poolAmountUsdc": "100.00",
@@ -444,6 +454,7 @@ Creates a challenge for a brand kit, generates 3 quiz questions from the brand's
 ```
 
 **Response `201`:**
+
 ```json
 {
   "challenge": { "id": "...", "status": "pending_deposit" },
@@ -462,6 +473,7 @@ Creates a challenge for a brand kit, generates 3 quiz questions from the brand's
 Returns a presigned S3 PUT URL valid for 60 seconds. Files are uploaded directly from the browser to MinIO/S3 — they never pass through Express.
 
 **Body:**
+
 ```json
 {
   "filename": "logo.png",
@@ -471,6 +483,7 @@ Returns a presigned S3 PUT URL valid for 60 seconds. Files are uploaded directly
 ```
 
 **Response `200`:**
+
 ```json
 {
   "presignedUrl": "https://...",
@@ -540,6 +553,7 @@ Public profile — display name, stats, recent sessions. No auth required.
 Called by a Stellar event listener when a USDC deposit is detected. Protected by `X-Webhook-Secret` header.
 
 **Body:**
+
 ```json
 {
   "memo": "BLITZ-A1B2C3",
@@ -567,12 +581,12 @@ Validates `Authorization: Bearer <jwt>` on every protected route. Adds `req.user
 
 Redis-backed rate limiters using `express-rate-limit`:
 
-| Limiter | Limit | Window | Applied to |
-|---|---|---|---|
-| `apiLimiter` | 100 requests | 15 min | All `/api/*` |
-| `authLimiter` | 10 requests | 15 min | `/auth/*` |
-| `challengeStartLimiter` | 5 requests | 1 hour | `/sessions/*/warmup-start` |
-| `uploadLimiter` | 20 requests | 1 hour | `/upload/*` |
+| Limiter                 | Limit        | Window | Applied to                 |
+| ----------------------- | ------------ | ------ | -------------------------- |
+| `apiLimiter`            | 100 requests | 15 min | All `/api/*`               |
+| `authLimiter`           | 10 requests  | 15 min | `/auth/*`                  |
+| `challengeStartLimiter` | 5 requests   | 1 hour | `/sessions/*/warmup-start` |
+| `uploadLimiter`         | 20 requests  | 1 hour | `/upload/*`                |
 
 ### `anti-cheat.ts`
 
@@ -605,6 +619,7 @@ Global Express 5 error handler. Handles known `AppError` types with clean JSON r
 ### `questions.ts`
 
 Generates 3 rounds of MCQ questions from a brand's kit:
+
 - **Round 1** — Tagline recognition (4 options: correct + 3 distractors from a pool)
 - **Round 2** — USP / brand story match
 - **Round 3** — Product image identification
@@ -625,6 +640,7 @@ Questions are stored in `challenge_questions` and never change after creation.
 ### `phone.ts`
 
 Thin wrapper around Twilio Verify API:
+
 - `sendVerificationCode(to)` — Sends SMS OTP
 - `checkVerificationCode(to, code)` — Returns `"approved"` or `"pending"`
 - `requirePhoneVerified(req, res, next)` — Middleware that blocks unverified users
@@ -645,9 +661,9 @@ Each file in `src/db/queries/` exports named functions that take typed parameter
 
 ```typescript
 // src/db/queries/users.ts
-export async function findUserByEmail(email: string): Promise<User | null>
-export async function upsertUser(data: UpsertUserData): Promise<User>
-export async function updateUserWallet(userId: string, stellarAddress: string): Promise<void>
+export async function findUserByEmail(email: string): Promise<User | null>;
+export async function upsertUser(data: UpsertUserData): Promise<User>;
+export async function updateUserWallet(userId: string, stellarAddress: string): Promise<void>;
 ```
 
 See [`../../init.sql`](../../init.sql) for the bootstrap entrypoint. The canonical schema snapshot lives in [`./migrations/00000-initial.sql`](./migrations/00000-initial.sql), and `apps/api/migrations/` contains forward migrations plus optional rollback files.
@@ -722,13 +738,13 @@ pnpm --filter @brandblitz/api migrate:dryrun
 
 The `Dockerfile` is a 5-stage multi-stage build:
 
-| Stage | Purpose |
-|---|---|
-| `deps` | Install all dependencies (cached layer) |
-| `dev` | Dev dependencies included; used with bind mounts |
-| `builder` | Compile TypeScript with tsup |
-| `prod-deps` | Production-only dependencies |
-| `runner` | Minimal final image; non-root user; SIGTERM handler |
+| Stage       | Purpose                                             |
+| ----------- | --------------------------------------------------- |
+| `deps`      | Install all dependencies (cached layer)             |
+| `dev`       | Dev dependencies included; used with bind mounts    |
+| `builder`   | Compile TypeScript with tsup                        |
+| `prod-deps` | Production-only dependencies                        |
+| `runner`    | Minimal final image; non-root user; SIGTERM handler |
 
 Build from the monorepo root (required — the build context includes `packages/`):
 

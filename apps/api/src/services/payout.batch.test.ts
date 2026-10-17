@@ -36,7 +36,13 @@ vi.mock("../lib/integrity", () => ({
 vi.mock("../lib/logger", () => ({ logger: mocks.logger }));
 vi.mock("../lib/metrics", () => ({ metrics: { inc: mocks.metricsInc } }));
 vi.mock("../lib/redis", () => ({
-  stellarSequenceStore: { get: vi.fn(), set: vi.fn(), del: vi.fn(), incr: vi.fn(), setIfAbsent: vi.fn() },
+  stellarSequenceStore: {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+    incr: vi.fn(),
+    setIfAbsent: vi.fn(),
+  },
 }));
 vi.mock("../queues/leaderboard-refresh.queue", () => ({
   enqueueLeaderboardRefresh: vi.fn(),

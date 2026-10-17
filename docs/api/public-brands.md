@@ -12,9 +12,9 @@ Returns a list of all non-deleted brands with their active challenge counts.
 
 ### Query Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `limit` | integer | 50 | Maximum number of brands to return (1–100). **Note:** This parameter is defined in the schema but is not currently enforced by the handler. All matching brands are returned. |
+| Parameter | Type    | Default | Description                                                                                                                                                                   |
+| --------- | ------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `limit`   | integer | 50      | Maximum number of brands to return (1–100). **Note:** This parameter is defined in the schema but is not currently enforced by the handler. All matching brands are returned. |
 
 ### Response
 
@@ -36,15 +36,15 @@ Returns a list of all non-deleted brands with their active challenge counts.
 
 #### Response Fields
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `id` | string (UUID) | Unique brand identifier |
-| `name` | string | Brand display name |
-| `tagline` | string \| null | Short tagline or description |
-| `logo_url` | string \| null | URL to the brand's logo image |
-| `primary_color` | string \| null | Hex color code for the brand |
-| `category` | null | Placeholder — always `null` currently |
-| `active_challenge_count` | integer | Number of challenges with `status = 'active'` |
+| Field                    | Type           | Description                                   |
+| ------------------------ | -------------- | --------------------------------------------- |
+| `id`                     | string (UUID)  | Unique brand identifier                       |
+| `name`                   | string         | Brand display name                            |
+| `tagline`                | string \| null | Short tagline or description                  |
+| `logo_url`               | string \| null | URL to the brand's logo image                 |
+| `primary_color`          | string \| null | Hex color code for the brand                  |
+| `category`               | null           | Placeholder — always `null` currently         |
+| `active_challenge_count` | integer        | Number of challenges with `status = 'active'` |
 
 ### Sorting
 

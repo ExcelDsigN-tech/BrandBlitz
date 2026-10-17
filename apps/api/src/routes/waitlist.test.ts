@@ -32,9 +32,7 @@ describe("POST /waitlist", () => {
   it("returns 201 on successful signup", async () => {
     mocks.dbQuery.mockResolvedValueOnce({ rows: [] });
 
-    const res = await request(app)
-      .post("/waitlist")
-      .send({ email: "test@example.com" });
+    const res = await request(app).post("/waitlist").send({ email: "test@example.com" });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual({ message: "You're on the list!" });
@@ -48,9 +46,7 @@ describe("POST /waitlist", () => {
     // ON CONFLICT DO NOTHING means the INSERT is a no-op; same 201 response
     mocks.dbQuery.mockResolvedValueOnce({ rows: [] });
 
-    const res = await request(app)
-      .post("/waitlist")
-      .send({ email: "duplicate@example.com" });
+    const res = await request(app).post("/waitlist").send({ email: "duplicate@example.com" });
 
     expect(res.status).toBe(201);
     expect(res.body).toEqual({ message: "You're on the list!" });
@@ -72,9 +68,7 @@ describe("POST /waitlist", () => {
   });
 
   it("returns 422 for an invalid email", async () => {
-    const res = await request(app)
-      .post("/waitlist")
-      .send({ email: "not-an-email" });
+    const res = await request(app).post("/waitlist").send({ email: "not-an-email" });
 
     expect(res.status).toBe(422);
     expect(res.body.code).toBe("INVALID_EMAIL");
@@ -85,9 +79,7 @@ describe("POST /waitlist", () => {
     const longEmail = `${"a".repeat(250)}@example.com`;
     expect(longEmail.length).toBeGreaterThan(254);
 
-    const res = await request(app)
-      .post("/waitlist")
-      .send({ email: longEmail });
+    const res = await request(app).post("/waitlist").send({ email: longEmail });
 
     expect(res.status).toBe(422);
     expect(res.body.code).toBe("INVALID_EMAIL");
@@ -112,9 +104,7 @@ describe("POST /waitlist", () => {
     blockedApp.use("/waitlist", blockedWaitlistRouter);
     blockedApp.use(errorHandler);
 
-    const res = await request(blockedApp)
-      .post("/waitlist")
-      .send({ email: "rate@example.com" });
+    const res = await request(blockedApp).post("/waitlist").send({ email: "rate@example.com" });
 
     expect(res.status).toBe(429);
   });

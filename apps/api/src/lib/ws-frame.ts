@@ -16,10 +16,7 @@ export function createWebSocketAcceptKey(clientKey: string): string {
  * Encode an unmasked WebSocket frame to send to client (RFC 6455 Section 5.1).
  */
 export function encodeWsFrame(data: string | object, opcode = 0x01): Buffer {
-  const payload = Buffer.from(
-    typeof data === "string" ? data : JSON.stringify(data),
-    "utf8"
-  );
+  const payload = Buffer.from(typeof data === "string" ? data : JSON.stringify(data), "utf8");
   const length = payload.length;
   let header: Buffer;
 

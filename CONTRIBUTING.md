@@ -29,14 +29,14 @@ All branches must follow this pattern:
 <type>/issue-<N>-<short-description>
 ```
 
-| Type | When to use |
-|---|---|
-| `feat` | New feature or user-facing behaviour |
-| `fix` | Bug fix |
-| `test` | Adding or updating tests only |
+| Type       | When to use                                             |
+| ---------- | ------------------------------------------------------- |
+| `feat`     | New feature or user-facing behaviour                    |
+| `fix`      | Bug fix                                                 |
+| `test`     | Adding or updating tests only                           |
 | `refactor` | Code change that neither adds a feature nor fixes a bug |
-| `chore` | Tooling, dependencies, build scripts |
-| `docs` | Documentation only |
+| `chore`    | Tooling, dependencies, build scripts                    |
+| `docs`     | Documentation only                                      |
 
 **Examples**
 
@@ -67,7 +67,7 @@ BrandBlitz uses [Conventional Commits](https://www.conventionalcommits.org/en/v1
 - **type** — one of: `feat`, `fix`, `test`, `refactor`, `chore`, `docs`, `perf`, `ci`
 - **scope** — optional, the affected package or layer: `api`, `web`, `stellar`, `storage`, `contracts`, `worker`
 - **summary** — present tense, lowercase, no trailing period, under 72 characters
-- **body** — wrap at 100 characters; explain *why*, not *what*
+- **body** — wrap at 100 characters; explain _why_, not _what_
 - **footer** — `Closes #N` or `Fixes #N` to auto-close the linked issue
 
 **Examples**
@@ -159,6 +159,7 @@ WIP: fixing stuff                  ← not a valid type
 ### Merge criteria
 
 A PR may be merged when it has:
+
 1. At least **1 approving review** from a maintainer
 2. All CI checks green (type-check, lint, tests, PR title lint)
 3. No unresolved blocking comments
@@ -186,13 +187,13 @@ BrandBlitz is built as part of the [Drips programme](https://drips.network). The
 
 Use the appropriate issue template when opening a new issue (see issue [#60](../../issues/60)):
 
-| Template | When to use |
-|---|---|
-| **Bug report** | Something that was working and now isn't, or produces incorrect output |
-| **Feature request** | New functionality or a change to existing behaviour |
-| **Test coverage** | A module that lacks tests; specify the file and target coverage % |
-| **Documentation** | Incorrect, outdated, or missing docs |
-| **Chore / maintenance** | Dependency upgrades, tooling changes, CI fixes |
+| Template                | When to use                                                            |
+| ----------------------- | ---------------------------------------------------------------------- |
+| **Bug report**          | Something that was working and now isn't, or produces incorrect output |
+| **Feature request**     | New functionality or a change to existing behaviour                    |
+| **Test coverage**       | A module that lacks tests; specify the file and target coverage %      |
+| **Documentation**       | Incorrect, outdated, or missing docs                                   |
+| **Chore / maintenance** | Dependency upgrades, tooling changes, CI fixes                         |
 
 If no template fits, open a blank issue with at minimum: context, expected behaviour, and actual behaviour.
 
@@ -231,7 +232,7 @@ own `style:` commit if the diff gets noisy.
 Commits are blocked by [`scripts/gitleaks.mjs`](../scripts/gitleaks.mjs) via the
 [`.husky/pre-commit`](../.husky/pre-commit) hook (`pnpm gitleaks:pre-commit` — pipes
 `git diff --cached` into `gitleaks detect --pipe --redact --config .gitleaks.toml`).
-If a fixture or test value that *looks* like a secret triggers a false positive (e.g.
+If a fixture or test value that _looks_ like a secret triggers a false positive (e.g.
 a Stellar `S...` key in a test fixture), add a scoped allowlist entry to
 [`.gitleaks.toml`](../.gitleaks.toml) instead of bypassing the hook.
 
@@ -375,14 +376,14 @@ and remains the CI gate — use the watch variant only for local iteration.
 Scope any `turbo.json` task (`build`, `dev`, `lint`, `test`, `type-check`) to one workspace
 instead of running it across the whole monorepo.
 
-| Workspace | Package name | Scripts |
-|---|---|---|
-| `apps/api` | `@brandblitz/api` | build, dev, lint, test, type-check |
-| `apps/web` | `@brandblitz/web` | build, dev, lint, test, type-check |
+| Workspace              | Package name                  | Scripts                            |
+| ---------------------- | ----------------------------- | ---------------------------------- |
+| `apps/api`             | `@brandblitz/api`             | build, dev, lint, test, type-check |
+| `apps/web`             | `@brandblitz/web`             | build, dev, lint, test, type-check |
 | `apps/deposit-monitor` | `@brandblitz/deposit-monitor` | build, dev, lint, test, type-check |
-| `packages/config` | `@brandblitz/config` | build, dev, type-check |
-| `packages/stellar` | `@brandblitz/stellar` | build, dev, lint, test, type-check |
-| `packages/storage` | `@brandblitz/storage` | build, dev, lint, test, type-check |
+| `packages/config`      | `@brandblitz/config`          | build, dev, type-check             |
+| `packages/stellar`     | `@brandblitz/stellar`         | build, dev, lint, test, type-check |
+| `packages/storage`     | `@brandblitz/storage`         | build, dev, lint, test, type-check |
 
 ```bash
 # turbo: honours turbo.json dependsOn (e.g. builds ^dependencies first) and caching
@@ -404,13 +405,13 @@ and errors under `pnpm --filter`.
 
 ### Common Issues
 
-| Symptom | Fix |
-|---|---|
-| `Error: STELLAR_HOT_WALLET_SECRET required` | Set `STELLAR_HOT_WALLET_SECRET=SA...` in `.env`. Generate a testnet keypair with `stellar-cli keys generate`. |
-| S3 uploads fail locally | Ensure MinIO is running (`docker compose up minio minio-setup`) and `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` match `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` in `.env`. |
-| `OZ_FACILITATOR_API_KEY required` | Required only for CareGuard services. Not needed for BrandBlitz. |
-| PostgreSQL connection refused | Run `docker compose up postgres` and check `DATABASE_URL` points to `localhost:5432`. |
-| `pnpm: command not found` | Install with `npm install -g pnpm@10.33.0`. |
-| NextAuth `NEXTAUTH_SECRET` error | Set `NEXTAUTH_SECRET` (same value as `JWT_SECRET` is fine for local dev). |
+| Symptom                                     | Fix                                                                                                                                                                    |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Error: STELLAR_HOT_WALLET_SECRET required` | Set `STELLAR_HOT_WALLET_SECRET=SA...` in `.env`. Generate a testnet keypair with `stellar-cli keys generate`.                                                          |
+| S3 uploads fail locally                     | Ensure MinIO is running (`docker compose up minio minio-setup`) and `S3_ACCESS_KEY_ID`/`S3_SECRET_ACCESS_KEY` match `MINIO_ROOT_USER`/`MINIO_ROOT_PASSWORD` in `.env`. |
+| `OZ_FACILITATOR_API_KEY required`           | Required only for CareGuard services. Not needed for BrandBlitz.                                                                                                       |
+| PostgreSQL connection refused               | Run `docker compose up postgres` and check `DATABASE_URL` points to `localhost:5432`.                                                                                  |
+| `pnpm: command not found`                   | Install with `npm install -g pnpm@10.33.0`.                                                                                                                            |
+| NextAuth `NEXTAUTH_SECRET` error            | Set `NEXTAUTH_SECRET` (same value as `JWT_SECRET` is fine for local dev).                                                                                              |
 
 For questions, open a GitHub Discussion or ask in the project Discord.

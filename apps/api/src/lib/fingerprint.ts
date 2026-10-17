@@ -12,9 +12,10 @@ export function computeFingerprint(params: {
   const clientSig = `${visitorId ?? ""}|${deviceId ?? ""}`;
   // 24-bit prefix collapses NAT siblings without exposing the full address
   const ip24 = ip ? ip.split(".").slice(0, 3).join(".") : "";
-  const uaHash = createHash("sha256").update(userAgent ?? "").digest("hex").slice(0, 8);
+  const uaHash = createHash("sha256")
+    .update(userAgent ?? "")
+    .digest("hex")
+    .slice(0, 8);
 
-  return createHash("sha256")
-    .update(`${clientSig}:${ip24}:${uaHash}`)
-    .digest("hex");
+  return createHash("sha256").update(`${clientSig}:${ip24}:${uaHash}`).digest("hex");
 }

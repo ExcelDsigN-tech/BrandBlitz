@@ -46,7 +46,7 @@ describeIntegration("payout queue retries on transient errors", () => {
 
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
     await query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
-    
+
     // Execute init.sql equivalent tables for test
     const fs = await import("fs");
     const path = await import("path");
@@ -79,32 +79,47 @@ describeIntegration("payout queue retries on transient errors", () => {
 
   async function seedChallengeAndPendingPayout(challengeId: string) {
     const userId = randomUUID();
-    
-    await query(`
+
+    await query(
+      `
       INSERT INTO users (id, email, display_name, stellar_address)
       VALUES ($1, $2, 'Winner', 'GWINNERPUBLICKEY1234')
-    `, [userId, `winner-${userId}@example.com`]);
+    `,
+      [userId, `winner-${userId}@example.com`]
+    );
 
-    await query(`
+    await query(
+      `
       INSERT INTO challenges (id, status, pool_amount_stroops)
       VALUES ($1, 'ended', 10000000)
-    `, [challengeId]);
+    `,
+      [challengeId]
+    );
 
-    await query(`
+    await query(
+      `
       INSERT INTO game_sessions (user_id, challenge_id, status, total_score, completed_at)
       VALUES ($1, $2, 'completed', 100, NOW())
-    `, [userId, challengeId]);
-    
+    `,
+      [userId, challengeId]
+    );
+
     // Set integrity hmac using the correct secret to pass verifySessionHmac
     const { generateSessionHmac } = await import("../../lib/integrity");
-    const sessionRes = await query<{ id: string, total_score: number, completed_at: Date }>(`SELECT id, total_score, completed_at FROM game_sessions WHERE user_id = $1 AND challenge_id = $2`, [userId, challengeId]);
-    
+    const sessionRes = await query<{ id: string; total_score: number; completed_at: Date }>(
+      `SELECT id, total_score, completed_at FROM game_sessions WHERE user_id = $1 AND challenge_id = $2`,
+      [userId, challengeId]
+    );
+
     const hmac = generateSessionHmac(
       sessionRes.rows[0].id,
       sessionRes.rows[0].total_score,
       sessionRes.rows[0].completed_at.toISOString()
     );
-    await query(`UPDATE game_sessions SET integrity_hmac = $1 WHERE id = $2`, [hmac, sessionRes.rows[0].id]);
+    await query(`UPDATE game_sessions SET integrity_hmac = $1 WHERE id = $2`, [
+      hmac,
+      sessionRes.rows[0].id,
+    ]);
   }
 
   it("retries on 504 and completes on third attempt", async () => {
@@ -119,15 +134,17 @@ describeIntegration("payout queue retries on transient errors", () => {
         (err as any).code = "504"; // Simulate Horizon 504
         throw err;
       }
-      return [{
-        txHash: "success-tx-hash",
-        recipients: [{ address: "GWINNERPUBLICKEY1234", amount: "1.0000000" }],
-        success: true
-      }];
+      return [
+        {
+          txHash: "success-tx-hash",
+          recipients: [{ address: "GWINNERPUBLICKEY1234", amount: "1.0000000" }],
+          success: true,
+        },
+      ];
     });
 
     await enqueuePayoutJob(challengeId);
-    
+
     // Wait for job to process and complete
     await new Promise<void>((resolve, reject) => {
       worker.on("completed", (job) => {
@@ -144,7 +161,10 @@ describeIntegration("payout queue retries on transient errors", () => {
 
     expect(attempts).toBe(3);
 
-    const payoutRes = await query(`SELECT status, stellar_tx_hash FROM payouts WHERE challenge_id = $1`, [challengeId]);
+    const payoutRes = await query(
+      `SELECT status, stellar_tx_hash FROM payouts WHERE challenge_id = $1`,
+      [challengeId]
+    );
     expect(payoutRes.rows).toHaveLength(1);
     expect(payoutRes.rows[0].status).toBe("sent");
     expect(payoutRes.rows[0].stellar_tx_hash).toBe("success-tx-hash");
@@ -163,7 +183,7 @@ describeIntegration("payout queue retries on transient errors", () => {
     });
 
     await enqueuePayoutJob(challengeId);
-    
+
     // Wait for job to fail completely
     await new Promise<void>((resolve) => {
       worker.on("failed", (job) => {
@@ -178,9 +198,11 @@ describeIntegration("payout queue retries on transient errors", () => {
     expect(submitCount).toBe(5);
 
     // Give the DLQ handler a moment to execute
-    await new Promise(res => setTimeout(res, 500));
+    await new Promise((res) => setTimeout(res, 500));
 
-    const payoutRes = await query(`SELECT status FROM payouts WHERE challenge_id = $1`, [challengeId]);
+    const payoutRes = await query(`SELECT status FROM payouts WHERE challenge_id = $1`, [
+      challengeId,
+    ]);
     expect(payoutRes.rows).toHaveLength(1);
     expect(payoutRes.rows[0].status).toBe("failed");
   }, 30000);

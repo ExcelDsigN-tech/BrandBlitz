@@ -4,16 +4,16 @@ Badges are achievement milestones that track your progress across challenges, st
 
 ## Badge Catalog
 
-| ID | Name | Category | Criteria |
-|---|---|---|---|
-| `first_win` | First Win | `achievement` | Complete your first non-practice challenge |
-| `perfect_score` | Perfect Score | `accuracy` | Score 450 points in a single challenge |
-| `streak_3` | On a Roll | `streak` | Maintain a 3-day login streak |
-| `streak_7` | Week Warrior | `streak` | Maintain a 7-day login streak |
-| `wins_10` | Veteran | `achievement` | Complete 10 non-practice challenges |
-| `league_silver` | Silver Climber | `league` | Finish top 3 in your Bronze league group |
-| `league_gold` | Gold Contender | `league` | Finish top 3 in your Silver league group |
-| `league_diamond` | Diamond Elite | `league` | Finish top 3 in your Gold league group |
+| ID               | Name           | Category      | Criteria                                   |
+| ---------------- | -------------- | ------------- | ------------------------------------------ |
+| `first_win`      | First Win      | `achievement` | Complete your first non-practice challenge |
+| `perfect_score`  | Perfect Score  | `accuracy`    | Score 450 points in a single challenge     |
+| `streak_3`       | On a Roll      | `streak`      | Maintain a 3-day login streak              |
+| `streak_7`       | Week Warrior   | `streak`      | Maintain a 7-day login streak              |
+| `wins_10`        | Veteran        | `achievement` | Complete 10 non-practice challenges        |
+| `league_silver`  | Silver Climber | `league`      | Finish top 3 in your Bronze league group   |
+| `league_gold`    | Gold Contender | `league`      | Finish top 3 in your Silver league group   |
+| `league_diamond` | Diamond Elite  | `league`      | Finish top 3 in your Gold league group     |
 
 ---
 
@@ -27,9 +27,9 @@ Optional (`authenticateOptional`). Unauthenticated responses are cached at the C
 
 ### Query Parameters
 
-| Param | Type | Required | Description |
-|---|---|---|---|
-| `category` | string | No | Filter by category (`achievement`, `accuracy`, `streak`, `league`) |
+| Param      | Type   | Required | Description                                                        |
+| ---------- | ------ | -------- | ------------------------------------------------------------------ |
+| `category` | string | No       | Filter by category (`achievement`, `accuracy`, `streak`, `league`) |
 
 ### Example Request — Unauthenticated
 
@@ -96,9 +96,9 @@ curl -H "Authorization: Bearer eyJhbG..." \
 
 ### Error Responses
 
-| Status | Body | Trigger |
-|---|---|---|
-| `400` | `{ "error": "Invalid query parameters", "code": "INVALID_QUERY" }` | Unknown query parameter |
+| Status | Body                                                               | Trigger                 |
+| ------ | ------------------------------------------------------------------ | ----------------------- |
+| `400`  | `{ "error": "Invalid query parameters", "code": "INVALID_QUERY" }` | Unknown query parameter |
 
 ---
 
@@ -106,9 +106,9 @@ curl -H "Authorization: Bearer eyJhbG..." \
 
 These endpoints are on the `/users` route and require authentication:
 
-| Endpoint | Description |
-|---|---|
-| `GET /users/me/badges` | Returns only badges you've earned, ordered by `awarded_at` descending. Supports `?category=` filter. |
+| Endpoint                | Description                                                                                                         |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `GET /users/me/badges`  | Returns only badges you've earned, ordered by `awarded_at` descending. Supports `?category=` filter.                |
 | `GET /users/:id/badges` | Returns all 8 badge definitions merged with the specified user's earned status. You can only query your own badges. |
 
 ---

@@ -5,14 +5,7 @@
     {
       "label": "Align shared toolchain dependencies across all workspaces",
       "packages": ["**"],
-      "dependencies": [
-        "typescript",
-        "vitest",
-        "tsup",
-        "@vitest/coverage-v8",
-        "zod",
-        "@types/node"
-      ],
+      "dependencies": ["typescript", "vitest", "tsup", "@vitest/coverage-v8", "zod", "@types/node"],
       "pinVersion": "auto"
     },
     {

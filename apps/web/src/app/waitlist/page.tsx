@@ -158,9 +158,7 @@ export default function WaitlistPage() {
                 You&apos;re on the list!
               </p>
               {position !== null && (
-                <p className="mb-6 text-3xl font-bold text-[var(--primary)]">
-                  #{position}
-                </p>
+                <p className="mb-6 text-3xl font-bold text-[var(--primary)]">#{position}</p>
               )}
               <p className="mb-6 text-sm text-[var(--muted-foreground)]">
                 Share with friends to move up the waitlist.
@@ -187,7 +185,10 @@ export default function WaitlistPage() {
             <CardContent className="py-8">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="waitlist-email" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+                  <label
+                    htmlFor="waitlist-email"
+                    className="mb-1 block text-sm font-medium text-[var(--foreground)]"
+                  >
                     Email address
                   </label>
                   <Input

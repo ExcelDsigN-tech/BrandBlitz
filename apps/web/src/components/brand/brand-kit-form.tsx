@@ -104,7 +104,10 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
       return;
     }
 
-    if (secondTier.prizePoolUsdc && Number(secondTier.prizePoolUsdc) >= Number(fields.poolAmountUsdc)) {
+    if (
+      secondTier.prizePoolUsdc &&
+      Number(secondTier.prizePoolUsdc) >= Number(fields.poolAmountUsdc)
+    ) {
       setError("The higher-stakes prize pool must be smaller than the total pool.");
       return;
     }
@@ -178,7 +181,9 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
                     {
                       name: "Standard",
                       entryFeeUsdc: "0",
-                      prizePoolUsdc: (Number(fields.poolAmountUsdc) - Number(secondTier.prizePoolUsdc)).toFixed(7),
+                      prizePoolUsdc: (
+                        Number(fields.poolAmountUsdc) - Number(secondTier.prizePoolUsdc)
+                      ).toFixed(7),
                     },
                     { name: "Higher stakes", ...secondTier },
                   ],
@@ -325,7 +330,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
               {fieldError("secondaryColor")}
             </div>
           </div>
-          <div className="space-y-2 mt-6">
+          <div className="mt-6 space-y-2">
             <Label>Gradient Preview</Label>
             <div
               className="h-16 w-full rounded-md border border-[var(--border)] shadow-sm"
@@ -404,11 +409,27 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
             <div className="grid gap-3 rounded-lg border border-[var(--border)] p-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="secondTierEntryFee">Optional higher-stakes entry fee (USDC)</Label>
-                <Input id="secondTierEntryFee" inputMode="decimal" value={secondTier.entryFeeUsdc} onChange={(event) => setSecondTier((current) => ({ ...current, entryFeeUsdc: event.target.value }))} />
+                <Input
+                  id="secondTierEntryFee"
+                  inputMode="decimal"
+                  value={secondTier.entryFeeUsdc}
+                  onChange={(event) =>
+                    setSecondTier((current) => ({ ...current, entryFeeUsdc: event.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="secondTierPrizePool">Optional higher-stakes prize pool (USDC)</Label>
-                <Input id="secondTierPrizePool" inputMode="decimal" value={secondTier.prizePoolUsdc} onChange={(event) => setSecondTier((current) => ({ ...current, prizePoolUsdc: event.target.value }))} />
+                <Label htmlFor="secondTierPrizePool">
+                  Optional higher-stakes prize pool (USDC)
+                </Label>
+                <Input
+                  id="secondTierPrizePool"
+                  inputMode="decimal"
+                  value={secondTier.prizePoolUsdc}
+                  onChange={(event) =>
+                    setSecondTier((current) => ({ ...current, prizePoolUsdc: event.target.value }))
+                  }
+                />
               </div>
             </div>
           </div>
@@ -438,7 +459,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
               <label
                 className={`flex cursor-pointer flex-col rounded-lg border p-4 transition-colors ${
                   fields.payoutSchedule === "instant"
-                    ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                    ? "bg-[var(--primary)]/5 border-[var(--primary)]"
                     : "border-[var(--border)]"
                 }`}
               >
@@ -452,7 +473,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
                     onChange={() => setFields((prev) => ({ ...prev, payoutSchedule: "instant" }))}
                     className="text-[var(--primary)]"
                   />
-                  <span className="font-semibold text-sm">Instant Settlement</span>
+                  <span className="text-sm font-semibold">Instant Settlement</span>
                 </div>
                 <span className="mt-1 text-xs text-[var(--muted-foreground)]">
                   Winners receive prize payouts immediately upon challenge settlement.
@@ -461,7 +482,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
               <label
                 className={`flex cursor-pointer flex-col rounded-lg border p-4 transition-colors ${
                   fields.payoutSchedule === "batched"
-                    ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                    ? "bg-[var(--primary)]/5 border-[var(--primary)]"
                     : "border-[var(--border)]"
                 }`}
               >
@@ -475,7 +496,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
                     onChange={() => setFields((prev) => ({ ...prev, payoutSchedule: "batched" }))}
                     className="text-[var(--primary)]"
                   />
-                  <span className="font-semibold text-sm">Daily Batched Run</span>
+                  <span className="text-sm font-semibold">Daily Batched Run</span>
                 </div>
                 <span className="mt-1 text-xs text-[var(--muted-foreground)]">
                   Winners are grouped and processed together in a fixed daily batch at 03:00 UTC.

@@ -19,16 +19,16 @@ Every production query file was reviewed. All values are passed as bound paramet
 there is **no** string concatenation of values into SQL. Two files build SQL with a
 dynamic **identifier**, and both are constrained:
 
-| File | Query calls | Dynamic identifier? | Status |
-| --- | --- | --- | --- |
-| `brands.ts` | 7 | `updateBrand` SET clause column names | **Fixed** — see below |
-| `sessions.ts` | 11 | `recordRoundScore` `round_${round}_(score\|answer)` | Safe — `round` is validated to be `1 \| 2 \| 3` before the identifier is built |
-| `challenges.ts` | 11 | none | Safe |
-| `users.ts` | 8 | none | Safe |
-| `leagues.ts` | 6 | none | Safe |
-| `payouts.ts` | 5 | none | Safe |
-| `config.ts` | 4 | none | Safe |
-| `fraud-flags.ts` | 1 | none | Safe |
+| File             | Query calls | Dynamic identifier?                                 | Status                                                                         |
+| ---------------- | ----------- | --------------------------------------------------- | ------------------------------------------------------------------------------ |
+| `brands.ts`      | 7           | `updateBrand` SET clause column names               | **Fixed** — see below                                                          |
+| `sessions.ts`    | 11          | `recordRoundScore` `round_${round}_(score\|answer)` | Safe — `round` is validated to be `1 \| 2 \| 3` before the identifier is built |
+| `challenges.ts`  | 11          | none                                                | Safe                                                                           |
+| `users.ts`       | 8           | none                                                | Safe                                                                           |
+| `leagues.ts`     | 6           | none                                                | Safe                                                                           |
+| `payouts.ts`     | 5           | none                                                | Safe                                                                           |
+| `config.ts`      | 4           | none                                                | Safe                                                                           |
+| `fraud-flags.ts` | 1           | none                                                | Safe                                                                           |
 
 ### `updateBrand` hardening
 
@@ -42,7 +42,7 @@ Fix: an explicit `UPDATABLE_BRAND_COLUMNS` allowlist. `updateBrand` now rejects 
 any key not in the allowlist **before** building the clause, so the interpolated
 identifiers can only ever be known-safe column names. Regression coverage lives in
 `apps/api/src/db/queries/brands.security.test.ts` (a non-allowlisted key is rejected
-without touching the DB; a malicious *value* is shown to travel as a bound parameter,
+without touching the DB; a malicious _value_ is shown to travel as a bound parameter,
 never as interpolated SQL).
 
 ### Recommended follow-up — lint enforcement
@@ -59,8 +59,8 @@ values, e.g.:
   "extends": ["plugin:security/recommended"],
   "rules": {
     "security/detect-non-literal-fs-filename": "warn",
-    "security/detect-object-injection": "warn"
-  }
+    "security/detect-object-injection": "warn",
+  },
 }
 ```
 

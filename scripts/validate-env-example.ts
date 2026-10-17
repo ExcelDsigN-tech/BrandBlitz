@@ -24,39 +24,28 @@ const envExamplePath = resolve(process.cwd(), ".env.example");
 const envExample = parseEnvExample(readFileSync(envExamplePath, "utf8"));
 const result = configSchema.safeParse({
   ...envExample,
-  HOT_WALLET_SECRET:
-    envExample.HOT_WALLET_SECRET ?? envExample.STELLAR_HOT_WALLET_SECRET,
+  HOT_WALLET_SECRET: envExample.HOT_WALLET_SECRET ?? envExample.STELLAR_HOT_WALLET_SECRET,
   S3_ACCESS_KEY_ID: envExample.S3_ACCESS_KEY_ID ?? envExample.S3_ACCESS_KEY,
-  S3_SECRET_ACCESS_KEY:
-    envExample.S3_SECRET_ACCESS_KEY ?? envExample.S3_SECRET_KEY,
-  TWILIO_SERVICE_SID:
-    envExample.TWILIO_SERVICE_SID ?? envExample.TWILIO_VERIFY_SERVICE_SID,
+  S3_SECRET_ACCESS_KEY: envExample.S3_SECRET_ACCESS_KEY ?? envExample.S3_SECRET_KEY,
+  TWILIO_SERVICE_SID: envExample.TWILIO_SERVICE_SID ?? envExample.TWILIO_VERIFY_SERVICE_SID,
 });
 
 if (!result.success) {
   const missing = result.error.issues
     .filter((issue) => {
       const typedIssue = issue as { code: string; received?: string };
-      return (
-        typedIssue.code === "invalid_type" &&
-        typedIssue.received === "undefined"
-      );
+      return typedIssue.code === "invalid_type" && typedIssue.received === "undefined";
     })
     .map((issue) => issue.path.join("."));
 
   const invalid = result.error.issues
     .filter((issue) => {
       const typedIssue = issue as { code: string; received?: string };
-      return (
-        typedIssue.code !== "invalid_type" ||
-        typedIssue.received !== "undefined"
-      );
+      return typedIssue.code !== "invalid_type" || typedIssue.received !== "undefined";
     })
     .map((issue) => `${issue.path.join(".")}: ${issue.message}`);
 
-  console.error(
-    "❌ .env.example is out of sync with apps/api/src/lib/config-schema.ts",
-  );
+  console.error("❌ .env.example is out of sync with apps/api/src/lib/config-schema.ts");
   if (missing.length > 0) {
     console.error(`Missing required env vars: ${missing.join(", ")}`);
   }

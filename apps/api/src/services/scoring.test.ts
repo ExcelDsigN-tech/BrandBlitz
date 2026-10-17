@@ -25,36 +25,24 @@ describe("scoring service", () => {
     };
 
     it("returns 150 for instant correct answer (0ms)", () => {
-      expect(
-        calculateRoundScore({ ...base, reactionTimeMs: 0 })
-      ).toBe(150);
+      expect(calculateRoundScore({ ...base, reactionTimeMs: 0 })).toBe(150);
     });
 
     it("returns 125 for ~7.5s", () => {
-      expect(
-        calculateRoundScore({ ...base, reactionTimeMs: 7500 })
-      ).toBe(125);
+      expect(calculateRoundScore({ ...base, reactionTimeMs: 7500 })).toBe(125);
     });
 
     it("returns 100 for 15s boundary", () => {
-      expect(
-        calculateRoundScore({ ...base, reactionTimeMs: 15000 })
-      ).toBe(100);
+      expect(calculateRoundScore({ ...base, reactionTimeMs: 15000 })).toBe(100);
     });
 
     it("returns 100 for slow answers beyond 15s", () => {
-      expect(
-        calculateRoundScore({ ...base, reactionTimeMs: 30000 })
-      ).toBe(100);
+      expect(calculateRoundScore({ ...base, reactionTimeMs: 30000 })).toBe(100);
     });
 
     it("returns 100 (bonus 0) for 15001ms and does not throw", () => {
-      expect(() =>
-        calculateRoundScore({ ...base, reactionTimeMs: 15001 })
-      ).not.toThrow();
-      expect(
-        calculateRoundScore({ ...base, reactionTimeMs: 15001 })
-      ).toBe(100);
+      expect(() => calculateRoundScore({ ...base, reactionTimeMs: 15001 })).not.toThrow();
+      expect(calculateRoundScore({ ...base, reactionTimeMs: 15001 })).toBe(100);
     });
 
     it("keeps median reaction time bonus strictly between 0 and max", () => {
@@ -218,7 +206,11 @@ describe("scoring service", () => {
 
     it("splits the pool by floor division among three tied players without exceeding the pool", () => {
       const pool = 100n;
-      const shares = [calculatePayoutShareStroops(1, 3, pool), calculatePayoutShareStroops(1, 3, pool), calculatePayoutShareStroops(1, 3, pool)];
+      const shares = [
+        calculatePayoutShareStroops(1, 3, pool),
+        calculatePayoutShareStroops(1, 3, pool),
+        calculatePayoutShareStroops(1, 3, pool),
+      ];
       const total = shares.reduce((sum, s) => sum + s, 0n);
 
       expect(shares.every((s) => s === 33n)).toBe(true);
@@ -259,9 +251,7 @@ describe("scoring service", () => {
     it("never produces NaN or negative values", () => {
       for (let i = 0; i < 1000; i++) {
         const score = calculateRoundScore({
-          selectedOption: (["A", "B", "C", "D"] as const)[
-            Math.floor(Math.random() * 4)
-          ],
+          selectedOption: (["A", "B", "C", "D"] as const)[Math.floor(Math.random() * 4)],
           correctOption: "A",
           reactionTimeMs: Math.random() * 50000,
         });

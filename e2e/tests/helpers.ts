@@ -29,10 +29,7 @@ export async function signInWithMockGoogle(
   await page.getByRole("button", { name: /continue with google/i }).click();
 }
 
-export async function createApiToken(
-  request: APIRequestContext,
-  user: MockUser
-): Promise<string> {
+export async function createApiToken(request: APIRequestContext, user: MockUser): Promise<string> {
   const response = await request.post(`${API_BASE_URL}/auth/google/callback`, {
     data: {
       idToken: `e2e:${user.email}:${user.name}`,
@@ -112,7 +109,8 @@ export async function seedFraudFlag(
   userId: string,
   flagType: string = "reaction_time_anomaly"
 ): Promise<string> {
-  const dbUrl = process.env.DATABASE_URL ?? "postgresql://brandblitz:brandblitz_dev@localhost:5432/brandblitz";
+  const dbUrl =
+    process.env.DATABASE_URL ?? "postgresql://brandblitz:brandblitz_dev@localhost:5432/brandblitz";
   const response = await request.post(`${API_BASE_URL}/admin/test/seed-fraud-flag`, {
     data: { sessionId, userId, flagType },
   });
@@ -121,10 +119,7 @@ export async function seedFraudFlag(
   return payload.flagId;
 }
 
-export async function makeUserAdmin(
-  request: APIRequestContext,
-  userId: string
-): Promise<void> {
+export async function makeUserAdmin(request: APIRequestContext, userId: string): Promise<void> {
   const response = await request.post(`${API_BASE_URL}/admin/test/promote-to-admin`, {
     data: { userId },
   });
@@ -138,9 +133,7 @@ export async function getFraudFlagsFromDb(
   const params = new URLSearchParams();
   if (status) params.append("status", status);
 
-  const response = await request.get(
-    `${API_BASE_URL}/admin/test/fraud-flags?${params.toString()}`
-  );
+  const response = await request.get(`${API_BASE_URL}/admin/test/fraud-flags?${params.toString()}`);
   expect(response.ok()).toBeTruthy();
   const payload = (await response.json()) as { flags: Array<any> };
   return payload.flags;

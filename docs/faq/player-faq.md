@@ -25,12 +25,12 @@ A streak counts consecutive days where you complete at least one challenge sessi
 
 You earn badge rewards at streak milestones:
 
-| Days | Badge |
-|------|-------|
-| 3 | `streak_3_days` |
-| 7 | `streak_7_days` |
-| 14 | `streak_14_days` |
-| 30 | `streak_30_days` |
+| Days | Badge            |
+| ---- | ---------------- |
+| 3    | `streak_3_days`  |
+| 7    | `streak_7_days`  |
+| 14   | `streak_14_days` |
+| 30   | `streak_30_days` |
 
 You also receive in-app notifications at 7, 30, and 100 days.
 

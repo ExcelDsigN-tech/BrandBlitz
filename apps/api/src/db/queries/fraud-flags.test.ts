@@ -17,9 +17,7 @@ describe("getFraudFlags index-aligned query (issue #342)", () => {
   beforeEach(() => {
     queryMock.mockReset();
     // rows query + count query both resolve
-    queryMock
-      .mockResolvedValueOnce({ rows: [] })
-      .mockResolvedValueOnce({ rows: [{ count: "0" }] });
+    queryMock.mockResolvedValueOnce({ rows: [] }).mockResolvedValueOnce({ rows: [{ count: "0" }] });
   });
 
   it("orders by the indexed created_at column, newest first", async () => {
@@ -37,9 +35,7 @@ describe("getFraudFlags index-aligned query (issue #342)", () => {
 
   it("passes the page size through as the LIMIT parameter", async () => {
     await getFraudFlags({ pageSize: 50 });
-    const rowsCall = queryMock.mock.calls.find((c) =>
-      String(c[0]).includes("FROM fraud_flags ff"),
-    );
+    const rowsCall = queryMock.mock.calls.find((c) => String(c[0]).includes("FROM fraud_flags ff"));
     const params = rowsCall?.[1] as unknown[];
     expect(params[params.length - 1]).toBe(50);
   });

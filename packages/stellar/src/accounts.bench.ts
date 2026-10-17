@@ -10,9 +10,7 @@ describe("muxed account slug generation", () => {
     async () => {
       const promises: Promise<string>[] = [];
       for (let i = 0; i < 1000; i++) {
-        promises.push(
-          Promise.resolve(createMuxedAddress(basePublicKey, BigInt(i)))
-        );
+        promises.push(Promise.resolve(createMuxedAddress(basePublicKey, BigInt(i))));
       }
       await Promise.all(promises);
     },

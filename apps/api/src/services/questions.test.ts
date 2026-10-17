@@ -55,7 +55,7 @@ describe("Questions Generation Engine", () => {
     const result = generateChallengeQuestions(
       "challenge-1",
       makeBrand({ tagline: null }),
-      distractorPool,
+      distractorPool
     );
 
     const fallbackQ = result.find((q) => q.question_text === "What is the name of this brand?");
@@ -112,7 +112,7 @@ describe("Questions Generation Engine", () => {
     const result = generateChallengeQuestions(
       "challenge-1",
       makeBrand({ question_template: null }),
-      distractorPool,
+      distractorPool
     );
 
     const r1 = result.find((q) => q.round === 1)!;
@@ -140,7 +140,9 @@ describe("Questions Generation Engine", () => {
     expect(result.find((q) => q.round === 1)!.question_text).toBe("Custom round 1 text");
     expect(result.find((q) => q.round === 2)!.question_text).toBe("Custom round 2 text");
     // round 3 not overridden — uses default
-    expect(result.find((q) => q.round === 3)!.question_text).toBe("Which brand makes this product?");
+    expect(result.find((q) => q.round === 3)!.question_text).toBe(
+      "Which brand makes this product?"
+    );
   });
 
   it("overrides prompt_type per round from question_template", () => {
@@ -160,7 +162,7 @@ describe("Questions Generation Engine", () => {
     const result = generateChallengeQuestions(
       "challenge-1",
       makeBrand({ tagline: null, usp: null, product_image_keys: [] }),
-      distractorPool,
+      distractorPool
     );
     expect(result).toHaveLength(3);
     result.forEach((q) => {

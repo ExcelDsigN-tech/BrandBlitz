@@ -19,6 +19,10 @@ vi.mock("next/og", () => ({
   })),
 }));
 
+function toArrayBuffer(buffer: Buffer): ArrayBuffer {
+  return new Uint8Array(buffer).buffer;
+}
+
 describe("Brand OG Social Preview (#1022)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -64,7 +68,7 @@ describe("Brand OG Social Preview (#1022)", () => {
           "content-type": "image/png",
           "content-length": String(mockImageBuffer.byteLength),
         }),
-        arrayBuffer: async () => mockImageBuffer.buffer,
+        arrayBuffer: async () => toArrayBuffer(mockImageBuffer),
       });
       vi.stubGlobal("fetch", mockFetch);
 
@@ -84,7 +88,7 @@ describe("Brand OG Social Preview (#1022)", () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         headers: new Headers({ "content-type": "text/html" }),
-        arrayBuffer: async () => Buffer.from("<html>not an image</html>").buffer,
+        arrayBuffer: async () => toArrayBuffer(Buffer.from("<html>not an image</html>")),
       });
       vi.stubGlobal("fetch", mockFetch);
 
@@ -99,7 +103,7 @@ describe("Brand OG Social Preview (#1022)", () => {
           "content-type": "image/png",
           "content-length": String(3 * 1024 * 1024), // 3MB > 2MB limit
         }),
-        arrayBuffer: async () => Buffer.alloc(3 * 1024 * 1024).buffer,
+        arrayBuffer: async () => toArrayBuffer(Buffer.alloc(3 * 1024 * 1024)),
       });
       vi.stubGlobal("fetch", mockFetch);
 
@@ -124,7 +128,7 @@ describe("Brand OG Social Preview (#1022)", () => {
         vi.fn().mockResolvedValue({
           ok: true,
           headers: new Headers({ "content-type": "image/webp" }),
-          arrayBuffer: async () => mockImageBuffer.buffer,
+          arrayBuffer: async () => toArrayBuffer(mockImageBuffer),
         })
       );
 
@@ -214,7 +218,7 @@ describe("Brand OG Social Preview (#1022)", () => {
       const res = await GET(req, { params: Promise.resolve({ id: "c-123" }) });
 
       expect(res.status).toBe(200);
-      expect((res as any).element).toBeDefined();
+      expect(res.headers.get("content-type")).toBe("image/png");
     });
 
     it("handles preview id without calling challenge API", async () => {

@@ -18,7 +18,9 @@ export interface UserLegalAcceptance {
   ip: string;
 }
 
-export async function getCurrentLegalDocument(type: "tos" | "privacy"): Promise<LegalDocument | null> {
+export async function getCurrentLegalDocument(
+  type: "tos" | "privacy"
+): Promise<LegalDocument | null> {
   const result = await query<LegalDocument>(
     `SELECT * FROM legal_documents
      WHERE type = $1 AND effective_at <= NOW()
@@ -29,7 +31,10 @@ export async function getCurrentLegalDocument(type: "tos" | "privacy"): Promise<
   return result.rows[0] ?? null;
 }
 
-export async function getLegalDocumentByVersion(type: "tos" | "privacy", version: string): Promise<LegalDocument | null> {
+export async function getLegalDocumentByVersion(
+  type: "tos" | "privacy",
+  version: string
+): Promise<LegalDocument | null> {
   const result = await query<LegalDocument>(
     "SELECT * FROM legal_documents WHERE type = $1 AND version = $2",
     [type, version]
@@ -77,14 +82,20 @@ export async function recordUserLegalAcceptance(
   return acceptance;
 }
 
-export async function hasAcceptedLatestVersion(userId: string, type: "tos" | "privacy"): Promise<boolean> {
+export async function hasAcceptedLatestVersion(
+  userId: string,
+  type: "tos" | "privacy"
+): Promise<boolean> {
   const doc = await getCurrentLegalDocument(type);
   if (!doc) return true;
   const acceptance = await findUserLegalAcceptance(userId, type, doc.version);
   return acceptance !== null;
 }
 
-export async function getAcceptedVersions(userId: string, type: "tos" | "privacy"): Promise<string[]> {
+export async function getAcceptedVersions(
+  userId: string,
+  type: "tos" | "privacy"
+): Promise<string[]> {
   const result = await query<{ version: string }>(
     "SELECT version FROM user_legal_acceptances WHERE user_id = $1 AND type = $2 ORDER BY accepted_at DESC",
     [userId, type]

@@ -56,26 +56,26 @@ curl https://api.brandblitz.io/users/me/notifications \
 
 #### Notification object fields
 
-| Field | Type | Description |
-|---|---|---|
-| `id` | UUID string | Unique notification identifier |
-| `type` | string | Notification type (see below) |
-| `payload` | object | Type-specific data (varies per type) |
-| `read_at` | ISO 8601 string \| null | Timestamp when marked read; `null` = unread |
-| `created_at` | ISO 8601 string | When the notification was created |
+| Field        | Type                    | Description                                 |
+| ------------ | ----------------------- | ------------------------------------------- |
+| `id`         | UUID string             | Unique notification identifier              |
+| `type`       | string                  | Notification type (see below)               |
+| `payload`    | object                  | Type-specific data (varies per type)        |
+| `read_at`    | ISO 8601 string \| null | Timestamp when marked read; `null` = unread |
+| `created_at` | ISO 8601 string         | When the notification was created           |
 
 ---
 
 ## Notification Types
 
-| Type | Triggered by | Key payload fields |
-|---|---|---|
-| `payout_settled` | USDC payout confirmed on-chain | `amountUsdc`, `challengeId`, `challengeTitle`, `txId` |
-| `badge_earned` | Player earns a badge | `badgeId`, `badgeName`, `badgeIcon` |
-| `challenge_result` | Challenge scoring complete | `challengeId`, `challengeTitle`, `rank`, `scorePercentile` |
-| `streak_at_risk` | Player hasn't played today and streak > 2 | `currentStreak`, `expiresAt` |
-| `referral_joined` | A referred user completes sign-up | `referredUsername`, `bonusUsdc` |
-| `account_warning` | Fraud or compliance flag raised | `reason`, `reviewUrl` |
+| Type               | Triggered by                              | Key payload fields                                         |
+| ------------------ | ----------------------------------------- | ---------------------------------------------------------- |
+| `payout_settled`   | USDC payout confirmed on-chain            | `amountUsdc`, `challengeId`, `challengeTitle`, `txId`      |
+| `badge_earned`     | Player earns a badge                      | `badgeId`, `badgeName`, `badgeIcon`                        |
+| `challenge_result` | Challenge scoring complete                | `challengeId`, `challengeTitle`, `rank`, `scorePercentile` |
+| `streak_at_risk`   | Player hasn't played today and streak > 2 | `currentStreak`, `expiresAt`                               |
+| `referral_joined`  | A referred user completes sign-up         | `referredUsername`, `bonusUsdc`                            |
+| `account_warning`  | Fraud or compliance flag raised           | `reason`, `reviewUrl`                                      |
 
 > The `payload` schema for each type is not versioned independently — new fields may be added non-breakingly. Check for the presence of a field before using it.
 
@@ -101,10 +101,10 @@ curl -X PATCH \
 
 #### Error responses
 
-| Status | Condition |
-|---|---|
-| `400` | `:id` is not a valid UUID |
-| `404` | Notification not found or belongs to a different user |
+| Status | Condition                                             |
+| ------ | ----------------------------------------------------- |
+| `400`  | `:id` is not a valid UUID                             |
+| `404`  | Notification not found or belongs to a different user |
 
 ---
 

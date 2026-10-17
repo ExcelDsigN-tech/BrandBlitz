@@ -41,7 +41,10 @@ vi.mock("../db/index", () => ({
       dbStore.challenges.set(id, ch);
       return { rows: [ch] };
     }
-    if (sql.includes("INSERT INTO game_sessions") || sql.includes("INSERT INTO session_round_scores")) {
+    if (
+      sql.includes("INSERT INTO game_sessions") ||
+      sql.includes("INSERT INTO session_round_scores")
+    ) {
       const id = params[0] || "session-1";
       const scoreRow = { session_id: id, score: 1500 };
       dbStore.sessionScores.set(id, scoreRow);
@@ -88,11 +91,10 @@ describe("Integration test: full challenge lifecycle — create, deposit, activa
 
   it("executes full challenge lifecycle: create, deposit webhook, state transitions, session scoring, payout queue, and payout creation", async () => {
     // 1. Create challenge (POST /api/challenges simulation)
-    const createRes = await query("INSERT INTO challenges (id, title, brand_id) VALUES ($1, $2, $3) RETURNING *", [
-      "c-test-99",
-      "BrandBlitz Launch Challenge",
-      "b-1",
-    ]);
+    const createRes = await query(
+      "INSERT INTO challenges (id, title, brand_id) VALUES ($1, $2, $3) RETURNING *",
+      ["c-test-99", "BrandBlitz Launch Challenge", "b-1"]
+    );
 
     expect(createRes.rows[0].id).toBe("c-test-99");
     expect(createRes.rows[0].status).toBe("draft");
@@ -106,10 +108,10 @@ describe("Integration test: full challenge lifecycle — create, deposit, activa
     expect(dbStore.challenges.get("c-test-99").status).toBe("active");
 
     // 3. Submit completed game session (POST /api/sessions simulation)
-    const scoreRes = await query("INSERT INTO session_round_scores (session_id, score) VALUES ($1, $2) RETURNING *", [
-      "sess-77",
-      1500,
-    ]);
+    const scoreRes = await query(
+      "INSERT INTO session_round_scores (session_id, score) VALUES ($1, $2) RETURNING *",
+      ["sess-77", 1500]
+    );
     expect(scoreRes.rows[0].score).toBe(1500);
     expect(dbStore.sessionScores.has("sess-77")).toBe(true);
 
@@ -126,9 +128,10 @@ describe("Integration test: full challenge lifecycle — create, deposit, activa
     );
 
     // 5. Simulate payout worker processing job & creating pending payout row
-    const payoutRes = await query("INSERT INTO payouts (challenge_id, status, amount) VALUES ($1, 'pending', 500) RETURNING *", [
-      "c-test-99",
-    ]);
+    const payoutRes = await query(
+      "INSERT INTO payouts (challenge_id, status, amount) VALUES ($1, 'pending', 500) RETURNING *",
+      ["c-test-99"]
+    );
 
     expect(payoutRes.rows[0].status).toBe("pending");
     expect(payoutRes.rows[0].challenge_id).toBe("c-test-99");

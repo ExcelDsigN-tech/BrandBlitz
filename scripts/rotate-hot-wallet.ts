@@ -21,7 +21,15 @@
  *   manager / Docker secrets, then redeploy the API.
  */
 
-import { Keypair, Networks, TransactionBuilder, Operation, Asset, BASE_FEE, Memo } from "@stellar/stellar-sdk";
+import {
+  Keypair,
+  Networks,
+  TransactionBuilder,
+  Operation,
+  Asset,
+  BASE_FEE,
+  Memo,
+} from "@stellar/stellar-sdk";
 import { Server as HorizonServer } from "@stellar/stellar-sdk/lib/horizon";
 import * as fs from "fs";
 import * as path from "path";
@@ -30,7 +38,7 @@ import * as path from "path";
 
 const args = process.argv.slice(2);
 const network = args.includes("--network")
-  ? args[args.indexOf("--network") + 1] ?? "testnet"
+  ? (args[args.indexOf("--network") + 1] ?? "testnet")
   : "testnet";
 const writeEnv = args.includes("--write-env");
 
@@ -39,15 +47,10 @@ if (!["testnet", "public"].includes(network)) {
   process.exit(1);
 }
 
-const NETWORK_PASSPHRASE =
-  network === "public"
-    ? Networks.PUBLIC
-    : Networks.TESTNET;
+const NETWORK_PASSPHRASE = network === "public" ? Networks.PUBLIC : Networks.TESTNET;
 
 const HORIZON_URL =
-  network === "public"
-    ? "https://horizon.stellar.org"
-    : "https://horizon-testnet.stellar.org";
+  network === "public" ? "https://horizon.stellar.org" : "https://horizon-testnet.stellar.org";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -122,9 +125,7 @@ async function main(): Promise<void> {
 
   const xlmBalance = oldAccount.balances.find((b) => b.asset_type === "native");
   const usdcBalance = oldAccount.balances.find(
-    (b) =>
-      b.asset_type === "credit_alphanum4" &&
-      (b as any).asset_code === "USDC"
+    (b) => b.asset_type === "credit_alphanum4" && (b as any).asset_code === "USDC"
   );
 
   const xlmAmount = parseFloat(xlmBalance?.balance ?? "0");

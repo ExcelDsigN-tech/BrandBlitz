@@ -11,6 +11,7 @@ This report documents the performance investigation of four critical BrandBlitz 
 **Objective:** Determine sustainable account creation rate under registration spike load.
 
 ### Test Scenarios
+
 - **10 req/s:** Baseline load, single registration wave
 - **50 req/s:** Moderate spike, sustained over 1-2 minutes
 - **200 req/s:** Extreme spike, coordinated registration event
@@ -18,18 +19,21 @@ This report documents the performance investigation of four critical BrandBlitz 
 ### Key Findings
 
 **At 10 req/s:**
+
 - Average latency: ~100-120ms per account
 - Horizon API response time: ~100ms + SDK overhead ~20ms
 - Success rate: 100%
 - **Verdict:** Fully sustainable, no queuing required
 
 **At 50 req/s:**
+
 - Average latency: ~130-150ms per account (slight increase from load)
 - P95 latency: ~180ms
 - Horizon rate limiting: Not yet triggered
 - **Verdict:** Sustainable with concurrent request management
 
 **At 200 req/s:**
+
 - Average latency: ~250-300ms per account
 - P95 latency: ~350ms
 - P99 latency: ~400ms
@@ -60,6 +64,7 @@ This report documents the performance investigation of four critical BrandBlitz 
 **Objective:** Verify polling cycles remain within configured interval as monitored addresses scale.
 
 ### Test Scenarios
+
 - **100 monitored addresses:** Baseline
 - **500 monitored addresses:** 5x scale
 - **2000 monitored addresses:** 20x scale (critical threshold)
@@ -67,24 +72,28 @@ This report documents the performance investigation of four critical BrandBlitz 
 ### Key Findings
 
 **At 100 monitored addresses:**
+
 - Average cycle duration: ~150-180ms
 - Horizon latency: ~105-110ms (100ms base + 0.05ms per address)
 - Headroom: ~4.8s (5s interval)
 - **Verdict:** Safe, <5% of interval consumed
 
 **At 500 monitored addresses:**
+
 - Average cycle duration: ~175-220ms
 - Horizon latency: ~125-130ms
 - Headroom: ~4.7s
 - **Verdict:** Safe, <5% of interval consumed
 
 **At 2000 monitored addresses:**
+
 - Average cycle duration: ~200-250ms
 - Horizon latency: ~200-210ms
 - Headroom: ~4.75s
 - **Verdict:** Sustainable, but approaching limits; recommend monitoring
 
 **Projected at 5000+ addresses:**
+
 - Estimated cycle duration: ~250-400ms
 - Risk: Horizon API throttling or cascading into next cycle
 - **Verdict:** Would exceed safe operational limits
@@ -118,6 +127,7 @@ This report documents the performance investigation of four critical BrandBlitz 
 **Objective:** Measure submission latency and identify sequence-number contention bottlenecks.
 
 ### Test Scenarios
+
 - **10 concurrent challenges:** Baseline burst
 - **50 concurrent challenges:** Moderate spike
 - **100 concurrent challenges:** Extreme event
@@ -125,18 +135,21 @@ This report documents the performance investigation of four critical BrandBlitz 
 ### Key Findings
 
 **At 10 concurrent challenges:**
+
 - Average submission latency: ~80-100ms
 - Sequence manager retries: 0-1 per batch
 - P95 latency: ~120ms
 - **Verdict:** No contention, fully parallelizable
 
 **At 50 concurrent challenges:**
+
 - Average submission latency: ~120-150ms
 - Sequence manager retries: ~5 (10% of submissions)
 - P95 latency: ~200ms
 - **Verdict:** Minor sequence contention beginning; retries adding ~200ms each
 
 **At 100 concurrent challenges:**
+
 - Average submission latency: ~200-250ms
 - Sequence manager retries: ~20-25 (20-25% of submissions)
 - P95 latency: ~350ms
@@ -173,6 +186,7 @@ This report documents the performance investigation of four critical BrandBlitz 
 **Objective:** Profile memory growth and identify streaming/chunking needs.
 
 ### Test Scenarios
+
 - **1000 recipients:** Small batch
 - **5000 recipients:** Medium batch
 - **10000 recipients:** Large batch
@@ -180,18 +194,21 @@ This report documents the performance investigation of four critical BrandBlitz 
 ### Key Findings
 
 **At 1000 recipients:**
+
 - Peak heap growth: ~2-3 MB
 - Transaction size: ~50 KB (50 payment operations at ~1KB each)
 - Memory growth pattern: Linear
 - **Verdict:** Safe, well within typical Node.js heap
 
 **At 5000 recipients:**
+
 - Peak heap growth: ~8-12 MB
 - Transaction size: ~250 KB (chunked into 5 transactions of 50 operations each)
 - Memory growth pattern: Linear
 - **Verdict:** Safe, no OOM risk on standard 256 MB Node.js heap
 
 **At 10000 recipients:**
+
 - Peak heap growth: ~15-20 MB
 - Transaction size: ~500 KB (chunked into 10 transactions)
 - Memory growth pattern: Linear (not superlinear)
@@ -201,6 +218,7 @@ This report documents the performance investigation of four critical BrandBlitz 
 ### Key Observation: Transaction Chunking
 
 Current implementation (`payout.ts`) already chunks recipients into MAX_OPS_PER_TX (50 operations) batches. Each transaction:
+
 - Is built and signed sequentially
 - Frees memory after submission (not retained in heap)
 - Implements inter-batch delay (PAYOUT_BATCH_DELAY_MS) to avoid sequence number contention
@@ -232,12 +250,12 @@ Current implementation (`payout.ts`) already chunks recipients into MAX_OPS_PER_
 
 ## Summary Table
 
-| Issue   | Load Scenario          | Result                      | Recommendation                      |
-|---------|------------------------|-----------------------------|------------------------------------|
-| #1106   | 200 req/s account creation | Exceeds sustainable rate | Queue + backoff strategy             |
-| #1108   | 2000+ monitored addresses  | Approaching limits         | Batching or webhook migration       |
-| #1107   | 100 concurrent challenges  | Sequence contention        | Parallel sequence pools             |
-| #1105   | 10K recipient payout       | Linear memory, safe         | Monitor; no streaming needed yet    |
+| Issue | Load Scenario              | Result                   | Recommendation                   |
+| ----- | -------------------------- | ------------------------ | -------------------------------- |
+| #1106 | 200 req/s account creation | Exceeds sustainable rate | Queue + backoff strategy         |
+| #1108 | 2000+ monitored addresses  | Approaching limits       | Batching or webhook migration    |
+| #1107 | 100 concurrent challenges  | Sequence contention      | Parallel sequence pools          |
+| #1105 | 10K recipient payout       | Linear memory, safe      | Monitor; no streaming needed yet |
 
 ---
 

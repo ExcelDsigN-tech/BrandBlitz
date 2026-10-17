@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomBytes } from "crypto";
 import { getToken } from "next-auth/jwt";
 import { resolveSecret } from "@/lib/secrets";
 
@@ -35,7 +34,8 @@ function normalizeCode(code: string): string | null {
  * Used to allow inline scripts while preventing XSS attacks
  */
 function generateNonce(): string {
-  return randomBytes(16).toString("base64");
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return btoa(String.fromCharCode(...bytes));
 }
 
 /**

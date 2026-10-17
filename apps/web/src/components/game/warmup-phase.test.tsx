@@ -8,11 +8,7 @@ import type { Challenge } from "@/lib/api";
 const apiPostMock = vi.fn();
 
 vi.mock("next/image", () => ({
-  default: ({
-    alt,
-    src,
-    ...props
-  }: ImgHTMLAttributes<HTMLImageElement> & { src: string }) => (
+  default: ({ alt, src, ...props }: ImgHTMLAttributes<HTMLImageElement> & { src: string }) => (
     <img alt={alt} src={src} {...props} />
   ),
 }));
@@ -67,9 +63,7 @@ describe("WarmupPhase", () => {
     );
     expect(screen.getByRole("heading", { name: "Acme" })).toBeInTheDocument();
     expect(screen.getByText("Launch faster.")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Study this brand carefully/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Study this brand carefully/i)).toBeInTheDocument();
   });
 
   it("omits optional brand assets when absent", () => {
@@ -154,7 +148,9 @@ describe("WarmupPhase", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Not yet ready\. Please wait 2 more seconds and try again\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Not yet ready\. Please wait 2 more seconds and try again\./i)
+    ).toBeInTheDocument();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -182,7 +178,9 @@ describe("WarmupPhase", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)
+    ).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -213,7 +211,9 @@ describe("WarmupPhase", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
@@ -228,7 +228,11 @@ describe("WarmupPhase", () => {
 
     // Simulate tab hidden (visibilitychange)
     await act(async () => {
-      Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true, writable: true });
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+        writable: true,
+      });
       document.dispatchEvent(new Event("visibilitychange"));
       await vi.advanceTimersByTimeAsync(100);
     });
@@ -238,7 +242,11 @@ describe("WarmupPhase", () => {
 
     // Simulate tab visible again
     await act(async () => {
-      Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true, writable: true });
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+        writable: true,
+      });
       document.dispatchEvent(new Event("visibilitychange"));
       await vi.advanceTimersByTimeAsync(100);
     });

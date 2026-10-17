@@ -126,9 +126,7 @@ export function broadcastToRoom(
  * Check if a client is rate-limited (5 messages per 5 seconds).
  */
 export function isRateLimited(client: ChatClient, now = Date.now()): boolean {
-  client.messageTimestamps = client.messageTimestamps.filter(
-    (t) => now - t < RATE_LIMIT_WINDOW_MS
-  );
+  client.messageTimestamps = client.messageTimestamps.filter((t) => now - t < RATE_LIMIT_WINDOW_MS);
   if (client.messageTimestamps.length >= RATE_LIMIT_MAX_MESSAGES) {
     return true;
   }
@@ -324,12 +322,7 @@ export async function handleChatUpgrade(
   );
 
   if (sessionResult.rows.length === 0) {
-    rejectUpgrade(
-      socket,
-      403,
-      "Forbidden",
-      "Only active challenge participants can access chat"
-    );
+    rejectUpgrade(socket, 403, "Forbidden", "Only active challenge participants can access chat");
     return;
   }
 
@@ -342,7 +335,8 @@ export async function handleChatUpgrade(
 
   const acceptKey = createWebSocketAcceptKey(clientKey);
   const protocolHeader = req.headers["sec-websocket-protocol"];
-  const subprotocol = typeof protocolHeader === "string" ? protocolHeader.split(",")[0].trim() : null;
+  const subprotocol =
+    typeof protocolHeader === "string" ? protocolHeader.split(",")[0].trim() : null;
 
   let handshake =
     "HTTP/1.1 101 Switching Protocols\r\n" +
@@ -361,9 +355,12 @@ export async function handleChatUpgrade(
   let room = activeRooms.get(challengeId);
   if (!room) {
     const msUntilEnd = endsAtTime - now;
-    const endTimer = setTimeout(() => {
-      closeRoom(challengeId, "Challenge ended");
-    }, Math.max(100, msUntilEnd));
+    const endTimer = setTimeout(
+      () => {
+        closeRoom(challengeId, "Challenge ended");
+      },
+      Math.max(100, msUntilEnd)
+    );
     endTimer.unref();
 
     room = {

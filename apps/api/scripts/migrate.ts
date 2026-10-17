@@ -32,10 +32,14 @@ const pool = new Pool({
 async function listMigrations(): Promise<MigrationFile[]> {
   const dirEntries = await readdir(migrationsDir, { withFileTypes: true });
   const names = dirEntries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".sql") && !entry.name.endsWith(".down.sql"))
+    .filter(
+      (entry) => entry.isFile() && entry.name.endsWith(".sql") && !entry.name.endsWith(".down.sql")
+    )
     .map((entry) => entry.name)
     .sort();
-  const knownNames = new Set(dirEntries.filter((entry) => entry.isFile()).map((entry) => entry.name));
+  const knownNames = new Set(
+    dirEntries.filter((entry) => entry.isFile()).map((entry) => entry.name)
+  );
 
   return names.map((file) => {
     const downFile = file.replace(/\.sql$/, ".down.sql");
@@ -72,9 +76,7 @@ async function getAppliedVersions(client: PoolClient): Promise<Set<string>> {
   return new Set(result.rows.map((row) => row.version));
 }
 
-async function withLockedTransaction<T>(
-  handler: (client: PoolClient) => Promise<T>
-): Promise<T> {
+async function withLockedTransaction<T>(handler: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
 
   try {
@@ -242,7 +244,9 @@ async function runLint(): Promise<void> {
   );
 
   if (invalid.length > 0) {
-    console.error("New migration filenames must match <NNNNN>-<kebab-case-description>[.down].sql:");
+    console.error(
+      "New migration filenames must match <NNNNN>-<kebab-case-description>[.down].sql:"
+    );
     for (const file of invalid) {
       console.error(`  - ${file}`);
     }

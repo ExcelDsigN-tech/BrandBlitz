@@ -44,15 +44,15 @@ GET /users/me/streak
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `current_streak` | Your current consecutive-day count |
-| `longest_streak` | Your all-time longest streak |
-| `last_activity_at` | The last UTC day you played |
-| `is_at_risk` | `true` if you played yesterday but haven't played today yet |
+| Field                | Description                                                    |
+| -------------------- | -------------------------------------------------------------- |
+| `current_streak`     | Your current consecutive-day count                             |
+| `longest_streak`     | Your all-time longest streak                                   |
+| `last_activity_at`   | The last UTC day you played                                    |
+| `is_at_risk`         | `true` if you played yesterday but haven't played today yet    |
 | `repair_deadline_at` | If `is_at_risk`, the deadline by which you must repair or play |
-| `next_milestone` | The next milestone badge and how many days are needed |
-| `streak_frozen` | Whether a streak freeze is active |
+| `next_milestone`     | The next milestone badge and how many days are needed          |
+| `streak_frozen`      | Whether a streak freeze is active                              |
 
 ### Another user's streak
 
@@ -74,12 +74,12 @@ Returns a simplified response:
 
 Reaching certain streak lengths earns you milestone badges:
 
-| Days | Badge |
-|------|-------|
-| 3 | `streak_3_days` |
-| 7 | `streak_7_days` |
-| 14 | `streak_14_days` |
-| 30 | `streak_30_days` |
+| Days | Badge            |
+| ---- | ---------------- |
+| 3    | `streak_3_days`  |
+| 7    | `streak_7_days`  |
+| 14   | `streak_14_days` |
+| 30   | `streak_30_days` |
 
 You receive a notification when you hit a milestone. Milestones at 7 and 30 days trigger special notifications.
 
@@ -103,9 +103,9 @@ POST /users/streaks/repair
 
 **Error responses:**
 
-| Status | Code | Meaning |
-|--------|------|---------|
-| 409 | `STREAK_REPAIR_LIMIT` | You have already used your monthly repair |
+| Status | Code                  | Meaning                                   |
+| ------ | --------------------- | ----------------------------------------- |
+| 409    | `STREAK_REPAIR_LIMIT` | You have already used your monthly repair |
 
 ### What Repair Does
 

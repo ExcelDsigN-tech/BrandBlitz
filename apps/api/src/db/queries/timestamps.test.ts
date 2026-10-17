@@ -10,7 +10,7 @@ function withSearchPath(connectionString: string, schema: string): string {
   const searchPathOption = `-c search_path=${schema}`;
   url.searchParams.set(
     "options",
-    existingOptions ? `${existingOptions} ${searchPathOption}` : searchPathOption,
+    existingOptions ? `${existingOptions} ${searchPathOption}` : searchPathOption
   );
   return url.toString();
 }
@@ -78,7 +78,7 @@ describeIntegration("timestamp columns and updated_at trigger", () => {
       `INSERT INTO timestamp_test (name)
        VALUES ($1)
        RETURNING id, created_at, updated_at`,
-      ["first"],
+      ["first"]
     );
 
     const row = result.rows[0];
@@ -97,7 +97,7 @@ describeIntegration("timestamp columns and updated_at trigger", () => {
       `INSERT INTO timestamp_test (name)
        VALUES ($1)
        RETURNING id, created_at, updated_at`,
-      ["before-update"],
+      ["before-update"]
     );
 
     const row = insertResult.rows[0];
@@ -107,7 +107,7 @@ describeIntegration("timestamp columns and updated_at trigger", () => {
 
     const updatedResult = await query<{ updated_at: Date; created_at: Date }>(
       `SELECT created_at, updated_at FROM timestamp_test WHERE id = $1`,
-      [row.id],
+      [row.id]
     );
 
     const updatedRow = updatedResult.rows[0];

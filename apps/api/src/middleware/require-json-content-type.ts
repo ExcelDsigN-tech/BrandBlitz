@@ -5,11 +5,7 @@ const MUTATING_METHODS = new Set(["POST", "PUT", "PATCH"]);
 
 const SKIP_PREFIXES = ["/upload"];
 
-export function requireJsonContentType(
-  req: Request,
-  _res: Response,
-  next: NextFunction
-): void {
+export function requireJsonContentType(req: Request, _res: Response, next: NextFunction): void {
   if (!MUTATING_METHODS.has(req.method)) {
     next();
     return;

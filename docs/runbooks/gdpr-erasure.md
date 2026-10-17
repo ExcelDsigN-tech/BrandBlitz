@@ -71,14 +71,14 @@ If a full row deletion is required (e.g., test data cleanup or a court order):
 
 ## Relevant Database Objects
 
-| Object | Purpose |
-| --- | --- |
-| `gdpr_erasure_requests` | Tracks pending / cancelled / executed erasure requests |
-| `gdpr_erasure_requests.execute_at` | Timestamp when anonymisation fires |
-| `gdpr_erasure_requests.cancelled_at` | Set when user cancels within grace window |
-| `gdpr_erasure_requests.executed_at` | Set after successful anonymisation |
-| `gdpr_erasure_requests.admin_id` | Non-null for admin-initiated requests |
-| BullMQ queue `gdpr-erasure` | Delayed jobs (`gdpr:<userId>`) fired after 30 days |
+| Object                               | Purpose                                                |
+| ------------------------------------ | ------------------------------------------------------ |
+| `gdpr_erasure_requests`              | Tracks pending / cancelled / executed erasure requests |
+| `gdpr_erasure_requests.execute_at`   | Timestamp when anonymisation fires                     |
+| `gdpr_erasure_requests.cancelled_at` | Set when user cancels within grace window              |
+| `gdpr_erasure_requests.executed_at`  | Set after successful anonymisation                     |
+| `gdpr_erasure_requests.admin_id`     | Non-null for admin-initiated requests                  |
+| BullMQ queue `gdpr-erasure`          | Delayed jobs (`gdpr:<userId>`) fired after 30 days     |
 
 ---
 

@@ -220,13 +220,16 @@ export function ChallengeChatPanel({
   };
 
   return (
-    <div className="w-full rounded-2xl border border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-md shadow-lg overflow-hidden transition-all duration-300">
+    <div className="bg-[var(--card)]/90 w-full overflow-hidden rounded-2xl border border-[var(--border)] shadow-lg backdrop-blur-md transition-all duration-300">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3 bg-[var(--muted)]/30">
+      <div className="bg-[var(--muted)]/30 flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
         <div className="flex items-center gap-2">
-          <span className="font-semibold text-sm">Live Challenge Chat</span>
+          <span className="text-sm font-semibold">Live Challenge Chat</span>
           {status === "connected" && (
-            <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+            <Badge
+              variant="outline"
+              className="border-emerald-500/30 bg-emerald-500/10 text-xs text-emerald-600"
+            >
               🟢 {participantCount} online
             </Badge>
           )}
@@ -236,7 +239,10 @@ export function ChallengeChatPanel({
             </Badge>
           )}
           {status === "closed" && (
-            <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/30">
+            <Badge
+              variant="outline"
+              className="border-red-500/30 bg-red-500/10 text-xs text-red-600"
+            >
               Closed
             </Badge>
           )}
@@ -256,13 +262,13 @@ export function ChallengeChatPanel({
         <>
           {/* Error Banner */}
           {errorBanner && (
-            <div className="bg-red-500/10 border-b border-red-500/20 px-3 py-1.5 text-xs text-red-600 font-medium">
+            <div className="border-b border-red-500/20 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600">
               {errorBanner}
             </div>
           )}
 
           {/* Messages list */}
-          <div className="h-64 overflow-y-auto p-4 space-y-3 text-sm">
+          <div className="h-64 space-y-3 overflow-y-auto p-4 text-sm">
             {messages.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center text-xs text-[var(--muted-foreground)]">
                 <p>No messages yet.</p>
@@ -272,7 +278,10 @@ export function ChallengeChatPanel({
               messages.map((m) => {
                 if (m.isSystem) {
                   return (
-                    <div key={m.id} className="text-center text-[11px] text-[var(--muted-foreground)] italic py-1">
+                    <div
+                      key={m.id}
+                      className="py-1 text-center text-[11px] italic text-[var(--muted-foreground)]"
+                    >
                       {m.content}
                     </div>
                   );
@@ -283,11 +292,8 @@ export function ChallengeChatPanel({
                   (currentUsername && m.username === currentUsername);
 
                 return (
-                  <div
-                    key={m.id}
-                    className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}
-                  >
-                    <div className="flex items-center gap-1.5 text-[11px] text-[var(--muted-foreground)] mb-0.5">
+                  <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
+                    <div className="mb-0.5 flex items-center gap-1.5 text-[11px] text-[var(--muted-foreground)]">
                       <span className="font-semibold text-[var(--foreground)]">
                         {isMe ? "You" : m.displayName || m.username}
                       </span>
@@ -300,7 +306,7 @@ export function ChallengeChatPanel({
                       </span>
                     </div>
                     <div
-                      className={`max-w-[85%] rounded-xl px-3 py-1.5 text-xs break-words shadow-sm ${
+                      className={`max-w-[85%] break-words rounded-xl px-3 py-1.5 text-xs shadow-sm ${
                         isMe
                           ? "bg-[var(--primary)] text-white"
                           : "bg-[var(--muted)] text-[var(--foreground)]"
@@ -318,7 +324,7 @@ export function ChallengeChatPanel({
           {/* Input field */}
           <form
             onSubmit={handleSendMessage}
-            className="flex items-center gap-2 border-t border-[var(--border)] p-3 bg-[var(--background)]/60"
+            className="bg-[var(--background)]/60 flex items-center gap-2 border-t border-[var(--border)] p-3"
           >
             <div className="relative flex-1">
               <input
@@ -327,8 +333,8 @@ export function ChallengeChatPanel({
                   status === "closed"
                     ? "Chat closed (challenge ended)"
                     : !isLoggedIn
-                    ? "Log in to chat"
-                    : "Type a message (max 280 chars)..."
+                      ? "Log in to chat"
+                      : "Type a message (max 280 chars)..."
                 }
                 value={inputText}
                 maxLength={280}

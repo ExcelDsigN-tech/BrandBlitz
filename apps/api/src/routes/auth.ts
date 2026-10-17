@@ -9,10 +9,7 @@ import {
   exchangeGoogleAuthorizationCode,
   verifyGoogleIdToken,
 } from "../services/google-auth";
-import {
-  consumePendingReferralAttribution,
-  ensureUserReferralCode,
-} from "../services/referrals";
+import { consumePendingReferralAttribution, ensureUserReferralCode } from "../services/referrals";
 import {
   signAccessToken,
   signRefreshToken,
@@ -101,7 +98,7 @@ router.post("/google/callback", authLimiter, async (req, res) => {
       "user",
       user.id,
       JSON.stringify({ method: "google_oauth", tokenRotated: true }),
-    ],
+    ]
   );
 
   res.json({ token: accessToken, refreshToken, user: serializeUser(user) });
@@ -127,18 +124,13 @@ router.post("/refresh", async (req, res) => {
   const alreadyUsed = await markJtiUsed(payload.jti);
   if (alreadyUsed) {
     await revokeAllUserRefreshTokens(payload.sub);
-    throw createError(
-      "Refresh token reuse detected — all sessions revoked",
-      401,
-      "TOKEN_REUSE",
-    );
+    throw createError("Refresh token reuse detected — all sessions revoked", 401, "TOKEN_REUSE");
   }
   if (await isJtiRevoked(payload.jti))
     throw createError("Refresh token revoked", 401, "TOKEN_REVOKED");
 
   const user = await findUserById(payload.sub);
-  if (!user)
-    throw createError("Invalid refresh token", 401, "INVALID_REFRESH_TOKEN");
+  if (!user) throw createError("Invalid refresh token", 401, "INVALID_REFRESH_TOKEN");
 
   const newAccess = signAccessToken(user);
   const newRefresh = signRefreshToken(user);

@@ -12,7 +12,7 @@ escrow logic lives where it does, why migrations are home-grown rather
 than Prisma/Knex. Tribal knowledge slows reviews, encourages rework,
 and makes onboarding take longer than it should.
 
-The existing `docs/` tree explains *what* BrandBlitz does, not *why*
+The existing `docs/` tree explains _what_ BrandBlitz does, not _why_
 the engineering choices are what they are. ADR 001 (phone storage) is
 the only counter-example today.
 

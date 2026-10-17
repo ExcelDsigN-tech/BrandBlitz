@@ -21,11 +21,10 @@ function normalizeCode(value: unknown): string | null {
 export async function referralAttributionMiddleware(
   req: Request,
   res: Response,
-  next: NextFunction,
+  next: NextFunction
 ): Promise<void> {
   try {
-    const code =
-      normalizeCode(req.query.ref) ?? normalizeCode(req.cookies?.ref);
+    const code = normalizeCode(req.query.ref) ?? normalizeCode(req.cookies?.ref);
     if (!code) {
       next();
       return;
@@ -38,12 +37,7 @@ export async function referralAttributionMiddleware(
       userAgent: req.headers["user-agent"],
     });
 
-    await redis.set(
-      `referral:pending:${fingerprint}`,
-      code,
-      "EX",
-      PENDING_REFERRAL_TTL_SECONDS,
-    );
+    await redis.set(`referral:pending:${fingerprint}`, code, "EX", PENDING_REFERRAL_TTL_SECONDS);
     setCookieSecure(res, "ref", code, {
       maxAge: PENDING_REFERRAL_TTL_SECONDS * 1000,
     });

@@ -117,10 +117,7 @@ describe("upload routes integration", () => {
       Key: response.body.key,
     });
 
-    expect(mockGetPublicUrl).toHaveBeenCalledWith(
-      "brand-assets",
-      response.body.key
-    );
+    expect(mockGetPublicUrl).toHaveBeenCalledWith("brand-assets", response.body.key);
 
     // Ownership record must be created in Redis
     expect(mockRedisSet).toHaveBeenCalledOnce();
@@ -152,9 +149,7 @@ describe("upload routes integration", () => {
       })
       .expect(400);
 
-    expect(response.body.error).toBe(
-      "Content length exceeds maximum of 2MB for brand-logo"
-    );
+    expect(response.body.error).toBe("Content length exceeds maximum of 2MB for brand-logo");
   });
 
   it("POST /upload/verify returns 200 when the object exists and MIME matches", async () => {
@@ -338,7 +333,9 @@ describe("upload routes integration", () => {
 
   it("POST /upload/verify rejects SVG files at the API layer", async () => {
     mockSend.mockResolvedValueOnce({ ContentType: "image/svg+xml" });
-    const svgContent = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="#6366f1"/></svg>');
+    const svgContent = Buffer.from(
+      '<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="10" fill="#6366f1"/></svg>'
+    );
     mockSend.mockResolvedValueOnce({ Body: { transformToByteArray: async () => svgContent } });
 
     const response = await request(app)
@@ -384,10 +381,7 @@ describe("upload routes integration", () => {
     mockRedisGet.mockResolvedValueOnce("1"); // ownership confirmed
     mockSend.mockResolvedValueOnce({});
 
-    await request(app)
-      .delete("/upload/abort")
-      .send({ key: "logos/orphan-key" })
-      .expect(204);
+    await request(app).delete("/upload/abort").send({ key: "logos/orphan-key" }).expect(204);
 
     expect(mockSend).toHaveBeenCalledTimes(1);
     expect(mockSend.mock.calls[0][0]?.input).toMatchObject({
@@ -402,10 +396,7 @@ describe("upload routes integration", () => {
     mockRedisGet.mockResolvedValueOnce("1");
     mockSend.mockResolvedValueOnce({});
 
-    await request(app)
-      .delete("/upload/abort")
-      .send({ key: "avatars/orphan-key" })
-      .expect(204);
+    await request(app).delete("/upload/abort").send({ key: "avatars/orphan-key" }).expect(204);
 
     expect(mockSend.mock.calls[0][0]?.input).toMatchObject({
       Bucket: "brand-assets",
@@ -426,10 +417,7 @@ describe("upload routes integration", () => {
   });
 
   it("DELETE /upload/abort returns 400 when key is missing", async () => {
-    const response = await request(app)
-      .delete("/upload/abort")
-      .send({})
-      .expect(400);
+    const response = await request(app).delete("/upload/abort").send({}).expect(400);
 
     expect(response.body.error).toBe("Validation Error");
   });
@@ -455,10 +443,10 @@ describe("upload routes integration", () => {
 
       expect(response.body.assetUrl).toBeDefined();
       expect(response.body.optimizedKey).toBe("logos/optimized-abc123.webp");
-      expect(mockQuery).toHaveBeenCalledWith(
-        "UPDATE brands SET logo_url = $1 WHERE id = $2",
-        [expect.any(String), "brand-123"]
-      );
+      expect(mockQuery).toHaveBeenCalledWith("UPDATE brands SET logo_url = $1 WHERE id = $2", [
+        expect.any(String),
+        "brand-123",
+      ]);
     });
 
     it("the image optimisation pipeline is invoked exactly once per successful completion", async () => {
@@ -552,10 +540,10 @@ describe("upload routes integration", () => {
         })
         .expect(200);
 
-      expect(mockQuery).toHaveBeenCalledWith(
-        "UPDATE users SET avatar_url = $1 WHERE id = $2",
-        [expect.any(String), "user-123"]
-      );
+      expect(mockQuery).toHaveBeenCalledWith("UPDATE users SET avatar_url = $1 WHERE id = $2", [
+        expect.any(String),
+        "user-123",
+      ]);
     });
 
     it("updates challenge asset when resourceType is challenge-asset", async () => {
@@ -571,10 +559,10 @@ describe("upload routes integration", () => {
         })
         .expect(200);
 
-      expect(mockQuery).toHaveBeenCalledWith(
-        "UPDATE challenges SET asset_url = $1 WHERE id = $2",
-        [expect.any(String), "challenge-123"]
-      );
+      expect(mockQuery).toHaveBeenCalledWith("UPDATE challenges SET asset_url = $1 WHERE id = $2", [
+        expect.any(String),
+        "challenge-123",
+      ]);
     });
   });
 });

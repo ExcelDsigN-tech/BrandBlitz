@@ -78,12 +78,7 @@ describe("GET /admin/stats", () => {
     expect(response.body.cacheHit).toBe(false);
     expect(response.body.computedAt).toEqual(expect.any(String));
     expect(response.body.summary).toEqual(dbRows.summary);
-    expect(mocks.redisSet).toHaveBeenCalledWith(
-      "admin:stats:30",
-      expect.any(String),
-      "EX",
-      60
-    );
+    expect(mocks.redisSet).toHaveBeenCalledWith("admin:stats:30", expect.any(String), "EX", 60);
   });
 
   it("returns the cached payload on a cache hit without querying the DB", async () => {
