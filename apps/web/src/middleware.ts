@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomBytes } from "crypto";
 import { getToken } from "next-auth/jwt";
+import { resolveSecret } from "@/lib/secrets";
 
 const REF_COOKIE_NAME = "ref";
 const REF_TTL_SECONDS = 30 * 24 * 60 * 60;
@@ -53,7 +54,9 @@ export async function middleware(request: NextRequest): Promise<NextResponse> {
   if (pathname === "/login" || pathname.startsWith("/login/")) {
     const token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET,
+      // Docker secrets convention: resolve <KEY>_FILE first (prod), then the
+      // plain env var (local dev).
+      secret: resolveSecret("NEXTAUTH_SECRET"),
     });
     if (token) {
       // Session is valid and unexpired — redirect away from login.

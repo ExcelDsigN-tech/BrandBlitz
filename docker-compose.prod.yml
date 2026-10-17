@@ -5,6 +5,16 @@ secrets:
     external: true # create with: printf '<value>' | docker secret create s3_secret_access_key -
   minio_root_password:
     external: true # create with: printf '<value>' | docker secret create minio_root_password -
+  hot_wallet_secret:
+    external: true # create with: printf '<value>' | docker secret create hot_wallet_secret -
+  jwt_secret:
+    external: true # create with: printf '<value>' | docker secret create jwt_secret -
+  webhook_secret:
+    external: true # create with: printf '<value>' | docker secret create webhook_secret -
+  nextauth_secret:
+    external: true # create with: printf '<value>' | docker secret create nextauth_secret -
+  google_client_secret:
+    external: true # create with: printf '<value>' | docker secret create google_client_secret -
 
 services:
   postgres:
@@ -41,8 +51,21 @@ services:
       S3_ENDPOINT: ${S3_ENDPOINT:-https://minio:9000}
       S3_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_access_key
       S3_SECRET_ACCESS_KEY: ""
+      # Docker secrets convention — prefer the mounted secret file over a plain env var.
+      HOT_WALLET_SECRET_FILE: /run/secrets/hot_wallet_secret
+      HOT_WALLET_SECRET: ""
+      JWT_SECRET_FILE: /run/secrets/jwt_secret
+      JWT_SECRET: ""
+      WEBHOOK_SECRET_FILE: /run/secrets/webhook_secret
+      WEBHOOK_SECRET: ""
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
+      GOOGLE_CLIENT_SECRET: ""
     secrets:
       - s3_secret_access_key
+      - hot_wallet_secret
+      - jwt_secret
+      - webhook_secret
+      - google_client_secret
     deploy:
       replicas: 2
       resources:
@@ -56,8 +79,11 @@ services:
       S3_ENDPOINT: ${S3_ENDPOINT:-https://minio:9000}
       S3_SECRET_ACCESS_KEY_FILE: /run/secrets/s3_secret_access_key
       S3_SECRET_ACCESS_KEY: ""
+      HOT_WALLET_SECRET_FILE: /run/secrets/hot_wallet_secret
+      HOT_WALLET_SECRET: ""
     secrets:
       - s3_secret_access_key
+      - hot_wallet_secret
     deploy:
       replicas: 1
       resources:
@@ -68,6 +94,10 @@ services:
     restart: unless-stopped
     environment:
       NODE_ENV: production
+      WEBHOOK_SECRET_FILE: /run/secrets/webhook_secret
+      WEBHOOK_SECRET: ""
+    secrets:
+      - webhook_secret
     deploy:
       replicas: 1
       resources:
@@ -81,6 +111,15 @@ services:
       resources:
         limits:
           memory: 256m
+    environment:
+      NODE_ENV: production
+      NEXTAUTH_SECRET_FILE: /run/secrets/nextauth_secret
+      NEXTAUTH_SECRET: ""
+      GOOGLE_CLIENT_SECRET_FILE: /run/secrets/google_client_secret
+      GOOGLE_CLIENT_SECRET: ""
+    secrets:
+      - nextauth_secret
+      - google_client_secret
 
   nginx:
     restart: unless-stopped
