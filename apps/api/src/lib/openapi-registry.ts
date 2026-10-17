@@ -128,4 +128,5 @@ export async function loadAllRouteSchemas(): Promise<void> {
   await import("../routes/openapi/sessions.openapi");
   await import("../routes/openapi/challenges.openapi");
   await import("../routes/openapi/leaderboard.openapi");
+  await import("../routes/openapi/engagement.openapi");
 }

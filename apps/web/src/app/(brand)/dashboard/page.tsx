@@ -17,6 +17,9 @@ import { toast } from "@/lib/toast";
 import { BenchmarkPanel } from "./benchmark-panel";
 import { EscrowPanel } from "./escrow-panel";
 import { TeamPanel } from "./team-panel";
+import { RetentionPanel } from "./retention-panel";
+import { InviteCodesPanel } from "./invite-codes-panel";
+import { DuplicateChallengeAction } from "./duplicate-challenge-action";
 import { OgPreviewCard } from "@/components/brand/og-preview-card";
 
 interface ChallengeStats {
@@ -45,7 +48,7 @@ interface BrandWithChallenges {
     status: string;
     poolAmountUsdc: string;
     participantCount: number;
-    endsAt: string;
+    endsAt: string | null;
     stats?: ChallengeStats;
   }[];
 }
@@ -443,6 +446,16 @@ export default function DashboardPage() {
               <CardContent>
                 <LeagueScoringPanel brandId={brand.id} apiToken={apiToken} />
               </CardContent>
+              <CardContent>
+                <RetentionPanel brandId={brand.id} apiToken={apiToken} />
+              </CardContent>
+              <CardContent>
+                <InviteCodesPanel
+                  brandId={brand.id}
+                  apiToken={apiToken}
+                  challenges={brand.challenges}
+                />
+              </CardContent>
               {brand.challenges.length === 0 ? (
                 <CardContent>
                   <EmptyState
@@ -487,6 +500,9 @@ export default function DashboardPage() {
                           </th>
                           <th className="py-2 text-right font-medium text-[var(--muted-foreground)]">
                             Ends
+                          </th>
+                          <th className="py-2 text-right font-medium text-[var(--muted-foreground)]">
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -533,7 +549,17 @@ export default function DashboardPage() {
                                 {stats ? formatUsdc(stats.cost_per_completed_session_usdc) : "—"}
                               </td>
                               <td className="py-2 text-right text-[var(--muted-foreground)]">
-                                {new Date(c.endsAt).toLocaleDateString()}
+                                {c.endsAt ? new Date(c.endsAt).toLocaleDateString() : "Set dates"}
+                              </td>
+                              <td className="py-2 pl-3 text-right">
+                                <DuplicateChallengeAction
+                                  challengeId={c.id}
+                                  status={c.status}
+                                  apiToken={apiToken}
+                                  onUpdated={() => {
+                                    if (apiToken) void loadBrands(apiToken);
+                                  }}
+                                />
                               </td>
                             </tr>
                           );

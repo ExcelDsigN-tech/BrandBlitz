@@ -583,6 +583,9 @@ View delivery status and logs per brand.
 
 ## Error Responses
 
+Priority invite codes, weekly cohort retention, challenge discussions, and challenge
+duplication are documented in [Brand engagement](./brand-engagement.md).
+
 | Status | Code                        | Meaning                                               |
 | ------ | --------------------------- | ----------------------------------------------------- |
 | `400`  | `ENDS_AT_PAST`              | Challenge end time is in the past                     |

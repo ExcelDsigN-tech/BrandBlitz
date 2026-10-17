@@ -167,11 +167,17 @@ describe("parseChallenge", () => {
   });
 
   it("accepts optional fields as absent", () => {
-    const { tagline, ...partial } = fixture;
+    const { logo_url, ...partial } = fixture;
     expect(() => parseChallenge(partial)).not.toThrow();
   });
 
   it("accepts ends_at as null", () => {
     expect(() => parseChallenge({ ...fixture, ends_at: null })).not.toThrow();
+  });
+
+  it("accepts an unscheduled draft with no dates", () => {
+    expect(
+      parseChallenge({ ...fixture, status: "draft", starts_at: null, ends_at: null })
+    ).toMatchObject({ status: "draft", starts_at: null, ends_at: null });
   });
 });

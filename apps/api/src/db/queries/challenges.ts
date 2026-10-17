@@ -1,8 +1,10 @@
 import { query } from "../index";
+import type { QueryResult, QueryResultRow } from "pg";
 import { usdcToStroops } from "../../lib/usdc";
 import { encodeCursor, buildCursorWhereSimple, decodeCursorSafe } from "../pagination";
 
 export type ChallengeStatus =
+  | "draft"
   | "pending_deposit"
   | "active"
   | "ended"
@@ -29,7 +31,7 @@ export interface Challenge {
   deposit_confirmations: number;
   payout_tx_hashes: string[] | null;
   max_players: number | null;
-  starts_at: string;
+  starts_at: string | null;
   ends_at: string | null;
   reported_count: number;
   deleted_at: string | null;
@@ -70,32 +72,39 @@ export interface ChallengeQuestion {
   correct_option: "A" | "B" | "C" | "D";
 }
 
-export async function createChallenge(data: {
-  brandId: string;
-  challengeId: string;
-  depositMemo?: string;
-  poolAmountUsdc: string;
-  maxPlayers?: number;
-  endsAt?: string;
-  licenseId?: string;
-  payoutSchedule?: "instant" | "batched";
-}): Promise<Challenge> {
+export async function createChallenge(
+  data: {
+    brandId: string;
+    challengeId: string;
+    depositMemo?: string;
+    poolAmountUsdc: string;
+    maxPlayers?: number;
+    endsAt?: string;
+    licenseId?: string;
+    payoutSchedule?: "instant" | "batched";
+    draft?: boolean;
+  },
+  executor: {
+    query: <T extends QueryResultRow>(text: string, params?: unknown[]) => Promise<QueryResult<T>>;
+  } = { query }
+): Promise<Challenge> {
   const payoutSchedule = data.payoutSchedule ?? "instant";
-  const result = await query<Challenge>(
+  const result = await executor.query<Challenge>(
     `INSERT INTO challenges
        (brand_id, challenge_id, deposit_memo, pool_amount_stroops, max_players, ends_at,
-        challenge_license_id, payout_schedule)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        challenge_license_id, payout_schedule, status, starts_at)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, CASE WHEN $9 = 'draft' THEN NULL ELSE NOW() END)
      RETURNING *, (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc`,
     [
       data.brandId,
       data.challengeId,
-      data.depositMemo ?? data.challengeId,
+      data.draft ? null : (data.depositMemo ?? data.challengeId),
       usdcToStroops(data.poolAmountUsdc),
       data.maxPlayers ?? null,
       data.endsAt ?? null,
       data.licenseId ?? null,
       payoutSchedule,
+      data.draft ? "draft" : "pending_deposit",
     ]
   );
   return result.rows[0];
@@ -326,7 +335,7 @@ export async function getChallengesByBrandId(
       "DESC",
       cursorValues.created_at,
       cursorValues.id as string,
-      3
+      2
     );
     whereExtra = clause;
     params.push(cursorValues.created_at, cursorValues.id);

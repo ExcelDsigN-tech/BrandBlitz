@@ -4,10 +4,33 @@ import { query } from "../db/index";
 import { createError } from "../middleware/error";
 import { apiLimiter, waitlistLimiter } from "../middleware/rate-limit";
 
-import { optionalAuth } from "../middleware/authenticate";
+import { authenticate, optionalAuth } from "../middleware/authenticate";
+import { requireActiveUser } from "../middleware/require-active-user";
+import { redeemInviteCode } from "../db/queries/invite-codes";
 import { scheduleChallengeReminder } from "../queues/challenge-reminder.queue";
 
 const router = Router();
+
+router.post("/redeem-code", authenticate, requireActiveUser, waitlistLimiter, async (req, res) => {
+  const { code } = z
+    .object({
+      code: z
+        .string()
+        .trim()
+        .regex(/^[A-Za-z0-9]{32}$/),
+    })
+    .parse(req.body);
+  res.json(await redeemInviteCode(req.user!.sub, code.toUpperCase()));
+});
+
+router.get("/access", authenticate, async (req, res) => {
+  const result = await query<{ status: string }>(
+    `SELECT w.status FROM waitlist w JOIN users u ON lower(u.email) = w.email
+     WHERE u.id = $1 AND u.deleted_at IS NULL`,
+    [req.user!.sub]
+  );
+  res.json({ status: result.rows[0]?.status ?? "not_enrolled" });
+});
 
 const WaitlistSchema = z.object({
   email: z.string().max(254).email(),
@@ -36,7 +59,7 @@ router.post("/", optionalAuth, waitlistLimiter, async (req, res) => {
 
   if (parsed.data.challenge_id) {
     const chRes = await query<{ id: string; status: string; starts_at: string }>(
-      "SELECT id, status, starts_at FROM challenges WHERE id = $1",
+      "SELECT id, status, starts_at FROM challenges WHERE id = $1 AND deleted_at IS NULL AND status <> 'draft'",
       [parsed.data.challenge_id]
     );
     if (chRes.rows.length === 0) {
@@ -84,8 +107,9 @@ router.get("/position/:email", apiLimiter, async (req, res) => {
   const email = z.string().email().parse(req.params.email);
   const result = await query<{ position: number }>(
     `SELECT position FROM (
-       SELECT email, ROW_NUMBER() OVER (ORDER BY created_at ASC) AS position
+       SELECT email, (ROW_NUMBER() OVER (ORDER BY created_at ASC, id ASC))::int AS position
        FROM waitlist
+       WHERE status = 'waiting'
      ) w
      WHERE email = $1`,
     [email.toLowerCase().trim()]
