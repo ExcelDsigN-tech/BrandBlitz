@@ -84,6 +84,10 @@ describe("EscrowClient", () => {
     it("should have isSettled method", () => {
       expect(typeof client.isSettled).toBe("function");
     });
+
+    it("should have getMemo method", () => {
+      expect(typeof client.getMemo).toBe("function");
+    });
   });
 });
 

@@ -308,39 +308,98 @@ fn test_deposit_after_settled_fails() {
 }
 
 #[test]
-fn test_settle_empty_recipients() {
-    let (env, admin, brand, token, usdc, client) = setup();
-    client.initialize(
-        &admin,
-        &token,
-        &String::from_str(&env, "BLITZ-EMPTY-RECIPIENTS"),
-    );
-    client.deposit(&brand, &100_0000000_i128);
-
-    let recipients: Vec<(Address, i128)> = vec![&env];
-    client.settle(&recipients);
-
-    // Issue 886: settling with no recipients still flips the escrow to settled
-    // while the full balance is left stranded in the contract.
-    assert!(client.is_settled());
-    assert_eq!(client.balance(), 100_0000000_i128);
-    assert_eq!(usdc.balance(&client.address), 100_0000000_i128);
+fn test_memo_before_initialize() {
+    let (env, _, _, _, _, client) = setup();
+    // Pre-initialization view call returns graceful empty string without panicking
+    assert_eq!(client.memo(), String::from_str(&env, ""));
 }
 
 #[test]
-fn test_settle_partial_distribution() {
-    let (env, admin, brand, token, usdc, client) = setup();
+fn test_memo_after_initialize() {
+    let (env, admin, _, token, _, client) = setup();
+    let memo = String::from_str(&env, "BLITZ-MEMO-CHECK");
+    client.initialize(&admin, &token, &memo);
+    assert_eq!(client.memo(), memo);
+}
+
+#[test]
+fn test_auth_failure_surfaces_as_host_trap() {
+    let (env, admin, brand, token, _, client) = setup();
     let winner = Address::generate(&env);
-    client.initialize(&admin, &token, &String::from_str(&env, "BLITZ-PARTIAL"));
+    client.initialize(&admin, &token, &String::from_str(&env, "BLITZ-AUTH-TRAP"));
     client.deposit(&brand, &100_0000000_i128);
 
-    let recipients = vec![&env, (winner.clone(), 30_0000000_i128)];
-    client.settle(&recipients);
+    let recipients = vec![&env, (winner.clone(), 100_0000000_i128)];
 
-    assert!(client.is_settled());
-    assert_eq!(client.balance(), 70_0000000_i128);
-    assert_eq!(usdc.balance(&winner), 30_0000000_i128);
-    assert_eq!(usdc.balance(&client.address), 70_0000000_i128);
+    // soroban-sdk require_auth failure surfaces as a host trap / panic (is_err()),
+    // NOT as a typed Ok(Err(ContractError)).
+    env.mock_auths(&[]);
+    let res = client.try_settle(&recipients);
+    assert!(res.is_err());
+    assert!(!matches!(res, Ok(Err(_))));
+}
+
+#[test]
+fn test_deposit_second_depositor_fails() {
+    let (env, admin, brand, token, _, client) = setup();
+    let brand2 = Address::generate(&env);
+    let sac = token::StellarAssetClient::new(&env, &token);
+    sac.mint(&brand2, &500_0000000_i128);
+
+    client.initialize(&admin, &token, &String::from_str(&env, "BLITZ-MULTI-DEP"));
+    client.deposit(&brand, &100_0000000_i128);
+
+    // Subsequent top-up deposit from the same depositor succeeds
+    client.deposit(&brand, &50_0000000_i128);
+    assert_eq!(client.balance(), 150_0000000_i128);
+
+    // Deposit from a different depositor fails with DepositorMismatch
+    assert_eq!(
+        client.try_deposit(&brand2, &50_0000000_i128),
+        Err(Ok(ContractError::DepositorMismatch))
+    );
+}
+
+#[test]
+fn test_settle_empty_recipients_fails() {
+    let (env, admin, brand, token, _, client) = setup();
+    client.initialize(
+        &admin,
+        &token,
+        &String::from_str(&env, "BLITZ-EMPTY-SETTLE"),
+    );
+    client.deposit(&brand, &100_0000000_i128);
+
+    let empty_recipients = vec![&env];
+    assert_eq!(
+        client.try_settle(&empty_recipients),
+        Err(Ok(ContractError::NoRecipients))
+    );
+    // Contract must not be marked settled, balance must remain untouched
+    assert!(!client.is_settled());
+    assert_eq!(client.balance(), 100_0000000_i128);
+}
+
+#[test]
+fn test_settle_partial_recipients_fails() {
+    let (env, admin, brand, token, _, client) = setup();
+    let winner = Address::generate(&env);
+    client.initialize(
+        &admin,
+        &token,
+        &String::from_str(&env, "BLITZ-PARTIAL-SETTLE"),
+    );
+    client.deposit(&brand, &100_0000000_i128);
+
+    // Partial distribution (60 out of 100) must fail with UndistributedBalance
+    let recipients = vec![&env, (winner.clone(), 60_0000000_i128)];
+    assert_eq!(
+        client.try_settle(&recipients),
+        Err(Ok(ContractError::UndistributedBalance))
+    );
+    // Contract must not be marked settled, balance must remain untouched
+    assert!(!client.is_settled());
+    assert_eq!(client.balance(), 100_0000000_i128);
 }
 
 #[test]
@@ -356,23 +415,22 @@ fn test_refund_multiple_depositors() {
 
     usdc.transfer(&brand, &depositor_a, &100_0000000_i128);
     usdc.transfer(&brand, &depositor_b, &200_0000000_i128);
-    client.deposit(&depositor_a, &100_0000000_i128);
-    client.deposit(&depositor_b, &200_0000000_i128);
-    assert_eq!(client.balance(), 300_0000000_i128);
 
-    let depositor_a_before = usdc.balance(&depositor_a);
+    client.deposit(&depositor_a, &100_0000000_i128);
+    assert_eq!(
+        client.try_deposit(&depositor_b, &200_0000000_i128),
+        Err(Ok(ContractError::DepositorMismatch))
+    );
+    assert_eq!(client.balance(), 100_0000000_i128);
+
     let depositor_b_before = usdc.balance(&depositor_b);
     client.refund();
 
-    // Issue 887: refund() sends the whole balance to the last recorded
-    // depositor, so the earlier depositor is not made whole.
+    // Only the recorded depositor is refunded; the rejected depositor is untouched.
     assert!(client.is_settled());
     assert_eq!(client.balance(), 0);
-    assert_eq!(usdc.balance(&depositor_a), depositor_a_before);
-    assert_eq!(
-        usdc.balance(&depositor_b),
-        depositor_b_before + 300_0000000_i128
-    );
+    assert_eq!(usdc.balance(&depositor_a), 100_0000000_i128);
+    assert_eq!(usdc.balance(&depositor_b), depositor_b_before);
 }
 
 #[test]
@@ -387,10 +445,17 @@ fn test_settle_multiple_depositors() {
         &String::from_str(&env, "BLITZ-MULTI-SETTLE"),
     );
 
-    usdc.transfer(&brand, &depositor_a, &100_0000000_i128);
+    usdc.transfer(&brand, &depositor_a, &300_0000000_i128);
     usdc.transfer(&brand, &depositor_b, &200_0000000_i128);
+
+    // Multiple top-ups from the recorded depositor accumulate into one balance.
     client.deposit(&depositor_a, &100_0000000_i128);
-    client.deposit(&depositor_b, &200_0000000_i128);
+    client.deposit(&depositor_a, &200_0000000_i128);
+    assert_eq!(
+        client.try_deposit(&depositor_b, &200_0000000_i128),
+        Err(Ok(ContractError::DepositorMismatch))
+    );
+    assert_eq!(client.balance(), 300_0000000_i128);
 
     let recipients = vec![&env, (winner.clone(), 300_0000000_i128)];
     client.settle(&recipients);
