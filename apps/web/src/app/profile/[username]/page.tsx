@@ -11,8 +11,13 @@ import Image from "next/image";
 import type { UserProfile } from "@/lib/api";
 import { BadgeGrid, type Badge as UserBadge } from "@/components/gamification/badge-grid";
 import { OfflineBanner } from "@/components/layout/offline-banner";
+import { DataExportButton } from "@/components/profile/data-export-button";
 import type { Metadata } from "next";
 import { ProfileActions } from "./profile-actions";
+import {
+  PinnedBadgesShowcase,
+  type BadgeItem,
+} from "@/components/gamification/pinned-badges-showcase";
 
 interface ProfilePageProps {
   params: Promise<{ username: string }>;
@@ -82,6 +87,8 @@ interface PublicProfile {
   accuracyPct: number;
   league: PublicProfileLeague | null;
   badges: PublicProfileBadge[];
+  pinnedBadges?: string[];
+  pinnedBadgeDetails?: PublicProfileBadge[];
 }
 
 async function getUserProfile(username: string): Promise<{
@@ -238,7 +245,8 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <ProfileActions userId={publicProfile.userId} />
           )}
           {user.isOwner && (
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <ProfileActions userId={user.userId || publicProfile?.userId || ""} isOwner={true} />
               <Link href={`/profile/${user.username}/earnings`}>
                 <Button variant="outline" size="sm">
                   Earnings
@@ -247,11 +255,6 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
               <Link href="/profile/api-keys">
                 <Button variant="outline" size="sm">
                   API Keys
-                </Button>
-              </Link>
-              <Link href="/settings/profile">
-                <Button variant="outline" size="sm">
-                  Edit Profile
                 </Button>
               </Link>
             </div>
@@ -328,7 +331,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </Card>
         )}
 
-        {isOwner && (
+        {user.isOwner && (
           <p className="mb-8 text-xs text-[var(--muted-foreground)]">
             <Link
               href="/docs/guides/streaks-explained"
@@ -357,6 +360,18 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             </Card>
           ))}
         </div>
+
+        {/* Pinned Badges Showcase (#1001) */}
+        <PinnedBadgesShowcase
+          initialPinnedBadges={
+            publicProfile?.pinnedBadgeDetails && publicProfile.pinnedBadgeDetails.length > 0
+              ? publicProfile.pinnedBadgeDetails
+              : badges.filter((b) => (publicProfile?.pinnedBadges ?? []).includes(b.slug))
+          }
+          allEarnedBadges={badges}
+          isOwner={Boolean(user.isOwner)}
+          username={user.username}
+        />
 
         {/* Badges */}
         {badges.length > 0 && (

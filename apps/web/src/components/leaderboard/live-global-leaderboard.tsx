@@ -17,7 +17,7 @@ const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 const PAGE_SIZE = 50;
 const STORAGE_KEY = "brandblitz:leaderboard:global";
 
-export type LeaderboardScope = "global" | "friends";
+export type LeaderboardScope = "global" | "friends" | "teams";
 
 async function fetchLeaderboardPage(
   cursor?: string,

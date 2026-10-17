@@ -7,7 +7,11 @@ import {
 import type { NetworkName } from "@brandblitz/stellar";
 import { EscrowClient, type EscrowRecipient } from "@brandblitz/stellar";
 import { getLeaderboard } from "../db/queries/sessions";
-import { getChallengeById, updateChallengeStatus } from "../db/queries/challenges";
+import {
+  getChallengeById,
+  updateChallengeStatus,
+  getEndedBatchedChallenges,
+} from "../db/queries/challenges";
 import { createPayout, updatePayoutStatus } from "../db/queries/payouts";
 import { incrementUserEarnings } from "../db/queries/users";
 import { rankWinners } from "./scoring";
@@ -17,11 +21,12 @@ import { enqueueLeaderboardRefresh } from "../queues/leaderboard-refresh.queue";
 import { logger } from "../lib/logger";
 import { metrics } from "../lib/metrics";
 import { config } from "../lib/config";
-import { stellarSequenceStore } from "../lib/redis";
+import { redis, stellarSequenceStore } from "../lib/redis";
 import { verifySessionHmac } from "../lib/integrity";
 import { queueReferralBonusForPayout } from "./referrals";
 import { query } from "../db";
 import { getLicensePayoutTerms } from "../db/queries/challenge-licenses";
+import { getChallengeTeamLeaderboard, splitTeamPayout } from "../db/queries/challenge-teams";
 
 // Sentinel included in the PG trigger exception message (migration 018).
 export const FRAUD_BLOCK_SENTINEL = "FRAUD_BLOCKED_PAYOUT";
@@ -56,9 +61,24 @@ export function isFraudBlockError(err: unknown): boolean {
 
 /**
  * Enqueue a payout job for a completed challenge.
- * The actual Stellar transactions are processed by the BullMQ worker.
+ * Instant challenges are enqueued immediately. Batched challenges are deferred
+ * until the fixed daily batch run.
  */
 export async function enqueuePayout(challengeId: string, requestId?: string): Promise<void> {
+  const challenge = await getChallengeById(challengeId);
+  if (!challenge) throw new Error(`Challenge ${challengeId} not found`);
+
+  // Batched challenges are deferred until the fixed daily batch run
+  if (challenge.payout_schedule === "batched") {
+    logger.info("Challenge has batched payout schedule; deferred until daily batch run", {
+      challengeId,
+      requestId,
+    });
+    await enqueueLeaderboardRefresh(challengeId);
+    return;
+  }
+
+  // Instant challenges behave exactly as today
   await enqueuePayoutJob(challengeId);
   await enqueueLeaderboardRefresh(challengeId);
   logger.info("Payout job enqueued", { challengeId, requestId });
@@ -220,6 +240,18 @@ export async function processPayout(challengeId: string): Promise<void> {
       throw err;
     }
 
+    // IDEMPOTENCY CHECK:
+    // If payout is already sent or confirmed (e.g. from a previous partial batch run or retry),
+    // do NOT re-submit Stellar payout for this recipient.
+    if (payout.status === "sent" || payout.status === "confirmed") {
+      logger.info("Payout already sent or confirmed; skipping duplicate submission", {
+        payoutId: payout.id,
+        challengeId,
+        userId: allocation.userId,
+      });
+      continue;
+    }
+
     const amount = stroopsToUsdc(allocation.amountStroops);
     recipients.push({ address: allocation.address, amount });
     payoutRecords.push({
@@ -232,10 +264,13 @@ export async function processPayout(challengeId: string): Promise<void> {
   }
 
   if (recipients.length === 0) {
-    logger.error("No payout recipients available after ranking", {
-      challengeId,
-      rankedCount: ranked.length,
-    });
+    logger.info(
+      "No remaining payout recipients to process (already settled or no eligible winners)",
+      {
+        challengeId,
+        rankedCount: ranked.length,
+      }
+    );
     await updateChallengeStatus(challengeId, "settled");
     return;
   }
@@ -375,5 +410,113 @@ export async function processPayout(challengeId: string): Promise<void> {
       challengeId,
       txHashes,
     });
+  }
+}
+
+/**
+ * Calculate team payout allocations for challenges operating in team mode (#1002).
+ * Distributes prize pool according to team ranks, then splits team winnings among its members.
+ */
+export async function calculateTeamPayoutAllocations(
+  challengeId: string,
+  playerPoolStroops: bigint
+): Promise<Array<{ userId: string; address: string; amountStroops: bigint; teamId: string }>> {
+  const teamEntries = await getChallengeTeamLeaderboard(challengeId, 100);
+  if (teamEntries.length === 0 || playerPoolStroops <= 0n) return [];
+
+  const totalPoints = teamEntries.reduce((sum, t) => sum + t.totalScore, 0);
+  if (totalPoints <= 0) return [];
+
+  // Query stellar addresses for all team members
+  const memberAddressRows = await query<{ user_id: string; stellar_address: string | null }>(
+    `SELECT u.id AS user_id, u.stellar_address
+     FROM team_members tm
+     JOIN users u ON u.id = tm.user_id
+     WHERE tm.challenge_id = $1`,
+    [challengeId]
+  );
+  const addressMap = new Map(
+    memberAddressRows.rows.map((r) => [r.user_id, r.stellar_address ?? ""])
+  );
+
+  const allAllocations: Array<{
+    userId: string;
+    address: string;
+    amountStroops: bigint;
+    teamId: string;
+  }> = [];
+
+  for (const team of teamEntries) {
+    if (team.totalScore <= 0) continue;
+    const teamStroops = calculatePayoutShareStroops(
+      team.totalScore,
+      totalPoints,
+      playerPoolStroops
+    );
+    if (teamStroops <= 0n) continue;
+
+    const teamMembersWithAddress = team.members.map((m) => ({
+      userId: m.userId,
+      address: addressMap.get(m.userId) ?? "",
+      score: m.score,
+    }));
+
+    const memberSplits = splitTeamPayout(teamStroops, teamMembersWithAddress);
+    for (const split of memberSplits) {
+      allAllocations.push({
+        ...split,
+        teamId: team.teamId,
+      });
+    }
+  }
+
+  return allAllocations;
+}
+
+/**
+ * Group and process all eligible batched challenges at the fixed daily run time.
+ * Idempotent: ensures distributed lock prevents overlapping runs,
+ * skips already settled/sent payouts, and isolates challenge failures so
+ * a failure in one challenge does not abort or duplicate others.
+ */
+export async function processBatchPayout(): Promise<{
+  processedChallenges: string[];
+  failedChallenges: string[];
+}> {
+  const lockKey = "lock:payout:batch-daily";
+  const acquired = await redis.set(lockKey, "1", "EX", 1800, "NX");
+  if (!acquired) {
+    logger.warn("Batch payout run already in progress; skipping overlapping run");
+    return { processedChallenges: [], failedChallenges: [] };
+  }
+
+  const processedChallenges: string[] = [];
+  const failedChallenges: string[] = [];
+
+  try {
+    const batchedChallenges = await getEndedBatchedChallenges();
+    logger.info(`Starting batch payout run for ${batchedChallenges.length} challenges`);
+
+    for (const challenge of batchedChallenges) {
+      try {
+        await processPayout(challenge.id);
+        processedChallenges.push(challenge.id);
+      } catch (err) {
+        logger.error("Failed to process batched challenge payout", {
+          challengeId: challenge.id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        failedChallenges.push(challenge.id);
+      }
+    }
+
+    logger.info("Batch payout run completed", {
+      processedCount: processedChallenges.length,
+      failedCount: failedChallenges.length,
+    });
+
+    return { processedChallenges, failedChallenges };
+  } finally {
+    await redis.del(lockKey);
   }
 }

@@ -91,5 +91,6 @@ Link template: [post-mortem template](https://www.notion.so/brandblitz/post-mort
 
 - [payout-stuck-in-queue.md](payout-stuck-in-queue.md)
 - [hot-wallet-low-balance.md](hot-wallet-low-balance.md)
+- [deposit-monitor-lag.md](deposit-monitor-lag.md): an RPC outage also stalls the deposit-monitor and fires `DepositMonitorIndexerLagHigh` / `DepositMonitorPollErrors`
 - `packages/stellar/src/client.ts` — shared HTTP agent config
 - `packages/stellar/src/payout.ts` — batch submission logic

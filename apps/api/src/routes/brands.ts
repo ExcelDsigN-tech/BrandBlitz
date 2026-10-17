@@ -6,6 +6,8 @@ import {
   getBrandById,
   getPublicBrandById,
   getPublicBrands,
+  getPublicBrandChallenges,
+  getPublicBrandStats,
   getBrandMetaById,
   getActiveDistractorBrands,
   toBrandApi,
@@ -14,8 +16,23 @@ import {
   deleteBrand,
   getBrandChallengeStats,
   getBrandsByOwner,
+  type Brand,
 } from "../db/queries/brands";
+import {
+  getBrandMemberRole,
+  hasRequiredBrandRole,
+  getBrandMembers,
+  addBrandMember,
+  removeBrandMember,
+  type BrandMemberRole,
+} from "../db/queries/brand-members";
+import { findUserByEmail } from "../db/queries/users";
+import { checkBrandBudgetThreshold } from "../services/budget-alerts";
 import { getBrandAnalytics, getBrandBenchmark, BUCKET_LABELS } from "../db/queries/analytics";
+import {
+  getBrandRatingStats,
+  getBrandRatingStatsByChallenge,
+} from "../db/queries/challenge-ratings";
 import {
   createChallenge,
   insertChallengeQuestions,
@@ -121,6 +138,7 @@ const ChallengeSchema = z.object({
   maxPlayers: z.number().int().positive().optional(),
   endsAt: z.string().datetime(),
   licenseId: z.string().uuid().optional(),
+  payoutSchedule: z.enum(["instant", "batched"]).default("instant"),
   variants: z
     .array(
       z.object({
@@ -191,8 +209,40 @@ const PatchBrandSchema = z
     brand_story: z.string().max(500).nullable().optional(),
     usp: z.string().max(200).nullable().optional(),
     question_template: QuestionTemplateSchema.optional(),
+    budget_threshold: z
+      .union([z.number(), z.string()])
+      .nullable()
+      .optional()
+      .transform((val) => {
+        if (val === null || val === undefined) return val;
+        const num = typeof val === "number" ? val : parseFloat(val);
+        if (isNaN(num) || num < 0)
+          throw new Error("budget_threshold must be a non-negative number");
+        return num;
+      }),
   })
   .strict();
+
+/**
+ * Authorizes that the requesting user has at least the required role for a brand.
+ * Supports multi-admin role-based permissions (#1007): owner > editor > viewer.
+ */
+async function assertBrandRole(
+  brandId: string,
+  userId: string,
+  userEmail?: string,
+  minRole: BrandMemberRole = "viewer"
+): Promise<{ brand: Brand; role: BrandMemberRole }> {
+  const brand = await getBrandById(brandId);
+  if (!brand) throw createError("Brand not found", 404);
+
+  const role = await getBrandMemberRole(brand.id, userId, userEmail);
+  if (!role || !hasRequiredBrandRole(role, minRole)) {
+    throw createError("Forbidden", 403);
+  }
+
+  return { brand, role };
+}
 
 function validateChallengeEndsAt(endsAt: string): void {
   const endsAtMs = new Date(endsAt).getTime();
@@ -238,6 +288,30 @@ router.get("/public", async (req, res) => {
   );
 
   res.json({ brands: result.rows });
+});
+
+/**
+ * GET /brands/:id/public
+ * Public brand profile: safe public fields, challenge history, and aggregate
+ * stats. No auth required; soft-deleted or unknown brands return 404.
+ */
+router.get("/:id/public", async (req, res) => {
+  const parsed = z.object({ id: z.string().uuid() }).safeParse(req.params);
+  if (!parsed.success) throw createError("Brand not found", 404);
+
+  const brand = await getPublicBrandById(parsed.data.id);
+  if (!brand) throw createError("Brand not found", 404);
+
+  const [challenges, stats] = await Promise.all([
+    getPublicBrandChallenges(parsed.data.id),
+    getPublicBrandStats(parsed.data.id),
+  ]);
+
+  res.json({
+    brand: toPublicBrandApi(brand),
+    challenges,
+    stats,
+  });
 });
 
 /**
@@ -351,17 +425,18 @@ router.get("/license-marketplace", authenticate, async (req, res) => {
 
 /** GET /brands/:id/licenses — offered, issued, and acquired licenses for a dashboard. */
 router.get("/:id/licenses", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
   res.json(await getBrandLicenses(brand.id));
 });
 
 /** POST /brands/:id/license-challenge — acquire an immutable fee snapshot. */
 router.post("/:id/license-challenge", authenticate, async (req, res) => {
-  const licensee = await getBrandById(req.params.id);
-  if (!licensee) throw createError("Brand not found", 404);
-  if (licensee.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand: licensee } = await assertBrandRole(
+    req.params.id,
+    req.user!.sub,
+    req.user?.email,
+    "editor"
+  );
 
   const body = LicenseChallengeSchema.parse(req.body);
   const license = await acquireChallengeLicense({
@@ -376,9 +451,7 @@ router.post("/:id/license-challenge", authenticate, async (req, res) => {
 
 /** PATCH /brands/:id/challenges/:challengeId/licensing — opt in/out for future licenses. */
 router.patch("/:id/challenges/:challengeId/licensing", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "editor");
   const body = LicenseOfferSchema.parse(req.body);
   const offer = await setChallengeLicenseOffer({
     challengeId: req.params.challengeId,
@@ -395,8 +468,7 @@ router.patch("/:id/challenges/:challengeId/licensing", authenticate, async (req,
  * Return up to three public-safe alternate brands for a game round.
  */
 router.get("/:id/distractors", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const distractors = (await getActiveDistractorBrands(brand.id))
     .slice(0, 3)
@@ -404,14 +476,18 @@ router.get("/:id/distractors", authenticate, async (req, res) => {
 
   res.json({ distractors });
 });
+
 /**
  * GET /brands/:id
  */
 router.get("/:id", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
-  res.json({ brand: toBrandApi(brand) });
+  const { brand, role } = await assertBrandRole(
+    req.params.id,
+    req.user!.sub,
+    req.user?.email,
+    "viewer"
+  );
+  res.json({ brand: { ...toBrandApi(brand), memberRole: role } });
 });
 
 /**
@@ -419,9 +495,7 @@ router.get("/:id", authenticate, async (req, res) => {
  * Returns aggregated analytics data for the brand's challenges.
  */
 router.get("/:id/analytics", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const fromParam = req.query.from as string | undefined;
   const toParam = req.query.to as string | undefined;
@@ -449,16 +523,9 @@ router.get("/:id/analytics", authenticate, async (req, res) => {
  * GET /brands/:id/benchmark
  * Anonymized benchmark comparison: the brand's completion rate and
  * cost-per-session next to platform-wide medians for its size bucket.
- *
- * Only aggregate medians are returned — individual competitor brand data is
- * never exposed. Brands with fewer than BENCHMARK_MIN_CHALLENGES challenges
- * are excluded from the platform medians (statistical noise guard) and get
- * `platform.sampleSize === 0` until they qualify.
  */
 router.get("/:id/benchmark", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const benchmark = await withCoalescing(`brand_benchmark:${brand.id}`, 900, () =>
     getBrandBenchmark(brand.id)
@@ -477,14 +544,11 @@ router.get("/:id/benchmark", authenticate, async (req, res) => {
 
 /**
  * PATCH /brands/:id
- * Update mutable brand fields. Currently accepts question_template to allow
- * brand owners to override question text and prompt type per round.
- * Sends 422 on invalid question_template shape.
+ * Update mutable brand fields, including budget_threshold and question_template.
+ * Requires editor or owner role.
  */
 router.patch("/:id", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "editor");
 
   const result = PatchBrandSchema.safeParse(req.body);
   if (!result.success) {
@@ -497,7 +561,7 @@ router.patch("/:id", authenticate, async (req, res) => {
     return;
   }
 
-  const updated = await updateBrand(req.params.id, req.user!.sub, {
+  const updated = await updateBrand(req.params.id, undefined, {
     ...updates,
     question_template: updates.question_template as Record<string, unknown> | null | undefined,
   } as Parameters<typeof updateBrand>[2]);
@@ -508,17 +572,19 @@ router.patch("/:id", authenticate, async (req, res) => {
 
 /**
  * DELETE /brands/:id
- * Soft-delete a brand kit (prevents new activity; existing challenges continue).
+ * Soft-delete a brand kit. Only owner role or platform admin can delete the brand (#1007).
  */
 router.delete("/:id", authenticate, async (req, res) => {
   const meta = await getBrandMetaById(req.params.id);
   if (!meta || meta.deleted_at) throw createError("Brand not found", 404);
+
   const isAdmin = req.user!.role === "admin" || req.user!.role === "super_admin";
-  if (meta.owner_user_id !== req.user!.sub && !isAdmin) {
+  const userRole = await getBrandMemberRole(req.params.id, req.user!.sub, req.user?.email);
+  if (userRole !== "owner" && !isAdmin) {
     throw createError("Forbidden", 403);
   }
 
-  const deleted = await deleteBrand(req.params.id, isAdmin ? undefined : req.user!.sub);
+  const deleted = await deleteBrand(req.params.id, undefined);
   if (!deleted) throw createError("Brand not found", 404);
 
   res.status(200).json({
@@ -527,29 +593,102 @@ router.delete("/:id", authenticate, async (req, res) => {
   });
 });
 
+const BrandMemberInviteSchema = z.object({
+  email: z.string().trim().email(),
+  role: z.enum(["owner", "editor", "viewer"]).default("viewer"),
+});
+
+/**
+ * GET /brands/:id/members
+ * List all team members for a brand. Requires viewer role or higher (#1007).
+ */
+router.get("/:id/members", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
+  const members = await getBrandMembers(brand.id);
+  res.json({ members });
+});
+
+/**
+ * POST /brands/:id/members
+ * Invite or add a teammate to the brand. Only owner role can invite (#1007).
+ */
+router.post("/:id/members", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "owner");
+  const body = BrandMemberInviteSchema.parse(req.body);
+
+  const existingUser = await findUserByEmail(body.email);
+  const member = await addBrandMember(
+    brand.id,
+    body.email,
+    body.role,
+    req.user!.sub,
+    existingUser?.id
+  );
+
+  res.status(201).json({ member });
+});
+
+/**
+ * DELETE /brands/:id/members/:memberId
+ * Remove a team member from the brand. Only owner role can remove (#1007).
+ * Prevents removing the last owner.
+ */
+router.delete("/:id/members/:memberId", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "owner");
+  const members = await getBrandMembers(brand.id);
+
+  const target = members.find(
+    (m) => m.id === req.params.memberId || m.user_id === req.params.memberId
+  );
+  if (!target) {
+    throw createError("Member not found", 404);
+  }
+
+  if (target.role === "owner") {
+    const ownerCount = members.filter((m) => m.role === "owner").length;
+    if (ownerCount <= 1) {
+      throw createError("Cannot remove the last owner of a brand", 400, "CANNOT_REMOVE_LAST_OWNER");
+    }
+  }
+
+  await removeBrandMember(brand.id, target.id);
+  res.json({ success: true, removed: true });
+});
+
 /**
  * GET /brands/:id/dashboard
  * Get aggregated challenge stats for a brand's dashboard.
- * Uses the brand_challenge_stats view for efficient single-query aggregation.
+ * Requires viewer role or higher.
  */
 router.get("/:id/dashboard", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const stats = await getBrandChallengeStats(brand.id);
-  res.json({ stats });
+  const [ratingStats, ratingsByChallenge] = await Promise.all([
+    getBrandRatingStats(brand.id),
+    getBrandRatingStatsByChallenge(brand.id),
+  ]);
+
+  res.json({
+    stats,
+    ratings: {
+      avgDifficulty: ratingStats.avg_difficulty,
+      ratingCount: ratingStats.rating_count,
+      byChallenge: ratingsByChallenge.map((row) => ({
+        challengeId: row.challenge_id,
+        avgDifficulty: row.avg_difficulty,
+        ratingCount: row.rating_count,
+      })),
+    },
+  });
 });
 
 /**
  * GET /brands/:id/questions/preview
  * Returns questions (with correct answers) for the latest challenge of a brand.
- * Accessible only to the brand owner for previewing before launch.
  */
 router.get("/:id/questions/preview", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const { challenges } = await getChallengesByBrandId(brand.id, 1);
   if (challenges.length === 0) {
@@ -560,6 +699,93 @@ router.get("/:id/questions/preview", authenticate, async (req, res) => {
   const challenge = challenges[0];
   const questions = await getChallengeQuestions(challenge.id);
   res.json({ questions, challenge });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TEAM MANAGEMENT (Role-Based Permissions #1007)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /brands/:id/members
+ * List all members and roles for a brand.
+ */
+router.get("/:id/members", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
+  const members = await getBrandMembers(brand.id);
+  res.json({ members });
+});
+
+/**
+ * POST /brands/:id/members
+ * Invite a teammate by email. Only owner role can invite members (#1007).
+ */
+router.post("/:id/members", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "owner");
+
+  const MemberInviteSchema = z.object({
+    email: z.string().email(),
+    role: z.enum(["owner", "editor", "viewer"]).default("viewer"),
+  });
+  const { email, role } = MemberInviteSchema.parse(req.body);
+
+  const member = await addBrandMember({
+    brandId: brand.id,
+    email,
+    role,
+    invitedBy: req.user!.sub,
+  });
+
+  res.status(201).json({ member });
+});
+
+/**
+ * DELETE /brands/:id/members/:memberId
+ * Remove a member from a brand. Only owner role can remove other members (#1007).
+ */
+router.delete("/:id/members/:memberId", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "owner");
+
+  try {
+    const removed = await removeBrandMember(brand.id, req.params.memberId);
+    if (!removed) throw createError("Member not found", 404);
+    res.json({ member: removed, message: "Member removed successfully" });
+  } catch (err: any) {
+    if (err.message === "CANNOT_REMOVE_LAST_OWNER") {
+      throw createError(
+        "Cannot remove the last owner of the brand",
+        400,
+        "CANNOT_REMOVE_LAST_OWNER"
+      );
+    }
+    throw err;
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// BUDGET ALERTS (#1003)
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /brands/:id/notifications
+ * View in-app notifications and budget alerts for a brand.
+ */
+router.get("/:id/notifications", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
+  const result = await query(
+    `SELECT * FROM brand_notifications WHERE brand_id = $1 ORDER BY created_at DESC LIMIT 50`,
+    [brand.id]
+  );
+  res.json({ notifications: result.rows });
+});
+
+/**
+ * POST /brands/:id/budget-alert/check
+ * Trigger check of remaining escrow balance against configured budget threshold (#1003).
+ */
+router.post("/:id/budget-alert/check", authenticate, async (req, res) => {
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
+  const check = await checkBrandBudgetThreshold(brand.id);
+  res.json({ check });
 });
 
 const QuestionPreviewSchema = z.object({
@@ -575,9 +801,7 @@ const QuestionPreviewSchema = z.object({
  * questions before committing to a challenge. Idempotent — no DB writes.
  */
 router.post("/:id/questions/preview", authenticate, questionPreviewLimiter, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const { count } = QuestionPreviewSchema.parse(req.body);
 
@@ -593,9 +817,7 @@ router.post("/:id/questions/preview", authenticate, questionPreviewLimiter, asyn
  * Returns the new question with correct_answer.
  */
 router.post("/:id/questions/:questionId/regenerate", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "editor");
 
   const { questionId } = req.params;
   const allQuestions = await query<{
@@ -627,9 +849,7 @@ router.post("/:id/questions/:questionId/regenerate", authenticate, async (req, r
  * Mark a question as approved.
  */
 router.post("/:id/questions/:questionId/approve", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "editor");
 
   const { questionId } = req.params;
   await query("UPDATE challenge_questions SET approved = true WHERE id = $1", [questionId]);
@@ -641,9 +861,7 @@ router.post("/:id/questions/:questionId/approve", authenticate, async (req, res)
  * Mark a question as flagged for regeneration.
  */
 router.post("/:id/questions/:questionId/flag", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "editor");
 
   const { questionId } = req.params;
   await query("UPDATE challenge_questions SET approved = false WHERE id = $1", [questionId]);
@@ -701,6 +919,16 @@ router.post("/", authenticate, async (req, res) => {
     product_image_keys: productImageKeys,
   });
 
+  // Auto-register creator as owner in brand_members (#1007)
+  await addBrandMember({
+    brandId: brand.id,
+    email: req.user!.email || `${userId}@internal`,
+    role: "owner",
+    invitedBy: userId,
+  }).catch((err) => {
+    logger.warn("Could not auto-add brand owner to brand_members", { error: err });
+  });
+
   res.status(201).json({ brand: toBrandApi(brand) });
 });
 
@@ -727,9 +955,7 @@ router.post("/challenges", authenticate, requireCurrentTosAccepted, async (req, 
     }
   }
 
-  const brand = await getBrandById(body.brandId);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  const { brand } = await assertBrandRole(body.brandId, req.user!.sub, req.user?.email, "editor");
 
   const license = body.licenseId ? await getUsableLicense(body.licenseId, brand.id) : null;
   if (body.licenseId && !license) {
@@ -746,6 +972,7 @@ router.post("/challenges", authenticate, requireCurrentTosAccepted, async (req, 
     maxPlayers: body.maxPlayers,
     endsAt: body.endsAt,
     licenseId: license?.id,
+    payoutSchedule: body.payoutSchedule,
   });
 
   if (body.variants?.length) {
@@ -844,11 +1071,12 @@ router.post(
   authenticate,
   requireCurrentTosAccepted,
   async (req, res) => {
-    const brand = await getBrandById(req.params.id);
-    if (!brand) throw createError("Brand not found", 404);
-    if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-      throw createError("Forbidden", 403);
-    }
+    const { brand } = await assertBrandRole(
+      req.params.id,
+      req.user!.sub,
+      req.user?.email,
+      "editor"
+    );
 
     const parsed = ChallengeTemplateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -879,11 +1107,7 @@ router.post(
  * List challenge templates for a brand (ordered by most recently created).
  */
 router.get("/:id/challenge-templates", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const templates = await getChallengeTemplatesByBrandId(brand.id);
   res.json({ templates });
@@ -895,11 +1119,7 @@ router.get("/:id/challenge-templates", authenticate, async (req, res) => {
  * derived from active templates.
  */
 router.get("/:id/challenge-templates/upcoming", authenticate, async (req, res) => {
-  const brand = await getBrandById(req.params.id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  const { brand } = await assertBrandRole(req.params.id, req.user!.sub, req.user?.email, "viewer");
 
   const limit = Math.min(20, Math.max(1, parseInt(String(req.query.limit ?? "5"), 10) || 5));
   const upcoming = await getUpcomingChallengesFromTemplatesByBrandId(brand.id, limit);
@@ -915,11 +1135,7 @@ router.patch("/challenge-templates/:templateId/pause", authenticate, async (req,
   const template = await getChallengeTemplateById(req.params.templateId);
   if (!template) throw createError("Template not found", 404);
 
-  const brand = await getBrandById(template.brand_id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  await assertBrandRole(template.brand_id, req.user!.sub, req.user?.email, "editor");
 
   const updated = await pauseChallengeTemplate(template.id);
   if (!updated) {
@@ -937,11 +1153,7 @@ router.patch("/challenge-templates/:templateId/resume", authenticate, async (req
   const template = await getChallengeTemplateById(req.params.templateId);
   if (!template) throw createError("Template not found", 404);
 
-  const brand = await getBrandById(template.brand_id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  await assertBrandRole(template.brand_id, req.user!.sub, req.user?.email, "editor");
 
   const updated = await resumeChallengeTemplate(template.id);
   if (!updated) {
@@ -958,11 +1170,7 @@ router.delete("/challenge-templates/:templateId", authenticate, async (req, res)
   const template = await getChallengeTemplateById(req.params.templateId);
   if (!template) throw createError("Template not found", 404);
 
-  const brand = await getBrandById(template.brand_id);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  await assertBrandRole(template.brand_id, req.user!.sub, req.user?.email, "editor");
 
   await softDeleteChallengeTemplate(template.id);
   res.status(204).send();
@@ -974,11 +1182,7 @@ router.delete("/challenge-templates/:templateId", authenticate, async (req, res)
  */
 router.post("/:id/webhooks", authenticate, async (req, res) => {
   const brandId = req.params.id;
-  const brand = await getBrandById(brandId);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  await assertBrandRole(brandId, req.user!.sub, req.user?.email, "editor");
 
   const parsed = WebhookSubscriptionSchema.safeParse(req.body);
   if (!parsed.success) {
@@ -1001,11 +1205,7 @@ router.post("/:id/webhooks", authenticate, async (req, res) => {
  */
 router.get("/:id/webhooks", authenticate, async (req, res) => {
   const brandId = req.params.id;
-  const brand = await getBrandById(brandId);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  await assertBrandRole(brandId, req.user!.sub, req.user?.email, "viewer");
 
   const webhooks = await getBrandWebhooks(brandId);
   res.json({ webhooks });
@@ -1017,11 +1217,7 @@ router.get("/:id/webhooks", authenticate, async (req, res) => {
  */
 router.get("/:id/webhooks/deliveries", authenticate, async (req, res) => {
   const brandId = req.params.id;
-  const brand = await getBrandById(brandId);
-  if (!brand) throw createError("Brand not found", 404);
-  if (brand.owner_user_id !== req.user!.sub && req.user!.role !== "admin") {
-    throw createError("Forbidden", 403);
-  }
+  await assertBrandRole(brandId, req.user!.sub, req.user?.email, "viewer");
 
   const deliveries = await getBrandWebhookDeliveries(brandId);
   res.json({ deliveries });

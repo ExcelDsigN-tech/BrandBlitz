@@ -9,6 +9,10 @@ const configSchema = z.object({
   WEBHOOK_SECRET: z.string().min(1),
   API_URL: z.string().url(),
   DEPOSIT_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
+  // Port for GET /metrics (Prometheus) and GET /health. 0 disables the server.
+  METRICS_PORT: z.coerce.number().int().min(0).max(65535).default(9464),
+  // Indexer-lag SLO threshold (docs/operations/deposit-monitor-slo.md).
+  INDEXER_LAG_SLO_SECONDS: z.coerce.number().int().positive().default(60),
   LOG_LEVEL: z.enum(["error", "warn", "info", "http", "verbose", "debug", "silly"]).default("info"),
 });
 

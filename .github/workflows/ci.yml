@@ -27,7 +27,7 @@ jobs:
             --ignore '.corepack/**' \
             --config .markdownlint.json \
             || true   # report findings but don't fail until rule-set is stable
-          markdownlint 'docs/runbooks/*.md' --ignore node_modules
+          markdownlint 'docs/runbooks/*.md' --ignore node_modules --config .markdownlint.json
         # The second call enforces runbooks strictly because they are the
         # critical operational documents (rotate-secrets.md, cdn-purge.md, …)
 
@@ -82,7 +82,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:16-alpine
+        image: postgres:17-alpine
         env:
           POSTGRES_USER: brandblitz
           POSTGRES_PASSWORD: brandblitz_dev

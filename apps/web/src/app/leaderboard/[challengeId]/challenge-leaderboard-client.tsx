@@ -106,6 +106,16 @@ export function ChallengeLeaderboardClient({ challengeId, initialEntries, initia
           >
             Friends
           </Button>
+          <Button
+            role="tab"
+            aria-selected={scope === "teams"}
+            size="sm"
+            variant={scope === "teams" ? "default" : "ghost"}
+            className="h-8"
+            onClick={() => setScope("teams")}
+          >
+            Teams
+          </Button>
         </div>
 
         <div
@@ -135,7 +145,92 @@ export function ChallengeLeaderboardClient({ challengeId, initialEntries, initia
         )}
       </div>
 
-      {scope === "friends" && !isLoggedIn ? (
+      {scope === "teams" ? (
+        isLoadingFriends ? (
+          <div className="space-y-4 px-6 py-4">
+            {Array.from({ length: 4 }).map((_, idx) => (
+              <div key={idx} className="grid grid-cols-[80px_1fr_120px] items-center gap-4">
+                <Skeleton className="h-5 w-10" />
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="ml-auto h-5 w-20" />
+              </div>
+            ))}
+          </div>
+        ) : entries.length === 0 ? (
+          <div className="p-6">
+            <EmptyState
+              title="No team scores yet"
+              description="Join or create a team on this challenge to compete on the team leaderboard!"
+              action={
+                <Link href={`/challenge/${challengeId}`}>
+                  <Button>Join or Create a Team</Button>
+                </Link>
+              }
+            />
+          </div>
+        ) : (
+          <div className="overflow-x-auto p-6">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b border-[var(--border)] text-xs uppercase text-[var(--muted-foreground)]">
+                <tr>
+                  <th className="pb-3 pl-2">Rank</th>
+                  <th className="pb-3">Team Name</th>
+                  <th className="pb-3 text-center">Members</th>
+                  <th className="pb-3 text-right">Avg Score</th>
+                  <th className="pb-3 pr-2 text-right">Total Score</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[var(--border)]">
+                {entries.map((entry: any, index) => {
+                  const medal = index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : null;
+                  return (
+                    <tr key={entry.teamId || index} className="hover:bg-[var(--muted)]/50">
+                      <td className="py-3 pl-2 font-medium">
+                        {medal ? (
+                          <span className="mr-1.5">{medal}</span>
+                        ) : (
+                          `#${entry.rank ?? index + 1}`
+                        )}
+                      </td>
+                      <td className="py-3">
+                        <div className="font-semibold text-[var(--foreground)]">
+                          {entry.teamName || entry.username || "Team"}
+                        </div>
+                        {entry.members && entry.members.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {entry.members.slice(0, 4).map((m: any) => (
+                              <span
+                                key={m.userId}
+                                className="rounded bg-[var(--muted)] px-1.5 py-0.5 text-[10px] text-[var(--muted-foreground)]"
+                              >
+                                {m.displayName || m.username} ({m.score} pts)
+                              </span>
+                            ))}
+                            {entry.members.length > 4 && (
+                              <span className="text-[10px] text-[var(--muted-foreground)]">
+                                +{entry.members.length - 4} more
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 text-center font-medium text-[var(--muted-foreground)]">
+                        {entry.memberCount ?? "—"}
+                      </td>
+                      <td className="py-3 text-right text-[var(--muted-foreground)]">
+                        {entry.avgScore !== undefined ? entry.avgScore : "—"}
+                      </td>
+                      <td className="py-3 pr-2 text-right font-bold text-[var(--foreground)]">
+                        {entry.totalScore?.toLocaleString() ?? 0}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )
+      ) : scope === "friends" && !isLoggedIn ? (
         <div className="p-6">
           <EmptyState
             title="Sign in to view friends"

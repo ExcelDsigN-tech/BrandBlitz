@@ -5,7 +5,7 @@ import { requireAdmin } from "../../middleware/require-admin";
 import { createError } from "../../middleware/error";
 import { query, pool } from "../../db/index";
 import { getPayouts } from "../../db/queries/payouts";
-import { enqueuePayoutJob } from "../../queues/payout.queue";
+import { enqueuePayoutJob, enqueueBatchPayoutJob } from "../../queues/payout.queue";
 import { logger } from "../../lib/logger";
 import { CursorQuerySchema } from "../../db/pagination";
 
@@ -100,6 +100,25 @@ router.post("/:id/retry", async (req, res) => {
   });
 
   res.json({ success: true });
+});
+
+router.post("/batch-run", async (req, res) => {
+  await enqueueBatchPayoutJob();
+
+  await query(
+    `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+     VALUES ($1, 'payout_batch_run_triggered', 'payout', 'batch-daily', $2::jsonb)`,
+    [
+      req.user!.sub,
+      JSON.stringify({ triggeredBy: req.user!.sub, timestamp: new Date().toISOString() }),
+    ]
+  );
+
+  logger.info("Daily batch payout run triggered by admin", {
+    adminId: req.user!.sub,
+  });
+
+  res.json({ success: true, message: "Batch payout run triggered" });
 });
 
 export default router;

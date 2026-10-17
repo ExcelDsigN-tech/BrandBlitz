@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { formatUsdc } from "@/lib/utils";
+import { formatUsdc } from "@/lib/format";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import { generateColoredBlurPlaceholder } from "@/lib/blur-placeholder";
 import type { Challenge } from "@/lib/api";

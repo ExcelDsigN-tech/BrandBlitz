@@ -27,3 +27,15 @@ export async function getUserBadges(userId: string): Promise<UserBadge[]> {
   );
   return result.rows;
 }
+
+export async function updatePinnedBadges(userId: string, badgeIds: string[]): Promise<string[]> {
+  const result = await query<{ pinned_badges: string[] }>(
+    `UPDATE users
+     SET pinned_badges = $1,
+         updated_at = NOW()
+     WHERE id = $2
+     RETURNING pinned_badges`,
+    [badgeIds, userId]
+  );
+  return result.rows[0]?.pinned_badges ?? [];
+}

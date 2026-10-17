@@ -20,6 +20,9 @@ import { scoresForResume, shouldShowRecoveryModal } from "@/components/game/sess
 import { BrandKitPreview } from "@/components/brand/brand-kit-preview";
 import { ReportModal } from "@/components/game/report-modal";
 import { FirstRunTutorial } from "@/components/game/first-run-tutorial";
+import { ChallengeTeamsPanel } from "@/components/challenge/challenge-teams-panel";
+import { ChallengeChatPanel } from "@/components/challenge/challenge-chat-panel";
+import { ChallengeRatingPrompt } from "@/components/game/challenge-rating-prompt";
 
 const WarmupPhase = dynamic(
   () => import("@/components/game/warmup-phase").then((m) => m.WarmupPhase),
@@ -516,7 +519,7 @@ export function ChallengePage({ params }: Props) {
 
   if (phase === "preview" && challenge) {
     return (
-      <>
+      <div className="min-h-screen space-y-6 pb-12">
         <BrandKitPreview
           logoUrl={challenge.logo_url ?? null}
           primaryColor={challenge.primary_color ?? null}
@@ -526,8 +529,23 @@ export function ChallengePage({ params }: Props) {
           onStart={handlePreviewStart}
           onSkip={handlePreviewSkip}
         />
+        <div className="mx-auto max-w-xl space-y-6 px-4">
+          <ChallengeTeamsPanel
+            challengeId={challenge.id}
+            apiToken={apiToken}
+            isLoggedIn={Boolean(session?.user)}
+          />
+          <ChallengeChatPanel
+            challengeId={challenge.id}
+            apiToken={apiToken}
+            currentUserId={(session?.user as any)?.id || (session?.user as any)?.sub}
+            currentUsername={(session?.user as any)?.username}
+            challengeStatus={challenge.status}
+            isLoggedIn={Boolean(session?.user)}
+          />
+        </div>
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
-      </>
+      </div>
     );
   }
 
@@ -655,7 +673,7 @@ export function ChallengePage({ params }: Props) {
 
   if (phase === "result") {
     return (
-      <>
+      <div className="min-h-screen space-y-8 pb-12">
         <ResultScreen
           totalScore={scores.reduce((a, b) => a + b, 0)}
           challengeId={challengeId}
@@ -664,8 +682,21 @@ export function ChallengePage({ params }: Props) {
           primaryColor={challenge?.primary_color ?? undefined}
           secondaryColor={challenge?.secondary_color ?? undefined}
         />
+        <div className="mx-auto max-w-xl px-4">
+          <ChallengeChatPanel
+            challengeId={challengeId}
+            apiToken={apiToken}
+            currentUserId={(session?.user as any)?.id || (session?.user as any)?.sub}
+            currentUsername={(session?.user as any)?.username}
+            challengeStatus={challenge?.status ?? "active"}
+            isLoggedIn={Boolean(session?.user)}
+          />
+        </div>
+        <div className="px-6 pb-10">
+          <ChallengeRatingPrompt challengeId={challengeId} apiToken={apiToken} />
+        </div>
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
-      </>
+      </div>
     );
   }
 

@@ -13,6 +13,20 @@ pnpm --filter @brandblitz/deposit-monitor dev
 Requires the env vars in `apps/deposit-monitor/src/config.ts` (`REDIS_URL`,
 `STELLAR_NETWORK`, `HOT_WALLET_PUBLIC_KEY`, `WEBHOOK_SECRET`, `API_URL`, ...).
 
+## Metrics, health and SLO
+
+The service listens on `METRICS_PORT` (default `9464`, `0` disables it) and
+serves:
+
+- `GET /metrics`: Prometheus text format, including the SLI
+  `deposit_monitor_indexer_lag_seconds`.
+- `GET /health`: `200 {"status":"ok",...}` while indexer lag is within
+  `INDEXER_LAG_SLO_SECONDS` (default `60`), `503 {"status":"lagging",...}`
+  otherwise.
+
+The SLO, the alert rules and the runbook are described in
+[`docs/operations/deposit-monitor-slo.md`](../../docs/operations/deposit-monitor-slo.md).
+
 ## Testing the webhook locally without a real deposit
 
 Running the full service against real testnet deposits (or hand-crafting a

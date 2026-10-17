@@ -302,12 +302,6 @@ router.post("/:challengeId/answer/:round", authenticate, validateReactionTime, a
     throw createError("Session flagged for review", 403);
   }
 
-  // Double answer check
-  const existingScores = (session as any).scores || [];
-  if (existingScores.some((s: any) => s.round === round)) {
-    throw createError("Round already answered", 400);
-  }
-
   const questions = await getChallengeQuestions(challenge.id);
   const question = questions.find((q) => q.round === round);
   if (!question) throw createError("Question not found", 404);
@@ -323,6 +317,17 @@ router.post("/:challengeId/answer/:round", authenticate, validateReactionTime, a
       total_score: session.total_score,
       rank: session.rank ?? null,
     });
+  }
+
+  // Reject duplicate answers using the persisted answers on the session row.
+  const alreadyAnswered =
+    round === 1
+      ? session.round_1_answer != null
+      : round === 2
+        ? session.round_2_answer != null
+        : session.round_3_answer != null;
+  if (alreadyAnswered) {
+    throw createError("Round already answered", 400);
   }
 
   const score = calculateRoundScore({
@@ -372,10 +377,6 @@ router.post("/:challengeId/answer/:round", authenticate, validateReactionTime, a
           completed.total_score,
           challenge.challenge_id
         );
-      }
-      const token = bearerToken(req);
-      if (token) {
-        await revokeSessionToken(session.id, token, req.user!.exp);
       }
     }
     const token = bearerToken(req);

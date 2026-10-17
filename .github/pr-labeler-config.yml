@@ -10,7 +10,6 @@ thresholds:
 # Files or patterns matching the ignore list are excluded from the line count calculation.
 ignore:
   - "pnpm-lock.yaml"
-  - "package-lock.json"
   - "*.snap"
   - "dist/**"
   - "build/**"

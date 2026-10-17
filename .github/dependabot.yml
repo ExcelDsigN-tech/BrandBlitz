@@ -81,6 +81,7 @@ updates:
           - "docker/*"
 
   # ── Rust / Cargo ─────────────────────────────────────────────────────────
+  # Version-bump PRs require a committed contracts/Cargo.lock to diff against.
   - package-ecosystem: cargo
     directory: "/contracts"
     schedule:

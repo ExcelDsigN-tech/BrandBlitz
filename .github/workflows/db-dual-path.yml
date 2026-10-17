@@ -16,9 +16,17 @@ on:
       - "docs/DATABASE.md"
       - "docs/db/er.svg"
 
+concurrency:
+  group: db-dual-path-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   dual-path:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       fresh_db:
@@ -50,7 +58,7 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - name: Install psql client
         run: sudo apt-get install -y postgresql-client
@@ -62,6 +70,11 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -h localhost -p 5433 -U bb -d brandblitz_fresh -f init.sql
 
       # ── Migration path ────────────────────────────────────────────────────
+      - name: Seed migration DB from shared baseline
+        env:
+          PGPASSWORD: bb
+        run: psql -v ON_ERROR_STOP=1 -h localhost -p 5434 -U bb -d brandblitz_migration -f init.sql
+
       - name: Apply migrations in order
         env:
           PGPASSWORD: bb
@@ -122,6 +135,7 @@ jobs:
   # performing a round-trip check (down → up leaves the schema unchanged).
   exercise-down-migrations:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -139,7 +153,7 @@ jobs:
           --health-retries 10
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
 
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4

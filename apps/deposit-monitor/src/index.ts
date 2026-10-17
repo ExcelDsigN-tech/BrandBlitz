@@ -1,14 +1,34 @@
-import "dotenv/config";
 import crypto from "crypto";
 import { Redis } from "ioredis";
 import { fetchDepositEvents, type DepositEvent } from "@brandblitz/stellar";
 import { config } from "./config";
 import { logger } from "./logger";
+import { IndexerMetrics, createMetricsServer } from "./metrics";
 
 const LAST_LEDGER_KEY = "stellar:deposit_monitor:last_ledger";
 const redis = new Redis(config.REDIS_URL, {
   lazyConnect: true,
 });
+const indexerMetrics = new IndexerMetrics();
+const metricsServer = createMetricsServer(indexerMetrics, {
+  sloSeconds: config.INDEXER_LAG_SLO_SECONDS,
+});
+
+function logIndexerLag(): void {
+  const snap = indexerMetrics.snapshot();
+  const payload = {
+    lagSeconds: Number(snap.lagSeconds.toFixed(3)),
+    lagLedgers: snap.lagLedgers,
+    cursorLedger: snap.cursorLedger,
+    networkLedger: snap.networkLedger,
+    sloSeconds: config.INDEXER_LAG_SLO_SECONDS,
+  };
+  if (snap.lagSeconds > config.INDEXER_LAG_SLO_SECONDS) {
+    logger.warn("Indexer lag above SLO", payload);
+  } else {
+    logger.debug("Indexer lag", payload);
+  }
+}
 
 /**
  * Sign webhook payload following the same logic as apps/api/src/middleware/verify-webhook.ts
@@ -82,6 +102,7 @@ async function poll(): Promise<void> {
       // First run: just save the latest ledger and wait for next poll
       // to avoid processing old events.
       await redis.set(LAST_LEDGER_KEY, latestLedger.toString());
+      indexerMetrics.recordPoll(latestLedger, latestLedger);
       logger.info("Initial poll complete, cursor set", { latestLedger });
       return;
     }
@@ -89,6 +110,7 @@ async function poll(): Promise<void> {
     for (const event of events) {
       logger.info("Deposit detected", { txHash: event.txHash, memo: event.memo });
       emitMetric("deposits.detected_total");
+      indexerMetrics.recordDepositDetected();
 
       try {
         await sendDepositWebhook(event);
@@ -96,6 +118,8 @@ async function poll(): Promise<void> {
         // If one webhook fails, we don't update the cursor and will retry all from this ledger next time.
         // For simplicity, we stop here.
         emitMetric("deposits.poll_errors_total", 1, { error: "webhook_failure" });
+        indexerMetrics.recordPollError("webhook_failure", latestLedger);
+        logIndexerLag();
         return;
       }
     }
@@ -105,9 +129,13 @@ async function poll(): Promise<void> {
       await redis.set(LAST_LEDGER_KEY, latestLedger.toString());
       logger.debug("Cursor updated", { latestLedger });
     }
+    indexerMetrics.recordPoll(Math.max(fromLedger, latestLedger), latestLedger);
+    logIndexerLag();
   } catch (err) {
     logger.error("Poll error", { err });
     emitMetric("deposits.poll_errors_total", 1, { error: "rpc_error" });
+    indexerMetrics.recordPollError("rpc_error");
+    logIndexerLag();
   }
 }
 
@@ -116,6 +144,12 @@ let isRunning = true;
 export async function main() {
   await redis.connect();
   logger.info("Redis connected");
+
+  if (config.METRICS_PORT > 0) {
+    metricsServer.listen(config.METRICS_PORT, () => {
+      logger.info("Metrics server listening", { port: config.METRICS_PORT });
+    });
+  }
 
   logger.info("Deposit monitor starting", {
     network: config.STELLAR_NETWORK,
@@ -138,6 +172,9 @@ const shutdown = async (signal: string) => {
   isRunning = false;
 
   try {
+    if (metricsServer.listening) {
+      await new Promise<void>((resolve) => metricsServer.close(() => resolve()));
+    }
     await redis.disconnect();
     logger.info("Redis disconnected");
     process.exit(0);
@@ -157,4 +194,4 @@ if (process.env.NODE_ENV !== "test") {
   });
 }
 
-export { poll, sendDepositWebhook, redis, LAST_LEDGER_KEY };
+export { poll, sendDepositWebhook, redis, indexerMetrics, LAST_LEDGER_KEY };

@@ -85,6 +85,7 @@ vi.mock("../lib/config", () => ({
 vi.mock("../middleware/rate-limit", () => ({
   apiLimiter: (_req: any, _res: any, next: any) => next(),
   reportLimiter: (_req: any, _res: any, next: any) => next(),
+  challengeRatingLimiter: (_req: any, _res: any, next: any) => next(),
 }));
 
 vi.mock("../middleware/authenticate", () => ({

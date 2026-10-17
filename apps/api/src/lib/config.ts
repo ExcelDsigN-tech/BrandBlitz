@@ -12,6 +12,7 @@
 
 import { ZodError } from "zod";
 import { configSchema, type Config } from "./config-schema";
+import { resolveSecret } from "./secrets";
 
 // Keys whose values must never appear in logs.
 const SECRET_KEYS = new Set<keyof Config>([
@@ -32,10 +33,18 @@ function loadConfig(): Readonly<Config> {
   try {
     const parsed = configSchema.parse({
       ...process.env,
+      // resolveSecret honours the Docker secrets convention: when
+      // <KEY>_FILE=/run/secrets/... is set, the file contents win over the
+      // plain env var (which compose blanks in prod).
+      HOT_WALLET_SECRET:
+        resolveSecret(process.env, "HOT_WALLET_SECRET") ?? process.env.STELLAR_HOT_WALLET_SECRET,
+      S3_ACCESS_KEY_ID: resolveSecret(process.env, "S3_ACCESS_KEY_ID") ?? process.env.S3_ACCESS_KEY,
+      S3_SECRET_ACCESS_KEY:
+        resolveSecret(process.env, "S3_SECRET_ACCESS_KEY") ?? process.env.S3_SECRET_KEY,
+      JWT_SECRET: resolveSecret(process.env, "JWT_SECRET"),
+      GOOGLE_CLIENT_SECRET: resolveSecret(process.env, "GOOGLE_CLIENT_SECRET"),
+      WEBHOOK_SECRET: resolveSecret(process.env, "WEBHOOK_SECRET"),
       // Support legacy env-var aliases so existing deployments keep working.
-      HOT_WALLET_SECRET: process.env.HOT_WALLET_SECRET ?? process.env.STELLAR_HOT_WALLET_SECRET,
-      S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? process.env.S3_ACCESS_KEY,
-      S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_KEY,
       TWILIO_SERVICE_SID: process.env.TWILIO_SERVICE_SID ?? process.env.TWILIO_VERIFY_SERVICE_SID,
     });
 

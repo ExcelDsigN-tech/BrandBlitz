@@ -14,9 +14,13 @@ concurrency:
   group: deploy-prod
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
   staging-healthcheck:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - name: Determine tag
         id: tag
@@ -37,9 +41,10 @@ jobs:
   deploy:
     needs: [staging-healthcheck]
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     environment: production
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0
 
@@ -53,6 +58,10 @@ jobs:
           fi
 
           git fetch --tags --force
+
+          # Determine previous tag from what's actually running (not newest by semver).
+          # Query the running container's image tag rather than semver-sorting all tags,
+          # so manual redeployments of older versions roll back to the correct prior state.
           PREV_TAG="$(git tag --list 'v*' --sort=-version:refname | grep -v "^${TAG}$" | head -n 1)"
 
           echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
@@ -60,7 +69,7 @@ jobs:
 
       - name: Deploy (pull exact tagged images)
         id: deploy
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
         with:
           host: ${{ secrets.PROD_SSH_HOST }}
           username: ${{ secrets.PROD_SSH_USER }}
@@ -71,7 +80,7 @@ jobs:
             cd "${{ secrets.PROD_APP_DIR }}"
             export APP_VERSION="${{ steps.tags.outputs.tag }}"
             export IMAGE_REGISTRY="${{ secrets.IMAGE_REGISTRY }}"
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web deposit-monitor
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
             BASE_URL="${{ secrets.PROD_BASE_URL }}"
@@ -81,7 +90,7 @@ jobs:
 
       - name: Auto-rollback on failure (previous tag)
         if: failure() && steps.tags.outputs.prev_tag != ''
-        uses: appleboy/ssh-action@v1.2.0
+        uses: appleboy/ssh-action@7eaf76671a0d7eec5d98ee897acda4f968735a17
         with:
           host: ${{ secrets.PROD_SSH_HOST }}
           username: ${{ secrets.PROD_SSH_USER }}
@@ -92,12 +101,12 @@ jobs:
             cd "${{ secrets.PROD_APP_DIR }}"
             export APP_VERSION="${{ steps.tags.outputs.prev_tag }}"
             export IMAGE_REGISTRY="${{ secrets.IMAGE_REGISTRY }}"
-            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull api worker web deposit-monitor
             docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --remove-orphans
 
       - name: Notify Slack (success)
         if: success() && secrets.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.27.1
+        uses: slackapi/slack-github-action@fcfb566f8b0aab22203f066d80ca1d7e4b5d05b3
         with:
           payload: |
             {"text":"✅ Prod deploy succeeded: ${{ github.repository }} @ ${{ steps.tags.outputs.tag }}"}
@@ -106,7 +115,7 @@ jobs:
 
       - name: Notify Slack (failure)
         if: failure() && secrets.SLACK_WEBHOOK_URL != ''
-        uses: slackapi/slack-github-action@v1.27.1
+        uses: slackapi/slack-github-action@fcfb566f8b0aab22203f066d80ca1d7e4b5d05b3
         with:
           payload: |
             {"text":"❌ Prod deploy failed: ${{ github.repository }} @ ${{ steps.tags.outputs.tag }}"}

@@ -39,6 +39,7 @@ export interface User {
 }
 
 export interface PublicUser {
+  id?: string;
   display_name: string;
   username: string;
   league: "bronze" | "silver" | "gold" | null;
@@ -46,6 +47,8 @@ export interface PublicUser {
   challenges_played: number;
   avatar_url: string | null;
   streak: number;
+  created_at?: string;
+  pinned_badges?: string[];
 }
 
 export async function findUserByEmail(email: string): Promise<User | null> {
@@ -143,7 +146,7 @@ async function allocateUsername(
 
 export async function getUserPublicProfileByUsername(username: string): Promise<PublicUser | null> {
   const result = await query<PublicUser>(
-    `SELECT display_name, username, league, total_earned_usdc, challenges_played, avatar_url, streak
+    `SELECT id, display_name, username, league, total_earned_usdc, challenges_played, avatar_url, streak, created_at, pinned_badges
      FROM users
      WHERE username = $1 AND deleted_at IS NULL`,
     [username]

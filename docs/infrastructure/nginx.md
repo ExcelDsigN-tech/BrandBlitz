@@ -66,8 +66,8 @@ ensure the certs directory is volume-mounted in `docker-compose.yml`:
 
 ## Updating the config
 
-Edit `nginx/templates/nginx.prod.conf.template`. Do **not** edit `nginx/nginx.prod.conf`
-(kept only for reference; it is no longer mounted in prod).
+Edit `nginx/templates/nginx.prod.conf.template`. Production renders this template at
+startup; generated configuration files are not committed or edited manually.
 
 ## CI check
 

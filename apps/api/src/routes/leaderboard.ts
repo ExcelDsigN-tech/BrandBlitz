@@ -16,6 +16,7 @@ import { withCoalescing } from "../lib/cache";
 import { CursorQuerySchema } from "../db/pagination";
 import { createError } from "../middleware/error";
 import { optionalAuth } from "../middleware/authenticate";
+import { getChallengeTeamLeaderboard } from "../db/queries/challenge-teams";
 
 const router = Router();
 
@@ -258,6 +259,20 @@ router.get("/:challengeId", optionalAuth, async (req, res) => {
   const window = parseLeaderboardWindow(req.query);
   const { limit, cursor, offset } = CursorQuerySchema.parse(req.query);
   const scopeRaw = typeof req.query.scope === "string" ? req.query.scope : undefined;
+  const viewRaw = typeof req.query.view === "string" ? req.query.view : undefined;
+
+  if (scopeRaw === "team" || scopeRaw === "teams" || viewRaw === "team" || viewRaw === "teams") {
+    const teams = await getChallengeTeamLeaderboard(req.params.challengeId, limit);
+    res.json({
+      teams,
+      leaderboard: teams,
+      data: teams,
+      scope: "teams",
+      window,
+    });
+    return;
+  }
+
   const scope = scopeRaw === "friends" ? "friends" : "global";
   const userId = req.user?.sub;
 
@@ -310,6 +325,20 @@ router.get("/:challengeId", optionalAuth, async (req, res) => {
   });
 
   res.json(responseBody);
+});
+
+/**
+ * GET /leaderboard/:challengeId/teams
+ * Explicit endpoint for challenge team leaderboard standings (#1002).
+ */
+router.get("/:challengeId/teams", optionalAuth, async (req, res) => {
+  const { limit } = CursorQuerySchema.parse(req.query);
+  const teams = await getChallengeTeamLeaderboard(req.params.challengeId, limit);
+  res.json({
+    teams,
+    leaderboard: teams,
+    data: teams,
+  });
 });
 
 export default router;

@@ -38,6 +38,7 @@ vi.mock("../db/index", () => ({
 vi.mock("../middleware/rate-limit", () => ({
   apiLimiter: (_req: any, _res: any, next: any) => next(),
   reportLimiter: (_req: any, _res: any, next: any) => next(),
+  challengeRatingLimiter: (_req: any, _res: any, next: any) => next(),
 }));
 
 vi.mock("../db/queries/brands", () => ({

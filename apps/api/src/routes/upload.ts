@@ -28,22 +28,22 @@ function pendingUploadKey(userId: string, s3Key: string): string {
 
 const router = Router();
 
-const ALLOWED_UPLOAD_TYPES = {
+export const ALLOWED_UPLOAD_TYPES = {
   "brand-logo": { bucket: BUCKETS.BRAND_ASSETS, prefix: "logos/", maxMb: 2 },
   "product-image": { bucket: BUCKETS.BRAND_ASSETS, prefix: "products/", maxMb: 5 },
   "user-avatar": { bucket: BUCKETS.BRAND_ASSETS, prefix: "avatars/", maxMb: 1 },
 } as const;
 
-const ALLOWED_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
+export const ALLOWED_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
-type AllowedMime = (typeof ALLOWED_CONTENT_TYPES)[number];
+export type AllowedMime = (typeof ALLOWED_CONTENT_TYPES)[number];
 
 /**
  * Maximum allowed size (in bytes) for an uploaded object, derived from the key
  * prefix. Enforced on /verify before any file bytes are read so an oversized
  * object is rejected up front (issue #505).
  */
-function maxBytesForKey(key: string): number {
+export function maxBytesForKey(key: string): number {
   if (key.startsWith("products/")) return ALLOWED_UPLOAD_TYPES["product-image"].maxMb * 1024 * 1024;
   if (key.startsWith("avatars/")) return ALLOWED_UPLOAD_TYPES["user-avatar"].maxMb * 1024 * 1024;
   return ALLOWED_UPLOAD_TYPES["brand-logo"].maxMb * 1024 * 1024;
@@ -59,7 +59,7 @@ const PresignSchema = z.object({
  * Detect MIME type from the first bytes of a buffer using magic numbers.
  * Returns one of the allowed MIME strings, or null if unrecognised.
  */
-function detectMime(buf: Buffer): AllowedMime | null {
+export function detectMime(buf: Buffer): AllowedMime | null {
   if (buf.length < 3) return null;
 
   // PNG: 89 50 4E 47
