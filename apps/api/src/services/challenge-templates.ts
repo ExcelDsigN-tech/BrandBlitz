@@ -207,15 +207,14 @@ export async function spawnChallengeFromTemplate(
       await client.query(
         `INSERT INTO challenge_questions
            (challenge_id, round, question_type, prompt_type, question_text,
-            correct_answer, option_a, option_b, option_c, option_d, correct_option)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            option_a, option_b, option_c, option_d, correct_option)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [
           q.challenge_id,
           q.round,
           q.question_type,
           q.prompt_type,
           q.question_text,
-          q.correct_answer,
           q.option_a,
           q.option_b,
           q.option_c,

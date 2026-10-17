@@ -1,4 +1,4 @@
--- Migration: Create recalculate_league(p_week DATE) stored procedure (#492)
+-- Migration 030: Create recalculate_league(p_week DATE) stored procedure (#492)
 -- Wraps the entire weekly league recalculation in a single atomic transaction.
 -- Called by the simplified BullMQ league worker instead of multiple sequential queries.
 

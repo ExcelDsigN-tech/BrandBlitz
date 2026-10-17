@@ -1,4 +1,4 @@
--- Migration 012: Drop redundant correct_answer column
+-- Migration 020: Drop redundant correct_answer column
 -- Issue #208: challenge_questions has both correct_answer and correct_option
 --
 -- Problem: The table defines both correct_answer (string) and correct_option (A-D).

@@ -1,4 +1,4 @@
--- Migration 018 DOWN: Remove minimum pool amount constraint
+-- Migration 029 DOWN: Remove minimum pool amount constraint
 
 -- Drop the minimum pool constraint
 ALTER TABLE challenges

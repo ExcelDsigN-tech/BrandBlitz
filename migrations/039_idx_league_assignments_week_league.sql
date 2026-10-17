@@ -1,4 +1,4 @@
--- Migration 025: dedicated two-column index on league_assignments(week_start, league)
+-- Migration 039: dedicated two-column index on league_assignments(week_start, league)
 --
 -- The weekly recalculation job in queues/processors/league.processor.ts queries
 -- league_assignments filtered by week_start and grouped by league. The existing

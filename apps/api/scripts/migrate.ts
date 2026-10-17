@@ -230,6 +230,18 @@ const LEGACY_EXEMPT_FILES = new Set([
   "0025-brand-webhooks.sql",
   "0026-challenge-templates.down.sql",
   "0026-challenge-templates.sql",
+  "0027-challenge-tags.down.sql",
+  "0027-challenge-tags.sql",
+  "0027-drop-correct-answer.down.sql",
+  "0027-drop-correct-answer.sql",
+  "0028-challenge-gallery.down.sql",
+  "0028-challenge-gallery.sql",
+  "0029-scheduled-config-changes.down.sql",
+  "0029-scheduled-config-changes.sql",
+  "0030-brand-digest-preferences.down.sql",
+  "0030-brand-digest-preferences.sql",
+  "0030-challenge-ratings.down.sql",
+  "0030-challenge-ratings.sql",
 ]);
 
 async function runLint(): Promise<void> {

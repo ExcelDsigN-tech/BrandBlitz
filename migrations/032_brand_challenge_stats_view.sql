@@ -1,4 +1,4 @@
--- Migration 019: Create brand_challenge_stats view for dashboard aggregation
+-- Migration 032: Create brand_challenge_stats view for dashboard aggregation
 -- This view aggregates game_sessions and session_round_scores per (brand_id, challenge_id)
 -- to provide efficient dashboard queries without N+1 performance issues.
 

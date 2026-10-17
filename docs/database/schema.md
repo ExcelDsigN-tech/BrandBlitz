@@ -59,11 +59,11 @@ CONSTRAINT challenges_ends_after_starts CHECK (ends_at IS NULL OR ends_at > star
 
 A challenge with a defined end date must end strictly after it starts. `NULL` `ends_at` is allowed (open-ended challenge). Inserting or updating a row with `ends_at <= starts_at` raises PostgreSQL error `23514` (check_violation).
 
-**Migration:** `migrations/009_challenges_end_after_start.sql` adds this constraint to existing databases and backfills any violating rows by setting `ends_at = starts_at + INTERVAL '72 hours'`.
+**Migration:** `migrations/010_challenges_end_after_start.sql` adds this constraint to existing databases and backfills any violating rows by setting `ends_at = starts_at + INTERVAL '72 hours'`.
 
 ## app_config
 
-Runtime-tunable key/value store added in `migrations/010_app_config.sql`.
+Runtime-tunable key/value store added in `migrations/011_app_config.sql`.
 
 | key                     | default value                                                    | description                                                              |
 | ----------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------ |

@@ -1,4 +1,4 @@
--- Migration 022: add indexes on fraud_flags to eliminate sequential scans on
+-- Migration 036: add indexes on fraud_flags to eliminate sequential scans on
 -- the admin fraud review queries.
 --
 -- The admin fraud-flags endpoint filters by user_id and lists flags newest

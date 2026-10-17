@@ -1,4 +1,4 @@
--- Migration 012: Fix ON DELETE behaviour for financial / fraud records
+-- Migration 021: Fix ON DELETE behaviour for financial / fraud records
 -- game_sessions.user_id  → SET NULL  (keep session history when user deleted)
 -- payouts.user_id        → SET NULL  (keep payout records for regulatory compliance)
 -- fraud_flags.user_id    → RESTRICT  (block hard-delete while fraud investigation open)

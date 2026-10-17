@@ -1,4 +1,4 @@
--- Migration 019: Add last_login timestamp to users table for audit trail.
+-- Migration 033: Add last_login timestamp to users table for audit trail.
 -- Updated atomically alongside token rotation on every successful authentication.
 
 ALTER TABLE users
