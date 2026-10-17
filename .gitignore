@@ -40,7 +40,6 @@ Thumbs.db
 
 # Rust / Cargo
 target
-Cargo.lock
 
 # Test coverage
 coverage

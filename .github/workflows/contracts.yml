@@ -48,7 +48,9 @@ jobs:
 
       - name: Build escrow contract (WASM)
         working-directory: contracts
-        run: stellar contract build
+        run: stellar contract build --locked
+        # --locked fails if Cargo.lock and Cargo.toml have drifted apart, so CI
+        # always builds the exact dependency versions committed in the repo.
         # stellar contract build targets wasm32v1-none (soroban-sdk >= 21).
         # Artefact: contracts/target/wasm32v1-none/release/escrow.wasm
 
@@ -58,7 +60,7 @@ jobs:
 
       - name: Run contract tests
         working-directory: contracts
-        run: cargo test
+        run: cargo test --locked
 
       - name: Upload WASM artefact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

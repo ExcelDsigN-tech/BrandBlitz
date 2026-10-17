@@ -3,6 +3,30 @@
 All variables listed here **must** be set before running the production stack.
 There are no safe defaults — a missing value causes the compose service to fail fast.
 
+## Docker secrets (`_FILE` convention)
+
+Production (`docker-compose.prod.yml`) injects sensitive credentials as
+**Docker secrets**, never as plain environment variables. Each affected service
+receives `<VAR>_FILE=/run/secrets/<name>` (with the plain variable blanked);
+the application reads the secret's contents from that path, falling back to the
+plain `<VAR>` environment variable when `_FILE` is not set (as in local dev).
+
+| Secret (`docker secret create`) | Injected into | Env var read by app |
+| ------------------------------- | ------------- | ------------------- |
+| `hot_wallet_secret` | api, worker | `HOT_WALLET_SECRET_FILE` |
+| `jwt_secret` | api | `JWT_SECRET_FILE` |
+| `webhook_secret` | api, deposit-monitor | `WEBHOOK_SECRET_FILE` |
+| `nextauth_secret` | web | `NEXTAUTH_SECRET_FILE` |
+| `google_client_secret` | api, web | `GOOGLE_CLIENT_SECRET_FILE` |
+| `s3_secret_access_key` | api, worker | `S3_SECRET_ACCESS_KEY_FILE` |
+| `minio_root_password` | minio | `MINIO_ROOT_PASSWORD_FILE` |
+
+Create them before running the prod stack, e.g.:
+
+```bash
+printf '%s' "$HOT_WALLET_SECRET" | docker secret create hot_wallet_secret -
+```
+
 ## Application
 
 | Variable | Service(s) | Description |

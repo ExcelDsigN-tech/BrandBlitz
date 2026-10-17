@@ -134,6 +134,12 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     command: ["node", "dist/worker.js"]
+    # The worker is a pure BullMQ queue processor — it never opens an HTTP
+    # server or listens on any port, so the HEALTHCHECK baked into the shared
+    # apps/api Dockerfile (wget http://localhost:3000/health) can never succeed
+    # for the worker. Disable it rather than forking a Dockerfile per service.
+    healthcheck:
+      disable: true
     stop_grace_period: 35s
     deploy:
       resources:
