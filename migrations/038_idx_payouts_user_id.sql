@@ -1,4 +1,4 @@
--- Migration 024: ensure index on payouts(user_id) for earnings history queries
+-- Migration 038: ensure index on payouts(user_id) for earnings history queries
 --
 -- services/payout.ts and routes/users.ts query the payouts table filtered by
 -- user_id to compute earnings history and display payout records. Without this

@@ -1,4 +1,4 @@
--- Migration 013: DB-level CHECK constraints for core numeric invariants
+-- Migration 022: DB-level CHECK constraints for core numeric invariants
 -- Complements Zod edge validation; rejects garbage if Zod is bypassed.
 
 -- challenges: pool must be positive once the challenge is active

@@ -1,4 +1,4 @@
--- Migration 011: make payouts.error_message NOT NULL with default ''
+-- Migration 013: make payouts.error_message NOT NULL with default ''
 -- and add a CHECK constraint that enforces every failed payout row to carry
 -- a non-empty message so forensics never rely solely on log rotation.
 

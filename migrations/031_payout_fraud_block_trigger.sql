@@ -1,4 +1,4 @@
--- Migration 018: DB trigger that blocks payout inserts for fraud-flagged sessions.
+-- Migration 031: DB trigger that blocks payout inserts for fraud-flagged sessions.
 -- Provides an immutable safety net independent of application-level guards.
 
 CREATE OR REPLACE FUNCTION prevent_payout_for_flagged_session()

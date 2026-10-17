@@ -1,4 +1,4 @@
--- Migration 023: partial index on challenges(status) WHERE status = 'active'
+-- Migration 037: partial index on challenges(status) WHERE status = 'active'
 --
 -- The active-challenge listing query in db/queries/challenges.ts filters
 -- exclusively on status = 'active'. A partial index is smaller than a full

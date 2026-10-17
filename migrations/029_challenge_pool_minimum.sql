@@ -1,4 +1,4 @@
--- Migration 018: Enforce minimum pool amount of 100 USDC (1,000,000,000 stroops)
+-- Migration 029: Enforce minimum pool amount of 100 USDC (1,000,000,000 stroops)
 -- for active challenges to prevent dust-level prize pools.
 
 -- Add the CHECK constraint

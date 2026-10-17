@@ -33,7 +33,7 @@ Created a partial unique index that:
 
 #### Migration File: `apps/api/migrations/0024-username-unique-partial.sql`
 
-_(Superseded previous un-run migration `migrations/011_username_unique_partial.sql` in root)_
+_(Superseded previous un-run migration `migrations/018_username_unique_partial.sql` in root)_
 
 ```sql
 -- Drop the existing UNIQUE constraint on username
@@ -69,7 +69,7 @@ Comprehensive Vitest tests covering:
 - **Created**: `apps/api/migrations/0024-username-unique-partial.sql`
 - **Created**: `apps/api/migrations/0024-username-unique-partial.down.sql`
 - **Created**: `apps/api/src/db/queries/users.username.test.ts` (moved from root `users.username.test.ts`)
-- **Deprecated**: `migrations/011_username_unique_partial.sql` (added header notice pointing to real migration)
+- **Deprecated**: `migrations/018_username_unique_partial.sql` (added header notice pointing to real migration)
 
 ---
 
@@ -92,7 +92,7 @@ Drop the redundant `correct_answer` column, keeping only `correct_option` as the
 
 ### Implementation
 
-#### Migration File: `migrations/012_drop_correct_answer.sql`
+#### Migration File: `migrations/020_drop_correct_answer.sql`
 
 ```sql
 -- Drop the redundant correct_answer column
@@ -120,7 +120,7 @@ grep -r "correct_answer" apps/ packages/ --exclude-dir=node_modules
 
 ### Files Created/Modified
 
-- **Created**: `migrations/012_drop_correct_answer.sql`
+- **Created**: `migrations/020_drop_correct_answer.sql`
 
 ---
 
@@ -377,8 +377,8 @@ docker compose down -v
 
 ```bash
 # Run migrations in order
-psql $DATABASE_URL -f migrations/011_username_unique_partial.sql
-psql $DATABASE_URL -f migrations/012_drop_correct_answer.sql
+psql $DATABASE_URL -f migrations/018_username_unique_partial.sql
+psql $DATABASE_URL -f migrations/020_drop_correct_answer.sql
 ```
 
 ### Rollback (if needed)

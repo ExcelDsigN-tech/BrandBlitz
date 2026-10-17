@@ -1,7 +1,10 @@
 import type { Brand } from "../db/queries/brands";
 import type { ChallengeQuestion } from "../db/queries/challenges";
 
-type QuestionDraft = Omit<ChallengeQuestion, "id">;
+type QuestionDraft = Omit<ChallengeQuestion, "id"> & {
+  /** In-memory generation aid; only correct_option is persisted. */
+  correct_answer: string;
+};
 
 /**
  * Auto-generate 3 challenge questions from brand kit inputs.

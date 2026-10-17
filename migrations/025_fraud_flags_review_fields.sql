@@ -1,4 +1,4 @@
--- Migration 012: Add review workflow fields to fraud_flags
+-- Migration 025: Add review workflow fields to fraud_flags
 -- Enables state transitions (open → resolved | escalated) with audit trail
 
 ALTER TABLE fraud_flags

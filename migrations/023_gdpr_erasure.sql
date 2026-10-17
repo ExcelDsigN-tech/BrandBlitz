@@ -1,4 +1,4 @@
--- Migration 014: GDPR right-to-erasure request tracking table
+-- Migration 023: GDPR right-to-erasure request tracking table
 -- Records pending / executed / cancelled erasure requests.
 -- The actual anonymisation is performed by the gdpr-erasure BullMQ worker
 -- after the 30-day grace period elapses.

@@ -1,4 +1,4 @@
--- Migration 029: Challenge reminders, user notification type expansion, and personal API keys
+-- Migration 043: Challenge reminders, user notification type expansion, and personal API keys
 
 -- 1. Support challenge reminder and rank overtaken notification types
 DO $$
