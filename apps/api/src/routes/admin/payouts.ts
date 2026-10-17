@@ -4,77 +4,24 @@ import { authenticate } from "../../middleware/authenticate";
 import { requireAdmin } from "../../middleware/require-admin";
 import { createError } from "../../middleware/error";
 import { query, pool } from "../../db/index";
-import { enqueuePayoutJob } from "../../queues/payout.queue";
+import { getPayouts } from "../../db/queries/payouts";
+import { enqueuePayoutJob, enqueueBatchPayoutJob } from "../../queues/payout.queue";
 import { logger } from "../../lib/logger";
+import { CursorQuerySchema } from "../../db/pagination";
 
 const router = Router();
 
 router.use(authenticate);
 router.use(requireAdmin);
 
-const ListPayoutsSchema = z.object({
+const ListPayoutsSchema = CursorQuerySchema.extend({
   status: z.enum(["all", "pending", "processing", "sent", "confirmed", "failed"]).default("all"),
-  page: z.coerce.number().int().min(1).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
 });
 
 router.get("/", async (req, res) => {
-  const { status, page, pageSize } = ListPayoutsSchema.parse(req.query);
+  const { status, limit: pageSize, cursor } = ListPayoutsSchema.parse(req.query);
 
-  let whereConditions: string[] = [];
-  const params: unknown[] = [];
-
-  if (status !== "all") {
-    params.push(status);
-    whereConditions.push(`p.status = $${params.length}`);
-  }
-
-  const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(" AND ")}` : "";
-
-  const countResult = await query<{ count: number }>(
-    `SELECT COUNT(*)::int as count FROM payouts p ${whereClause}`,
-    params
-  );
-
-  const total = countResult.rows[0]?.count ?? 0;
-  const totalPages = Math.ceil(total / pageSize);
-  const offset = (page - 1) * pageSize;
-
-  params.push(pageSize, offset);
-
-  const result = await query<{
-    id: string;
-    challenge_id: string;
-    user_id: string;
-    username: string;
-    stellar_address: string;
-    amount_stroops: string;
-    amount_usdc: string;
-    tx_hash: string | null;
-    status: string;
-    error_message: string | null;
-    created_at: string;
-  }>(
-    `SELECT
-       p.id,
-       p.challenge_id,
-       p.user_id,
-       COALESCE(u.username, u.display_name, 'Unknown') AS username,
-       p.stellar_address,
-       p.amount_stroops,
-       (p.amount_stroops::numeric / 10000000)::numeric(20,7)::text AS amount_usdc,
-       p.tx_hash,
-       p.status,
-       p.error_message,
-       p.created_at
-     FROM payouts p
-     LEFT JOIN users u ON p.user_id = u.id
-     ${whereClause}
-     ORDER BY p.created_at DESC
-     LIMIT $${params.length - 1}
-     OFFSET $${params.length}`,
-    params
-  );
+  const { payouts, nextCursor } = await getPayouts({ status, cursor, pageSize });
 
   // Summary stats
   const statsResult = await query<{
@@ -90,8 +37,8 @@ router.get("/", async (req, res) => {
   );
 
   res.json({
-    payouts: result.rows,
-    pagination: { page, pageSize, total, totalPages },
+    payouts,
+    pagination: { pageSize, nextCursor },
     stats: statsResult.rows[0],
   });
 });
@@ -103,10 +50,7 @@ router.post("/:id/retry", async (req, res) => {
     id: string;
     challenge_id: string;
     status: string;
-  }>(
-    "SELECT id, challenge_id, status FROM payouts WHERE id = $1",
-    [id]
-  );
+  }>("SELECT id, challenge_id, status FROM payouts WHERE id = $1", [id]);
 
   if (!payout.rows[0]) throw createError("Payout not found", 404);
 
@@ -131,7 +75,11 @@ router.post("/:id/retry", async (req, res) => {
       [
         req.user!.sub,
         id,
-        JSON.stringify({ payoutId: id, challengeId: record.challenge_id, previousStatus: "failed" }),
+        JSON.stringify({
+          payoutId: id,
+          challengeId: record.challenge_id,
+          previousStatus: "failed",
+        }),
       ]
     );
     await client.query("COMMIT");
@@ -152,6 +100,25 @@ router.post("/:id/retry", async (req, res) => {
   });
 
   res.json({ success: true });
+});
+
+router.post("/batch-run", async (req, res) => {
+  await enqueueBatchPayoutJob();
+
+  await query(
+    `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+     VALUES ($1, 'payout_batch_run_triggered', 'payout', 'batch-daily', $2::jsonb)`,
+    [
+      req.user!.sub,
+      JSON.stringify({ triggeredBy: req.user!.sub, timestamp: new Date().toISOString() }),
+    ]
+  );
+
+  logger.info("Daily batch payout run triggered by admin", {
+    adminId: req.user!.sub,
+  });
+
+  res.json({ success: true, message: "Batch payout run triggered" });
 });
 
 export default router;

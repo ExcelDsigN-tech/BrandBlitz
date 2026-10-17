@@ -27,12 +27,12 @@ needed.
 
 ## When is a purge needed?
 
-| Event | Action needed? |
-| --- | --- |
-| Player uploads a new brand logo | **No** — `optimizeImage` creates a new content-hashed URL |
-| Brand owner re-submits the same image | **No** — same hash → same URL already in cache |
-| A corrupt/bad image was served and needs to be removed immediately | **Yes** — purge the specific key |
-| Bucket ACL or object metadata changed without re-uploading | **Yes** — purge the specific key |
+| Event                                                              | Action needed?                                            |
+| ------------------------------------------------------------------ | --------------------------------------------------------- |
+| Player uploads a new brand logo                                    | **No** — `optimizeImage` creates a new content-hashed URL |
+| Brand owner re-submits the same image                              | **No** — same hash → same URL already in cache            |
+| A corrupt/bad image was served and needs to be removed immediately | **Yes** — purge the specific key                          |
+| Bucket ACL or object metadata changed without re-uploading         | **Yes** — purge the specific key                          |
 
 ---
 

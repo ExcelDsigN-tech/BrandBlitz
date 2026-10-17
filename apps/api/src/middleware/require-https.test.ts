@@ -17,18 +17,14 @@ describe("requireHttps", () => {
 
   it("rejects http behind proxy in production", async () => {
     process.env.NODE_ENV = "production";
-    const res = await request(app)
-      .get("/health")
-      .set("x-forwarded-proto", "http");
+    const res = await request(app).get("/health").set("x-forwarded-proto", "http");
     expect(res.status).toBe(403);
     expect(res.body.error).toBe("TLS required");
   });
 
   it("allows https behind proxy in production", async () => {
     process.env.NODE_ENV = "production";
-    const res = await request(app)
-      .get("/health")
-      .set("x-forwarded-proto", "https");
+    const res = await request(app).get("/health").set("x-forwarded-proto", "https");
     expect(res.status).toBe(200);
   });
 });

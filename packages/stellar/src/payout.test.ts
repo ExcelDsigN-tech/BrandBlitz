@@ -69,6 +69,7 @@ vi.mock("./client", () => ({
   })),
   getUsdcAsset: vi.fn(() => "USDC"),
   getNetworkPassphrase: vi.fn(() => "Test Network"),
+  withRetry: vi.fn((fn: () => unknown) => fn()),
 }));
 
 vi.mock("@stellar/stellar-sdk", () => ({
@@ -88,7 +89,12 @@ vi.mock("@stellar/stellar-sdk", () => ({
   BASE_FEE: "100",
 }));
 
-import { isRetriableStellarError, submitBatchPayout, feeBumpTransaction, isInsufficientFeeError } from "./payout";
+import {
+  isRetriableStellarError,
+  submitBatchPayout,
+  feeBumpTransaction,
+  isInsufficientFeeError,
+} from "./payout";
 
 class InMemorySequenceStore implements SequenceStore {
   private readonly values = new Map<string, string>();
@@ -152,13 +158,9 @@ describe("submitBatchPayout", () => {
   it("submits 51 recipients as two transactions with chunk sizes 50 and 1", async () => {
     const recipients = buildRecipients(51);
 
-    const results = await submitBatchPayout(
-      recipients,
-      "SSECRET",
-      "challenge-51",
-      "testnet",
-      { sequenceStore: new InMemorySequenceStore() }
-    );
+    const results = await submitBatchPayout(recipients, "SSECRET", "challenge-51", "testnet", {
+      sequenceStore: new InMemorySequenceStore(),
+    });
 
     expect(mocks.submitTransactionMock).toHaveBeenCalledTimes(2);
     expect(mocks.MockTransactionBuilder.operationCounts).toEqual([50, 1]);
@@ -168,16 +170,79 @@ describe("submitBatchPayout", () => {
     ]);
   });
 
-  it("submits 250 recipients as five transactions", async () => {
-    const recipients = buildRecipients(250);
+  it("submits exactly 50 recipients as a single transaction", async () => {
+    const recipients = buildRecipients(50);
+
+    const results = await submitBatchPayout(recipients, "SSECRET", "challenge-50", "testnet", {
+      sequenceStore: new InMemorySequenceStore(),
+    });
+
+    expect(mocks.submitTransactionMock).toHaveBeenCalledTimes(1);
+    expect(mocks.MockTransactionBuilder.operationCounts).toEqual([50]);
+    expect(results).toHaveLength(1);
+    expect(results[0].recipients).toEqual(recipients);
+  });
+
+  it("submits exactly 100 recipients as two transactions of 50 each", async () => {
+    const recipients = buildRecipients(100);
+
+    const results = await submitBatchPayout(recipients, "SSECRET", "challenge-100", "testnet", {
+      sequenceStore: new InMemorySequenceStore(),
+    });
+
+    expect(mocks.submitTransactionMock).toHaveBeenCalledTimes(2);
+    expect(mocks.MockTransactionBuilder.operationCounts).toEqual([50, 50]);
+    expect(results).toHaveLength(2);
+  });
+
+  it("submits 101 recipients as three transactions", async () => {
+    const recipients = buildRecipients(101);
+
+    const results = await submitBatchPayout(recipients, "SSECRET", "challenge-101", "testnet", {
+      sequenceStore: new InMemorySequenceStore(),
+    });
+
+    expect(mocks.submitTransactionMock).toHaveBeenCalledTimes(3);
+    expect(mocks.MockTransactionBuilder.operationCounts).toEqual([50, 50, 1]);
+    expect(results).toHaveLength(3);
+  });
+
+  it("every batch contains no more than 50 payment operations", async () => {
+    const recipients = buildRecipients(101);
+
+    await submitBatchPayout(recipients, "SSECRET", "challenge-cap", "testnet", {
+      sequenceStore: new InMemorySequenceStore(),
+    });
+
+    for (const count of mocks.MockTransactionBuilder.operationCounts) {
+      expect(count).toBeLessThanOrEqual(50);
+    }
+  });
+
+  it("every recipient appears in exactly one batch — no duplicates and no omissions across splits", async () => {
+    const recipients = buildRecipients(101);
 
     const results = await submitBatchPayout(
       recipients,
       "SSECRET",
-      "challenge-250",
+      "challenge-partition",
       "testnet",
       { sequenceStore: new InMemorySequenceStore() }
     );
+
+    const seenAddresses = results.flatMap((r) => r.recipients.map((rec) => rec.address));
+
+    expect(seenAddresses).toHaveLength(recipients.length);
+    expect(new Set(seenAddresses).size).toBe(recipients.length);
+    expect(new Set(seenAddresses)).toEqual(new Set(recipients.map((r) => r.address)));
+  });
+
+  it("submits 250 recipients as five transactions", async () => {
+    const recipients = buildRecipients(250);
+
+    const results = await submitBatchPayout(recipients, "SSECRET", "challenge-250", "testnet", {
+      sequenceStore: new InMemorySequenceStore(),
+    });
 
     expect(mocks.submitTransactionMock).toHaveBeenCalledTimes(5);
     expect(mocks.MockTransactionBuilder.operationCounts).toEqual([50, 50, 50, 50, 50]);

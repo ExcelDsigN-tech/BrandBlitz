@@ -90,10 +90,7 @@ export async function ensureUserReferralCode(userId: string): Promise<string> {
   throw new Error("Unable to assign referral code");
 }
 
-export async function recordReferralFingerprint(
-  userId: string,
-  req: Request,
-): Promise<void> {
+export async function recordReferralFingerprint(userId: string, req: Request): Promise<void> {
   const fingerprint = computeFingerprint({
     visitorId: readRequestHeader(req, "x-visitor-id"),
     deviceId: readRequestHeader(req, "x-device-id"),
@@ -101,17 +98,12 @@ export async function recordReferralFingerprint(
     userAgent: req.headers["user-agent"],
   });
 
-  await redis.set(
-    fingerprintKey(fingerprint),
-    userId,
-    "EX",
-    REFERRAL_OWNER_TTL_SECONDS,
-  );
+  await redis.set(fingerprintKey(fingerprint), userId, "EX", REFERRAL_OWNER_TTL_SECONDS);
 }
 
 export async function consumePendingReferralAttribution(
   userId: string,
-  req: Request,
+  req: Request
 ): Promise<void> {
   const codeFromRequest = readReferralCode(req);
   const fingerprint = computeFingerprint({
@@ -122,7 +114,7 @@ export async function consumePendingReferralAttribution(
   });
 
   const code = normalizeCode(
-    codeFromRequest ?? (await redis.get(pendingReferralKey(fingerprint))) ?? "",
+    codeFromRequest ?? (await redis.get(pendingReferralKey(fingerprint))) ?? ""
   );
 
   if (!code || !isValidCode(code)) {
@@ -145,10 +137,7 @@ export async function consumePendingReferralAttribution(
     throw createError("Referral attribution rejected for this device", 409);
   }
 
-  const reverseReferral = await findReferralByReferrerAndReferred(
-    userId,
-    referrer.id,
-  );
+  const reverseReferral = await findReferralByReferrerAndReferred(userId, referrer.id);
   if (reverseReferral) {
     throw createError("Referral cycle detected", 409);
   }
@@ -188,14 +177,14 @@ export async function getReferralStats(userId: string): Promise<{
 export async function isFraudSession(sessionId: string): Promise<boolean> {
   const result = await query<{ exists: boolean }>(
     "SELECT EXISTS (SELECT 1 FROM fraud_flags WHERE session_id = $1) AS exists",
-    [sessionId],
+    [sessionId]
   );
   return result.rows[0]?.exists === true;
 }
 
 async function findReferralSessionId(
   referredUserId: string,
-  challengeId?: string | null,
+  challengeId?: string | null
 ): Promise<string | null> {
   if (!challengeId) return null;
   const session = await getSession(referredUserId, challengeId);
@@ -224,7 +213,7 @@ export async function auditReferralBonusSkipped(params: {
         challengeId: params.challengeId ?? null,
         reason: "fraud_flag",
       },
-    ],
+    ]
   );
 }
 
@@ -262,8 +251,7 @@ export async function queueReferralBonusForPayout(params: {
 
   const refereeAmount = 10_000_000n;
   const referrerAmount = params.referralWinAmountStroops / 10n;
-  const cappedReferrerAmount =
-    referrerAmount > 50_000_000n ? 50_000_000n : referrerAmount;
+  const cappedReferrerAmount = referrerAmount > 50_000_000n ? 50_000_000n : referrerAmount;
 
   if (cappedReferrerAmount < 1n || refereeAmount < 1n) return;
 
@@ -313,9 +301,7 @@ function readReferralCode(req: Request): string | undefined {
   return undefined;
 }
 
-function resolvePayoutAddress(
-  user: Awaited<ReturnType<typeof findUserById>>,
-): string | null {
+function resolvePayoutAddress(user: Awaited<ReturnType<typeof findUserById>>): string | null {
   if (!user) return null;
   const embedded = user.embedded_wallet_address?.trim();
   const stellar = user.stellar_address?.trim();

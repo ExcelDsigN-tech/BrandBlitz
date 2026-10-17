@@ -7,13 +7,19 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { formatUsdc } from "@/lib/utils";
+import { formatUsdc } from "@/lib/format";
 import { generateColoredBlurPlaceholder } from "@/lib/blur-placeholder";
 import type { Challenge } from "@/lib/api";
 
 const PAGE_SIZE = 20;
 
 type StatusFilter = "all" | "active" | "upcoming" | "ended";
+
+interface ChallengeTag {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 function timeRemaining(endsAt: string | null): string {
   if (!endsAt) return "";
@@ -46,6 +52,19 @@ export default function ChallengesDiscoveryPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [minPool, setMinPool] = useState("");
   const [endBefore, setEndBefore] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
+
+  const [tags, setTags] = useState<ChallengeTag[]>([]);
+
+  // Load available tags once on mount
+  useEffect(() => {
+    api
+      .get("/challenges/tags")
+      .then((res) => setTags((res.data.tags as ChallengeTag[]) ?? []))
+      .catch(() => {
+        /* tags are non-critical */
+      });
+  }, []);
 
   const buildParams = useCallback(
     (cursor?: string) => {
@@ -53,10 +72,11 @@ export default function ChallengesDiscoveryPage() {
       if (statusFilter !== "all") p.set("status", statusFilter);
       if (minPool) p.set("min_pool", minPool);
       if (endBefore) p.set("end_before", new Date(endBefore).toISOString());
+      if (activeTag) p.set("tag", activeTag);
       if (cursor) p.set("cursor", cursor);
       return p;
     },
-    [statusFilter, minPool, endBefore]
+    [statusFilter, minPool, endBefore, activeTag]
   );
 
   const loadPage = useCallback(
@@ -106,9 +126,11 @@ export default function ChallengesDiscoveryPage() {
     setStatusFilter("all");
     setMinPool("");
     setEndBefore("");
+    setActiveTag(null);
   }
 
-  const hasFilters = statusFilter !== "all" || minPool !== "" || endBefore !== "";
+  const hasFilters =
+    statusFilter !== "all" || minPool !== "" || endBefore !== "" || activeTag !== null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -118,8 +140,9 @@ export default function ChallengesDiscoveryPage() {
       </p>
 
       {/* Filter controls */}
-      <div className="mb-6 flex flex-wrap items-end gap-3">
-        <div className="flex gap-2">
+      <div className="mb-6 flex flex-col gap-4">
+        {/* Status chips */}
+        <div className="flex flex-wrap gap-2">
           {(["all", "active", "upcoming", "ended"] as StatusFilter[]).map((s) => (
             <button
               key={s}
@@ -135,37 +158,60 @@ export default function ChallengesDiscoveryPage() {
           ))}
         </div>
 
-        <div className="flex items-center gap-1">
-          <label className="text-sm text-[var(--muted-foreground)]">Min pool (USDC)</label>
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={minPool}
-            onChange={(e) => setMinPool(e.target.value)}
-            placeholder="e.g. 100"
-            className="w-28 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm"
-          />
-        </div>
-
-        <div className="flex items-center gap-1">
-          <label className="text-sm text-[var(--muted-foreground)]">Ends before</label>
-          <input
-            type="date"
-            value={endBefore}
-            onChange={(e) => setEndBefore(e.target.value)}
-            className="rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm"
-          />
-        </div>
-
-        {hasFilters && (
-          <button
-            onClick={clearFilters}
-            className="text-sm text-[var(--muted-foreground)] underline hover:text-[var(--foreground)]"
-          >
-            Clear filters
-          </button>
+        {/* Tag filter chips */}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-[var(--muted-foreground)]">Tags:</span>
+            {tags.map((t) => (
+              <button
+                key={t.slug}
+                onClick={() => setActiveTag(activeTag === t.slug ? null : t.slug)}
+                className={`rounded-full border px-3 py-1 text-sm transition-colors ${
+                  activeTag === t.slug
+                    ? "border-[var(--primary)] bg-[var(--primary)] text-white"
+                    : "border-[var(--border)] hover:border-[var(--primary)]"
+                }`}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
         )}
+
+        {/* Extra filters row */}
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex items-center gap-1">
+            <label className="text-sm text-[var(--muted-foreground)]">Min pool (USDC)</label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={minPool}
+              onChange={(e) => setMinPool(e.target.value)}
+              placeholder="e.g. 100"
+              className="w-28 rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm"
+            />
+          </div>
+
+          <div className="flex items-center gap-1">
+            <label className="text-sm text-[var(--muted-foreground)]">Ends before</label>
+            <input
+              type="date"
+              value={endBefore}
+              onChange={(e) => setEndBefore(e.target.value)}
+              className="rounded border border-[var(--border)] bg-transparent px-2 py-1 text-sm"
+            />
+          </div>
+
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="text-sm text-[var(--muted-foreground)] underline hover:text-[var(--foreground)]"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Results */}
@@ -174,7 +220,7 @@ export default function ChallengesDiscoveryPage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-12 w-32 rounded bg-[var(--muted)] mb-2" />
+                <div className="mb-2 h-12 w-32 rounded bg-[var(--muted)]" />
                 <div className="h-5 w-40 rounded bg-[var(--muted)]" />
               </CardHeader>
               <CardContent>
@@ -184,15 +230,23 @@ export default function ChallengesDiscoveryPage() {
           ))}
         </div>
       ) : failed && challenges.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="mb-4 text-[var(--muted-foreground)]">Couldn&apos;t load challenges. Refresh and try again.</p>
-          <Button variant="outline" onClick={loadInitial}>Retry</Button>
+        <div className="py-16 text-center">
+          <p className="mb-4 text-[var(--muted-foreground)]">
+            Couldn&apos;t load challenges. Refresh and try again.
+          </p>
+          <Button variant="outline" onClick={loadInitial}>
+            Retry
+          </Button>
         </div>
       ) : challenges.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="mb-4 text-[var(--muted-foreground)]">No challenges match the active filters.</p>
+        <div className="py-16 text-center">
+          <p className="mb-4 text-[var(--muted-foreground)]">
+            No challenges match the active filters.
+          </p>
           {hasFilters && (
-            <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
+            <Button variant="outline" onClick={clearFilters}>
+              Clear filters
+            </Button>
           )}
         </div>
       ) : (
@@ -223,16 +277,12 @@ export default function ChallengesDiscoveryPage() {
                           style={{ backgroundColor: c.primary_color ?? "var(--primary)" }}
                         />
                       )}
-                      <Badge variant={statusBadgeVariant(c.status)}>
-                        {statusLabel(c.status)}
-                      </Badge>
+                      <Badge variant={statusBadgeVariant(c.status)}>{statusLabel(c.status)}</Badge>
                     </div>
                     <CardTitle>{c.brand_name ?? "Untitled brand"}</CardTitle>
                     <CardDescription>
                       Prize pool: {formatUsdc(c.pool_amount_usdc)} USDC
-                      {c.participant_count !== undefined && (
-                        <> · {c.participant_count} players</>
-                      )}
+                      {c.participant_count !== undefined && <> · {c.participant_count} players</>}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

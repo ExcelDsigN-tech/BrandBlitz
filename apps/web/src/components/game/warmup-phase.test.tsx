@@ -8,11 +8,7 @@ import type { Challenge } from "@/lib/api";
 const apiPostMock = vi.fn();
 
 vi.mock("next/image", () => ({
-  default: ({
-    alt,
-    src,
-    ...props
-  }: ImgHTMLAttributes<HTMLImageElement> & { src: string }) => (
+  default: ({ alt, src, ...props }: ImgHTMLAttributes<HTMLImageElement> & { src: string }) => (
     <img alt={alt} src={src} {...props} />
   ),
 }));
@@ -67,9 +63,7 @@ describe("WarmupPhase", () => {
     );
     expect(screen.getByRole("heading", { name: "Acme" })).toBeInTheDocument();
     expect(screen.getByText("Launch faster.")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Study this brand carefully/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Study this brand carefully/i)).toBeInTheDocument();
   });
 
   it("omits optional brand assets when absent", () => {
@@ -110,6 +104,7 @@ describe("WarmupPhase", () => {
 
     expect(screen.getByText("0")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Start Challenge →" })).toBeEnabled();
+    expect(screen.getByText(/Ready!/i)).toBeInTheDocument();
   });
 
   it("posts warmup completion and invokes onComplete with the challenge token", async () => {
@@ -153,7 +148,9 @@ describe("WarmupPhase", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Not yet ready\. Please wait 2 more seconds and try again\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Not yet ready\. Please wait 2 more seconds and try again\./i)
+    ).toBeInTheDocument();
     expect(onComplete).not.toHaveBeenCalled();
   });
 
@@ -181,7 +178,9 @@ describe("WarmupPhase", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)
+    ).toBeInTheDocument();
 
     await act(async () => {
       fireEvent.click(screen.getByRole("button", { name: "Retry" }));
@@ -212,7 +211,52 @@ describe("WarmupPhase", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Couldn't start the challenge\. Check your connection and try again\./i)
+    ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  it("start button is disabled when countdown is paused due to visibility change", async () => {
+    render(<WarmupPhase challenge={challenge} apiToken="test-token" onComplete={vi.fn()} />);
+
+    // Advance 5 seconds into warmup (timer active)
+    await act(async () => {
+      await Promise.resolve();
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+
+    // Simulate tab hidden (visibilitychange)
+    await act(async () => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "hidden",
+        configurable: true,
+        writable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Button should now be disabled and show paused text
+    expect(screen.getByRole("button", { name: "Paused — Wait to resume" })).toBeDisabled();
+
+    // Simulate tab visible again
+    await act(async () => {
+      Object.defineProperty(document, "visibilityState", {
+        value: "visible",
+        configurable: true,
+        writable: true,
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      await vi.advanceTimersByTimeAsync(100);
+    });
+
+    // Complete remaining warmup
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(WARMUP_MIN_SECONDS * 1000);
+    });
+
+    // Button should be enabled once completed
+    expect(screen.getByRole("button", { name: "Start Challenge →" })).toBeEnabled();
   });
 });

@@ -12,12 +12,12 @@ One or more of:
 
 ## Impact
 
-| Component | Effect |
-| --- | --- |
+| Component         | Effect                                                                                                   |
+| ----------------- | -------------------------------------------------------------------------------------------------------- |
 | Challenge payouts | **Blocked** — BullMQ jobs retry with exponential backoff; recipients are not paid until Horizon recovers |
-| Balance checks | **Degraded** — hot-wallet balance reads fail; deposit monitoring halted |
-| New challenges | **Unaffected** if Horizon is only used post-game |
-| Leaderboards / UI | **Unaffected** — served from PostgreSQL |
+| Balance checks    | **Degraded** — hot-wallet balance reads fail; deposit monitoring halted                                  |
+| New challenges    | **Unaffected** if Horizon is only used post-game                                                         |
+| Leaderboards / UI | **Unaffected** — served from PostgreSQL                                                                  |
 
 ## Diagnosis
 
@@ -44,7 +44,7 @@ docker compose logs api --tail=100 | grep -i "horizon\|stellar\|payout"
 
 1. **Do nothing destructive** — BullMQ is configured with `attempts: 3` and exponential backoff. Jobs will automatically retry when Horizon recovers.
 
-2. If Horizon is degraded (slow, not down), enable the Soroban RPC fallback if implemented, or reduce payout batch size via `MAX_OPS_PER_TX` env override to lower per-request load.
+2. If Horizon is degraded (slow, not down), lower outbound request pressure. `MAX_OPS_PER_TX` is a compile-time constant in `packages/stellar/src/constants.ts` and cannot be overridden via env. Instead, shrink the shared Horizon connection pool via `STELLAR_MAX_SOCKETS` (default 32) or reduce payout worker concurrency via `PAYOUT_WORKER_CONCURRENCY` (default 2).
 
 3. If Horizon has been down > 15 min and jobs are exhausting retries, pause the payout queue to prevent DLQ fill:
 
@@ -91,5 +91,6 @@ Link template: [post-mortem template](https://www.notion.so/brandblitz/post-mort
 
 - [payout-stuck-in-queue.md](payout-stuck-in-queue.md)
 - [hot-wallet-low-balance.md](hot-wallet-low-balance.md)
+- [deposit-monitor-lag.md](deposit-monitor-lag.md): an RPC outage also stalls the deposit-monitor and fires `DepositMonitorIndexerLagHigh` / `DepositMonitorPollErrors`
 - `packages/stellar/src/client.ts` — shared HTTP agent config
 - `packages/stellar/src/payout.ts` — batch submission logic

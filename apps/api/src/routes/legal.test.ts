@@ -10,7 +10,11 @@ const JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-at-least-32-characters
 
 function signToken(overrides?: Partial<{ sub: string; email: string; role: string }>): string {
   return jwt.sign(
-    { sub: overrides?.sub ?? TEST_USER_ID, email: overrides?.email ?? TEST_EMAIL, role: overrides?.role ?? "player" },
+    {
+      sub: overrides?.sub ?? TEST_USER_ID,
+      email: overrides?.email ?? TEST_EMAIL,
+      role: overrides?.role ?? "player",
+    },
     JWT_SECRET,
     { expiresIn: "15m" }
   );
@@ -47,9 +51,7 @@ describe("Legal routes", () => {
 
   describe("POST /legal/accept", () => {
     it("returns 401 without auth", async () => {
-      const res = await request(app)
-        .post("/legal/accept")
-        .send({ type: "tos", version: "1.0" });
+      const res = await request(app).post("/legal/accept").send({ type: "tos", version: "1.0" });
       expect(res.status).toBe(401);
     });
 
@@ -60,6 +62,71 @@ describe("Legal routes", () => {
         .send({ type: "tos", version: "1.0" });
       expect(res.status).toBe(201);
       expect(res.body.acceptance.version).toBe("1.0");
+    });
+
+    // #391
+    it("returns 400 when the version field is omitted", async () => {
+      const res = await request(app)
+        .post("/legal/accept")
+        .set("Authorization", `Bearer ${signToken()}`)
+        .send({ type: "tos" });
+      expect(res.status).toBe(400);
+    });
+
+    // #391
+    it("returns 400 when the supplied version does not match the current tos version", async () => {
+      const res = await request(app)
+        .post("/legal/accept")
+        .set("Authorization", `Bearer ${signToken()}`)
+        .send({ type: "tos", version: "0.9-does-not-exist" });
+      expect(res.status).toBe(400);
+      expect(res.body.code).toBe("LEGAL_VERSION_MISMATCH");
+    });
+
+    // #391
+    it("is idempotent — re-accepting the same version does not create a duplicate row", async () => {
+      await request(app)
+        .post("/legal/accept")
+        .set("Authorization", `Bearer ${signToken()}`)
+        .send({ type: "tos", version: "1.0" });
+      const secondRes = await request(app)
+        .post("/legal/accept")
+        .set("Authorization", `Bearer ${signToken()}`)
+        .send({ type: "tos", version: "1.0" });
+      expect(secondRes.status).toBe(201);
+
+      const rows = await query(
+        `SELECT COUNT(*)::int AS count FROM user_legal_acceptances
+         WHERE user_id = $1 AND type = 'tos' AND version = '1.0'`,
+        [TEST_USER_ID]
+      );
+      expect(rows.rows[0].count).toBe(1);
+    });
+
+    // #391
+    it("creates an audit_log entry for the acceptance event", async () => {
+      const auditUserId = "00000000-0000-0000-0000-000000000003";
+      await query(
+        `INSERT INTO users (id, email, display_name, role)
+         VALUES ($1, 'legal-audit-test@example.com', 'Legal Audit Test', 'player')
+         ON CONFLICT (id) DO NOTHING`,
+        [auditUserId]
+      );
+
+      await request(app)
+        .post("/legal/accept")
+        .set(
+          "Authorization",
+          `Bearer ${signToken({ sub: auditUserId, email: "legal-audit-test@example.com" })}`
+        )
+        .send({ type: "tos", version: "1.0" });
+
+      const rows = await query(
+        `SELECT * FROM audit_log
+         WHERE actor_id = $1 AND action = 'accept' AND entity = 'user_legal_acceptances' AND entity_key = 'tos:1.0'`,
+        [auditUserId]
+      );
+      expect(rows.rows.length).toBe(1);
     });
   });
 

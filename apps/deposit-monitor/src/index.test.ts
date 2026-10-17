@@ -1,15 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { poll, redis, LAST_LEDGER_KEY } from "./index";
 import * as stellar from "@brandblitz/stellar";
-import fetch from "node-fetch";
 
 vi.mock("@brandblitz/stellar", () => ({
   fetchDepositEvents: vi.fn(),
 }));
 
-vi.mock("node-fetch", () => ({
-  default: vi.fn(),
-}));
+const fetch = vi.fn();
+vi.stubGlobal("fetch", fetch);
 
 describe("Deposit Monitor", () => {
   beforeEach(() => {
@@ -19,7 +17,7 @@ describe("Deposit Monitor", () => {
   it("should initialize cursor on first run", async () => {
     vi.spyOn(redis, "get").mockResolvedValue(null);
     const setSpy = vi.spyOn(redis, "set").mockResolvedValue("OK");
-    
+
     (stellar.fetchDepositEvents as any).mockResolvedValue({
       events: [],
       latestLedger: 1000,
@@ -38,7 +36,7 @@ describe("Deposit Monitor", () => {
   it("should process events and update cursor", async () => {
     vi.spyOn(redis, "get").mockResolvedValue("1000");
     const setSpy = vi.spyOn(redis, "set").mockResolvedValue("OK");
-    
+
     const mockEvent = {
       txHash: "hash123",
       amount: "100",
@@ -67,7 +65,7 @@ describe("Deposit Monitor", () => {
   it("should not update cursor if webhook fails", async () => {
     vi.spyOn(redis, "get").mockResolvedValue("1000");
     const setSpy = vi.spyOn(redis, "set");
-    
+
     const mockEvent = {
       txHash: "hash123",
       amount: "100",

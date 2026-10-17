@@ -71,7 +71,10 @@ export async function getStreak(userId: string, now = new Date()): Promise<Strea
   return formatStreak(current, now);
 }
 
-export async function getStreakDetail(userId: string, now = new Date()): Promise<StreakDetailResponse> {
+export async function getStreakDetail(
+  userId: string,
+  now = new Date()
+): Promise<StreakDetailResponse> {
   const current = await getUserStreak(userId);
   if (!current) throw new Error("User not found");
 
@@ -158,7 +161,7 @@ async function insertStreakMilestoneNotification(userId: string, milestone: numb
     await query(
       `INSERT INTO notifications (user_id, type, payload)
        VALUES ($1, 'streak_milestone', $2::jsonb)`,
-      [userId, JSON.stringify({ milestone })],
+      [userId, JSON.stringify({ milestone })]
     );
   } catch (err) {
     logger.warn("Failed to insert streak milestone notification", { userId, milestone, err });

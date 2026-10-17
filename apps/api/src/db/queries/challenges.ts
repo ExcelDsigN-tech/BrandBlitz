@@ -15,6 +15,7 @@ export interface Challenge {
   id: string;
   brand_id: string;
   challenge_id: string;
+  deposit_memo?: string | null;
   pool_amount_stroops: string;
   pool_amount_usdc: string;
   participant_count?: number;
@@ -23,6 +24,7 @@ export interface Challenge {
   primary_color?: string | null;
   secondary_color?: string | null;
   status: ChallengeStatus;
+  payout_schedule?: "instant" | "batched";
   deposit_tx_hash: string | null;
   deposit_confirmations: number;
   payout_tx_hashes: string[] | null;
@@ -32,6 +34,26 @@ export interface Challenge {
   reported_count: number;
   deleted_at: string | null;
   created_at: string;
+  challenge_license_id?: string | null;
+  is_gallery_template?: boolean;
+  gallery_opted_in_at?: string | null;
+}
+
+export interface GalleryTemplate {
+  id: string;
+  brand_id: string;
+  brand_name: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  pool_amount_usdc: string;
+  ends_at: string | null;
+  gallery_opted_in_at: string;
+  // performance stats from sessions
+  completed_sessions: number;
+  avg_score: number;
+  completion_rate_pct: number;
+  unique_participants: number;
 }
 
 export interface ChallengeQuestion {
@@ -41,7 +63,6 @@ export interface ChallengeQuestion {
   question_type: "which_brand" | "which_tagline" | "which_product";
   prompt_type: "logo" | "productImage1" | "tagline";
   question_text: string;
-  correct_answer: string;
   option_a: string;
   option_b: string;
   option_c: string;
@@ -52,21 +73,29 @@ export interface ChallengeQuestion {
 export async function createChallenge(data: {
   brandId: string;
   challengeId: string;
+  depositMemo?: string;
   poolAmountUsdc: string;
   maxPlayers?: number;
   endsAt?: string;
+  licenseId?: string;
+  payoutSchedule?: "instant" | "batched";
 }): Promise<Challenge> {
+  const payoutSchedule = data.payoutSchedule ?? "instant";
   const result = await query<Challenge>(
     `INSERT INTO challenges
-       (brand_id, challenge_id, pool_amount_stroops, max_players, ends_at)
-     VALUES ($1,$2,$3,$4,$5)
+       (brand_id, challenge_id, deposit_memo, pool_amount_stroops, max_players, ends_at,
+        challenge_license_id, payout_schedule)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
      RETURNING *, (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc`,
     [
       data.brandId,
       data.challengeId,
+      data.depositMemo ?? data.challengeId,
       usdcToStroops(data.poolAmountUsdc),
       data.maxPlayers ?? null,
       data.endsAt ?? null,
+      data.licenseId ?? null,
+      payoutSchedule,
     ]
   );
   return result.rows[0];
@@ -90,7 +119,11 @@ export async function getChallengeByDepositTxHash(txHash: string): Promise<Chall
 
 export async function getChallengeById(id: string): Promise<Challenge | null> {
   const result = await query<Challenge>(
-    "SELECT *, (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc FROM challenges WHERE id = $1 AND deleted_at IS NULL",
+    `SELECT c.*, (c.pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc,
+            b.name as brand_name, b.logo_url, b.primary_color, b.secondary_color
+     FROM challenges c
+     LEFT JOIN brands b ON c.brand_id = b.id
+     WHERE c.id = $1 AND c.deleted_at IS NULL`,
     [id]
   );
   return result.rows[0] ?? null;
@@ -101,15 +134,41 @@ export async function getArchivedChallengeById(id: string): Promise<Challenge | 
   return result.rows[0] ?? null;
 }
 
-export async function getChallengeByIdAny(id: string): Promise<Challenge & { archived: boolean } | null> {
+export async function getChallengeByIdAny(
+  id: string
+): Promise<(Challenge & { archived: boolean }) | null> {
   const result = await query<Challenge & { archived: boolean }>(
-    `SELECT *, false AS archived FROM challenges WHERE id = $1 AND deleted_at IS NULL
+    `SELECT c.*, (c.pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc,
+            b.name as brand_name, b.logo_url, b.primary_color, b.secondary_color,
+            false AS archived
+     FROM challenges c
+     LEFT JOIN brands b ON c.brand_id = b.id
+     WHERE c.id = $1 AND c.deleted_at IS NULL
      UNION ALL
-     SELECT *, true AS archived FROM challenges_archive WHERE id = $1
+     SELECT ca.*, (ca.pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc,
+            b.name as brand_name, b.logo_url, b.primary_color, b.secondary_color,
+            true AS archived
+     FROM challenges_archive ca
+     LEFT JOIN brands b ON ca.brand_id = b.id
+     WHERE ca.id = $1
      LIMIT 1`,
     [id]
   );
   return result.rows[0] ?? null;
+}
+
+export async function getEndedBatchedChallenges(): Promise<Challenge[]> {
+  const result = await query<Challenge>(
+    `SELECT c.*, (c.pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc,
+            b.name as brand_name, b.logo_url, b.primary_color, b.secondary_color
+     FROM challenges c
+     LEFT JOIN brands b ON c.brand_id = b.id
+     WHERE c.status = 'ended'
+       AND c.payout_schedule = 'batched'
+       AND c.deleted_at IS NULL
+     ORDER BY c.created_at ASC`
+  );
+  return result.rows;
 }
 
 export async function getActiveChallengesCursor(
@@ -137,7 +196,7 @@ export async function getActiveChallengesCursor(
 
 export async function getActiveChallenges(
   limit = 20,
-  cursor?: string,
+  cursor?: string
 ): Promise<{ challenges: Challenge[]; nextCursor: string | null }> {
   const cursorValues = decodeCursorSafe(cursor, ["pool_amount_stroops", "id"]);
 
@@ -150,7 +209,7 @@ export async function getActiveChallenges(
       "DESC",
       cursorValues.pool_amount_stroops,
       cursorValues.id as string,
-      3,
+      3
     );
     whereExtra = clause;
     params.push(cursorValues.pool_amount_stroops, cursorValues.id);
@@ -166,7 +225,7 @@ export async function getActiveChallenges(
      ${whereExtra}
      ORDER BY c.pool_amount_stroops DESC, c.id DESC
      LIMIT $${params.length}`,
-    params,
+    params
   );
 
   const challenges = result.rows;
@@ -185,10 +244,11 @@ export async function getFilteredChallenges(opts: {
   status?: "active" | "upcoming" | "ended";
   minPoolUsdc?: number;
   endBefore?: string;
+  tagSlug?: string;
   cursor?: string;
   limit?: number;
 }): Promise<{ challenges: Challenge[]; nextCursor: string | null }> {
-  const { status, minPoolUsdc, endBefore, cursor, limit = 20 } = opts;
+  const { status, minPoolUsdc, endBefore, tagSlug, cursor, limit = 20 } = opts;
 
   const conditions: string[] = ["c.deleted_at IS NULL", "b.deleted_at IS NULL"];
   const params: unknown[] = [];
@@ -213,6 +273,17 @@ export async function getFilteredChallenges(opts: {
   if (endBefore) {
     params.push(endBefore);
     conditions.push(`c.ends_at < $${params.length}`);
+  }
+
+  if (tagSlug) {
+    params.push(tagSlug);
+    conditions.push(
+      `EXISTS (
+         SELECT 1 FROM challenge_tag_map m
+         JOIN challenge_tags t ON t.id = m.tag_id
+         WHERE m.challenge_id = c.id AND t.slug = $${params.length}
+       )`
+    );
   }
 
   if (cursor) {
@@ -242,7 +313,7 @@ export async function getFilteredChallenges(opts: {
 export async function getChallengesByBrandId(
   brandId: string,
   limit = 20,
-  cursor?: string,
+  cursor?: string
 ): Promise<{ challenges: Challenge[]; nextCursor: string | null }> {
   const cursorValues = decodeCursorSafe(cursor, ["created_at", "id"]);
 
@@ -255,7 +326,7 @@ export async function getChallengesByBrandId(
       "DESC",
       cursorValues.created_at,
       cursorValues.id as string,
-      3,
+      3
     );
     whereExtra = clause;
     params.push(cursorValues.created_at, cursorValues.id);
@@ -272,7 +343,7 @@ export async function getChallengesByBrandId(
      ${whereExtra}
      ORDER BY c.created_at DESC, c.id DESC
      LIMIT $${params.length}`,
-    params,
+    params
   );
 
   const challenges = result.rows;
@@ -426,9 +497,10 @@ export async function getActiveChallengesSorted(opts: {
  * Soft-delete a challenge.
  */
 export async function softDeleteChallenge(id: string): Promise<void> {
-  await query("UPDATE challenges SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL", [
-    id,
-  ]);
+  await query(
+    "UPDATE challenges SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
+    [id]
+  );
 }
 
 /**
@@ -444,17 +516,32 @@ export async function updateChallengeStatus(
   extras?: { depositTx?: string; payoutTxHashes?: string[] }
 ): Promise<void> {
   if (extras?.depositTx) {
-    await query(
-      "UPDATE challenges SET status = $1, deposit_tx_hash = $2 WHERE id = $3",
-      [status, extras.depositTx, id]
-    );
+    await query("UPDATE challenges SET status = $1, deposit_tx_hash = $2 WHERE id = $3", [
+      status,
+      extras.depositTx,
+      id,
+    ]);
   } else if (extras?.payoutTxHashes) {
-    await query(
-      "UPDATE challenges SET status = $1, payout_tx_hashes = $2 WHERE id = $3",
-      [status, extras.payoutTxHashes, id]
-    );
+    await query("UPDATE challenges SET status = $1, payout_tx_hashes = $2 WHERE id = $3", [
+      status,
+      extras.payoutTxHashes,
+      id,
+    ]);
   } else {
     await query("UPDATE challenges SET status = $1 WHERE id = $2", [status, id]);
+  }
+
+  try {
+    const res = await query<{ brand_id: string }>(
+      "SELECT brand_id FROM challenges WHERE id = $1 AND deleted_at IS NULL",
+      [id]
+    );
+    if (res.rows[0]?.brand_id) {
+      const { dispatchBrandWebhookEvent } = await import("../../services/brand-webhooks");
+      void dispatchBrandWebhookEvent(res.rows[0].brand_id, id, status, extras);
+    }
+  } catch {
+    // Ignore webhook dispatch lookup errors so status update never fails
   }
 }
 
@@ -465,12 +552,19 @@ export async function insertChallengeQuestions(
     await query(
       `INSERT INTO challenge_questions
          (challenge_id, round, question_type, prompt_type, question_text,
-          correct_answer, option_a, option_b, option_c, option_d, correct_option)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          option_a, option_b, option_c, option_d, correct_option)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
       [
-        q.challenge_id, q.round, q.question_type, q.prompt_type,
-        q.question_text, q.correct_answer,
-        q.option_a, q.option_b, q.option_c, q.option_d, q.correct_option,
+        q.challenge_id,
+        q.round,
+        q.question_type,
+        q.prompt_type,
+        q.question_text,
+        q.option_a,
+        q.option_b,
+        q.option_c,
+        q.option_d,
+        q.correct_option,
       ]
     );
   }
@@ -494,13 +588,20 @@ export async function insertChallengeQuestion(
   const result = await query<ChallengeQuestion>(
     `INSERT INTO challenge_questions
        (challenge_id, round, question_type, prompt_type, question_text,
-        correct_answer, option_a, option_b, option_c, option_d, correct_option)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+        option_a, option_b, option_c, option_d, correct_option)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
      RETURNING *`,
     [
-      question.challenge_id, question.round, question.question_type, question.prompt_type,
-      question.question_text, question.correct_answer,
-      question.option_a, question.option_b, question.option_c, question.option_d, question.correct_option,
+      question.challenge_id,
+      question.round,
+      question.question_type,
+      question.prompt_type,
+      question.question_text,
+      question.option_a,
+      question.option_b,
+      question.option_c,
+      question.option_d,
+      question.correct_option,
     ]
   );
   return result.rows[0];
@@ -515,7 +616,10 @@ export async function incrementDepositConfirmations(
   challengeId: string,
   requiredConfirmations: number
 ): Promise<{ confirmations: number; activated: boolean }> {
-  const result = await query<{ deposit_confirmations: number; status: ChallengeStatus }>(
+  const result = await query<{
+    deposit_confirmations: number;
+    status: ChallengeStatus;
+  }>(
     `UPDATE challenges
      SET deposit_confirmations = LEAST(deposit_confirmations + 1, $2),
          status = CASE 
@@ -545,8 +649,144 @@ export async function incrementDepositConfirmations(
  */
 export async function getDepositConfirmations(challengeId: string): Promise<number | null> {
   const result = await query<{ deposit_confirmations: number }>(
-    "SELECT deposit_confirmations FROM challenges WHERE id = $1 AND status IN ('pending_deposit', 'active')",
+    "SELECT deposit_confirmations FROM challenges WHERE id = $1 AND deleted_at IS NULL AND status IN ('pending_deposit', 'active')",
     [challengeId]
   );
   return result.rows[0]?.deposit_confirmations ?? null;
+}
+
+/**
+ * Get public gallery of top-performing challenges that brands have opted in.
+ * Includes aggregate performance stats. Does NOT expose escrow/participant PII.
+ */
+export async function getGalleryTemplates(opts: {
+  limit?: number;
+  cursor?: string;
+}): Promise<{ templates: GalleryTemplate[]; nextCursor: string | null }> {
+  const { limit = 20, cursor } = opts;
+
+  const params: unknown[] = [];
+  let cursorClause = "";
+  if (cursor) {
+    params.push(cursor);
+    cursorClause = `AND c.id > $${params.length}::uuid`;
+  }
+  params.push(limit + 1);
+
+  const result = await query<GalleryTemplate>(
+    `SELECT
+       c.id,
+       c.brand_id,
+       b.name                                                    AS brand_name,
+       b.logo_url,
+       b.primary_color,
+       b.secondary_color,
+       (c.pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc,
+       c.ends_at,
+       c.gallery_opted_in_at::text                              AS gallery_opted_in_at,
+       COUNT(gs.id) FILTER (WHERE gs.status = 'completed')::int AS completed_sessions,
+       COALESCE(ROUND(AVG(gs.total_score)::numeric, 2), 0)::float8 AS avg_score,
+       CASE WHEN COUNT(gs.id) = 0 THEN 0
+            ELSE ROUND(COUNT(gs.id) FILTER (WHERE gs.status = 'completed') * 100.0 / COUNT(gs.id), 2)::float8
+       END                                                       AS completion_rate_pct,
+       COUNT(DISTINCT gs.user_id)::int                          AS unique_participants
+     FROM challenges c
+     JOIN brands b ON b.id = c.brand_id
+     LEFT JOIN game_sessions gs ON gs.challenge_id = c.id
+     WHERE c.is_gallery_template = TRUE
+       AND c.deleted_at IS NULL
+       AND b.deleted_at IS NULL
+       AND c.status IN ('settled', 'ended', 'payout_failed')
+       ${cursorClause}
+     GROUP BY c.id, b.name, b.logo_url, b.primary_color, b.secondary_color
+     ORDER BY completed_sessions DESC, c.id ASC
+     LIMIT $${params.length}`,
+    params
+  );
+
+  const hasMore = result.rows.length > limit;
+  const templates = result.rows.slice(0, limit);
+  const nextCursor = hasMore && templates.length > 0 ? templates[templates.length - 1].id : null;
+  return { templates, nextCursor };
+}
+
+/**
+ * Opt a completed/settled challenge into the public gallery.
+ * Returns null if the challenge is not found, not in an ended status,
+ * or does not belong to the given brand.
+ */
+export async function optChallengeIntoGallery(
+  challengeId: string,
+  brandId: string
+): Promise<Challenge | null> {
+  const result = await query<Challenge>(
+    `UPDATE challenges
+     SET is_gallery_template = TRUE,
+         gallery_opted_in_at = NOW(),
+         updated_at           = NOW()
+     WHERE id = $1
+       AND brand_id = $2
+       AND status IN ('settled', 'ended', 'payout_failed')
+       AND deleted_at IS NULL
+     RETURNING *,
+       (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc`,
+    [challengeId, brandId]
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Opt a challenge out of the gallery (undo).
+ */
+export async function optChallengeOutOfGallery(
+  challengeId: string,
+  brandId: string
+): Promise<Challenge | null> {
+  const result = await query<Challenge>(
+    `UPDATE challenges
+     SET is_gallery_template = FALSE,
+         gallery_opted_in_at = NULL,
+         updated_at           = NOW()
+     WHERE id = $1
+       AND brand_id = $2
+       AND deleted_at IS NULL
+     RETURNING *,
+       (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc`,
+    [challengeId, brandId]
+  );
+  return result.rows[0] ?? null;
+}
+
+/**
+ * Fetch a single gallery template by id (must be opted in and ended).
+ */
+export async function getGalleryTemplateById(id: string): Promise<GalleryTemplate | null> {
+  const result = await query<GalleryTemplate>(
+    `SELECT
+       c.id,
+       c.brand_id,
+       b.name                                                    AS brand_name,
+       b.logo_url,
+       b.primary_color,
+       b.secondary_color,
+       (c.pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc,
+       c.ends_at,
+       c.gallery_opted_in_at::text                              AS gallery_opted_in_at,
+       COUNT(gs.id) FILTER (WHERE gs.status = 'completed')::int AS completed_sessions,
+       COALESCE(ROUND(AVG(gs.total_score)::numeric, 2), 0)::float8 AS avg_score,
+       CASE WHEN COUNT(gs.id) = 0 THEN 0
+            ELSE ROUND(COUNT(gs.id) FILTER (WHERE gs.status = 'completed') * 100.0 / COUNT(gs.id), 2)::float8
+       END                                                       AS completion_rate_pct,
+       COUNT(DISTINCT gs.user_id)::int                          AS unique_participants
+     FROM challenges c
+     JOIN brands b ON b.id = c.brand_id
+     LEFT JOIN game_sessions gs ON gs.challenge_id = c.id
+     WHERE c.id = $1
+       AND c.is_gallery_template = TRUE
+       AND c.deleted_at IS NULL
+       AND b.deleted_at IS NULL
+     GROUP BY c.id, b.name, b.logo_url, b.primary_color, b.secondary_color`,
+    [id]
+  );
+  return result.rows[0] ?? null;
 }

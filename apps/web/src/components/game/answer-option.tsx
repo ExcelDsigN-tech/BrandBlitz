@@ -32,16 +32,21 @@ export function AnswerOption({
       size="lg"
       disabled={disabled}
       className={cn(
-        "w-full justify-start px-4 py-3 text-left h-[54px] transition-all",
-        selected && pending && "ring-2 ring-[var(--primary)] bg-[var(--accent)]",
-        selected && correct === true && "border-green-600 bg-green-50 text-green-900 ring-2 ring-green-600",
-        selected && correct === false && "border-red-600 bg-red-50 text-red-900 ring-2 ring-red-600",
+        "h-[54px] w-full justify-start px-4 py-3 text-left transition-all",
+        selected && pending && "bg-[var(--accent)] ring-2 ring-[var(--primary)]",
+        selected &&
+          correct === true &&
+          "border-green-600 bg-green-50 text-green-900 ring-2 ring-green-600",
+        selected && correct === false && "border-red-600 bg-red-50 text-red-900 ring-2 ring-red-600"
       )}
       onClick={() => onSelect(option)}
       aria-label={`${option}: ${label}`}
       aria-pressed={selected}
     >
-      <kbd className="mr-3 inline-flex h-6 min-w-6 items-center justify-center rounded border border-[var(--border)] bg-[var(--muted)] px-1 font-bold text-[var(--muted-foreground)] max-md:hidden" aria-hidden="true">
+      <kbd
+        className="mr-3 inline-flex h-6 min-w-6 items-center justify-center rounded border border-[var(--border)] bg-[var(--muted)] px-1 font-bold text-[var(--muted-foreground)] max-md:hidden"
+        aria-hidden="true"
+      >
         {option}
       </kbd>
       <span className="min-w-0 flex-1 truncate">{label}</span>

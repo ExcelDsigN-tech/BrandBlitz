@@ -37,11 +37,7 @@ const DEFAULT_RETRY_OPTIONS: Required<RetryOptions> = {
  * @param maxDelayMs - Maximum delay in milliseconds
  * @returns Delay in milliseconds
  */
-function calculateBackoffDelay(
-  attempt: number,
-  baseDelayMs: number,
-  maxDelayMs: number
-): number {
+function calculateBackoffDelay(attempt: number, baseDelayMs: number, maxDelayMs: number): number {
   const exponentialDelay = baseDelayMs * Math.pow(2, attempt);
   const jitteredDelay = exponentialDelay * Math.random();
   return Math.min(maxDelayMs, jitteredDelay);
@@ -76,10 +72,7 @@ function isRetryableError(err: unknown, retryableStatusCodes: number[]): boolean
  * @returns Promise result from fn
  * @throws Original error with retryExhausted: true if all retries fail
  */
-export async function withRetry<T>(
-  fn: () => Promise<T>,
-  options: RetryOptions = {}
-): Promise<T> {
+export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions = {}): Promise<T> {
   const config = { ...DEFAULT_RETRY_OPTIONS, ...options };
 
   let lastError: any;
@@ -100,11 +93,7 @@ export async function withRetry<T>(
         throw err;
       }
 
-      const delayMs = calculateBackoffDelay(
-        attempt,
-        config.baseDelayMs,
-        config.maxDelayMs
-      );
+      const delayMs = calculateBackoffDelay(attempt, config.baseDelayMs, config.maxDelayMs);
 
       const statusCode = (err as any)?.response?.status ?? (err as any)?.status;
       console.warn(
@@ -123,13 +112,10 @@ export async function withRetry<T>(
   // All retries exhausted
   const error = lastError as any;
   error.retryExhausted = true;
-  console.warn(
-    `[Stellar RPC Retry] Exhausted all ${config.maxAttempts} retry attempts`,
-    {
-      statusCode: error?.response?.status ?? error?.status,
-      errorMessage: error?.message ?? String(error),
-    }
-  );
+  console.warn(`[Stellar RPC Retry] Exhausted all ${config.maxAttempts} retry attempts`, {
+    statusCode: error?.response?.status ?? error?.status,
+    errorMessage: error?.message ?? String(error),
+  });
   throw error;
 }
 

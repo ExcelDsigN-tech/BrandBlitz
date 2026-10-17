@@ -4,4 +4,3 @@ repos:
     hooks:
       - id: gitleaks
         args: ["detect", "--redact", "--config", ".gitleaks.toml"]
-

@@ -1,12 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("app remains usable on public routes when /api/auth/session returns 500", async ({
-  page,
-}) => {
+test("app remains usable on public routes when /api/auth/session returns 500", async ({ page }) => {
   // Simulate NextAuth session endpoint being unavailable
-  await page.route("**/api/auth/session", (route) =>
-    route.fulfill({ status: 500, body: "" })
-  );
+  await page.route("**/api/auth/session", (route) => route.fulfill({ status: 500, body: "" }));
 
   await page.goto("/login");
 

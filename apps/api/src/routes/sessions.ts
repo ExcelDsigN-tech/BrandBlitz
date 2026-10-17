@@ -3,6 +3,7 @@ import { z } from "zod";
 import { getChallengeById, getChallengeQuestions } from "../db/queries/challenges";
 import {
   getSession,
+  getSessionShareCard,
   markWarmupStarted,
   markWarmupCompleted,
   markChallengeStarted,
@@ -29,6 +30,7 @@ import { redis } from "../lib/redis";
 import { computeSessionHmac } from "../lib/integrity";
 import { updateStreak } from "../services/streaks";
 import { checkAndAwardSessionBadges } from "../services/badges";
+import { notifyOvertakenParticipants } from "../services/rank-overtaken";
 import { WARMUP_MIN_SECONDS } from "@brandblitz/stellar";
 import { tokenRevocationKey, tokenTtlSeconds } from "../middleware/authenticate";
 import { revalidateLeaderboard } from "../lib/revalidate";
@@ -88,6 +90,37 @@ function remainingTimeMs(session: { challenge_started_at?: string | Date | null 
   if (!Number.isFinite(startedAt)) return 45_000;
   return Math.max(0, 45_000 - (Date.now() - startedAt));
 }
+
+/**
+ * GET /sessions/:id/share-card
+ * Public, shareable result-card data for a completed session (#1011).
+ * Deliberately unauthenticated -- this is what a share link resolves to --
+ * so the query behind it excludes practice runs, flagged sessions, and any
+ * PII beyond display name/avatar.
+ */
+router.get("/:id/share-card", async (req, res) => {
+  const { id } = z.object({ id: z.string().uuid() }).parse(req.params);
+  const card = await getSessionShareCard(id);
+  if (!card) throw createError("Result not found or not shareable", 404, "NOT_FOUND");
+
+  res.setHeader("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+  res.json({
+    sessionId: card.session_id,
+    challengeId: card.challenge_id,
+    brandName: card.brand_name,
+    logoUrl: card.logo_url,
+    primaryColor: card.primary_color,
+    secondaryColor: card.secondary_color,
+    totalScore: card.total_score,
+    rank: card.rank,
+    completedAt: card.completed_at,
+    player: {
+      displayName: card.display_name,
+      username: card.username,
+      avatarUrl: card.avatar_url,
+    },
+  });
+});
 
 /**
  * GET /sessions/:challengeId
@@ -248,106 +281,116 @@ router.post(
  * Correct answers are NEVER sent to the client.
  * Round-3 is idempotent: duplicate requests return the cached result.
  */
-router.post(
-  "/:challengeId/answer/:round",
-  authenticate,
-  validateReactionTime,
-  async (req, res) => {
-    const challengeId = String(req.params.challengeId);
-    const round = parseInt(String(req.params.round)) as 1 | 2 | 3;
-    if (![1, 2, 3].includes(round)) throw createError("Invalid round", 400);
+router.post("/:challengeId/answer/:round", authenticate, validateReactionTime, async (req, res) => {
+  const challengeId = String(req.params.challengeId);
+  const round = parseInt(String(req.params.round)) as 1 | 2 | 3;
+  if (![1, 2, 3].includes(round)) throw createError("Invalid round", 400);
 
-    const body = AnswerSchema.parse(req.body);
-    const challenge = await getChallengeById(challengeId);
-    if (!challenge) throw createError("Challenge not found", 404);
+  const body = AnswerSchema.parse(req.body);
+  const challenge = await getChallengeById(challengeId);
+  if (!challenge) throw createError("Challenge not found", 404);
 
-    const session = await getSession(req.user!.sub, challenge.id);
-    if (!session) throw createError("Session not found", 404);
-    if (session.user_id !== req.user!.sub) throw createError("Forbidden", 403);
-    if (!session.challenge_started_at) throw createError("Challenge not started", 400);
+  const session = await getSession(req.user!.sub, challenge.id);
+  if (!session) throw createError("Session not found", 404);
+  if (session.user_id !== req.user!.sub) throw createError("Forbidden", 403);
+  if (!session.challenge_started_at) throw createError("Challenge not started", 400);
 
-    if (session.completed_at && round !== 3) {
-      throw createError("Session already completed", 409);
+  if (session.completed_at && round !== 3) {
+    throw createError("Session already completed", 409);
+  }
+  if ((session as any).is_flagged || session.flagged) {
+    throw createError("Session flagged for review", 403);
+  }
+
+  const questions = await getChallengeQuestions(challenge.id);
+  const question = questions.find((q) => q.round === round);
+  if (!question) throw createError("Question not found", 404);
+
+  if (session.completed_at && round === 3) {
+    if (session.round_3_answer !== body.selectedOption) {
+      throw createError("Answer conflict detected", 409, "CONFLICT_REPLAY");
     }
-    if ((session as any).is_flagged || session.flagged) {
-      throw createError("Session flagged for review", 403);
-    }
-
-    // Double answer check
-    const existingScores = (session as any).scores || [];
-    if (existingScores.some((s: any) => s.round === round)) {
-      throw createError("Round already answered", 400);
-    }
-
-    const questions = await getChallengeQuestions(challenge.id);
-    const question = questions.find((q) => q.round === round);
-    if (!question) throw createError("Question not found", 404);
-
-    if (session.completed_at && round === 3) {
-      if (session.round_3_answer !== body.selectedOption) {
-        throw createError("Answer conflict detected", 409, "CONFLICT_REPLAY");
-      }
-      return res.json({
-        correct: validateAnswer(question, body.selectedOption),
-        score: session.round_3_score,
-        round: 3,
-        total_score: session.total_score,
-        rank: session.rank ?? null,
-      });
-    }
-
-    const score = calculateRoundScore({
-      selectedOption: body.selectedOption,
-      correctOption: question.correct_option,
-      reactionTimeMs: body.reactionTimeMs,
-    });
-
-    const scoreCheck = validateRoundScore(score);
-    if (!scoreCheck.valid) {
-      throw createError(scoreCheck.message, 422, scoreCheck.code);
-    }
-
-    await recordRoundScore(session.id, round, score, body.selectedOption, body.reactionTimeMs);
-
-    if (round === 3) {
-      const completed = await finishSession(session.id);
-      if (completed) {
-        assertValidTotalScore(completed.total_score);
-        const hmac = computeSessionHmac(completed.id, completed.total_score, completed.completed_at!);
-        if (hmac) {
-          await storeSessionHmac(session.id, hmac);
-        }
-        if (!completed.is_practice) {
-          await updateStreak(completed.user_id);
-          await checkAndAwardSessionBadges(completed.user_id, {
-            total_score: completed.total_score,
-            is_practice: completed.is_practice,
-          });
-          
-          // Invalidate Redis leaderboard cache
-          const keys = await redis.keys("leaderboard:*");
-          if (keys.length > 0) {
-            await redis.del(...keys);
-          }
-          await revalidateLeaderboard().catch(() => {});
-        }
-        const token = bearerToken(req);
-        if (token) {
-          await revokeSessionToken(session.id, token, req.user!.exp);
-        }
-      }
-      const token = bearerToken(req);
-      if (token) {
-        await revokeSessionToken(session.id, token, req.user!.exp);
-      }
-    }
-
-    res.json({
+    return res.json({
       correct: validateAnswer(question, body.selectedOption),
-      score,
-      round,
+      score: session.round_3_score,
+      round: 3,
+      total_score: session.total_score,
+      rank: session.rank ?? null,
     });
   }
-);
+
+  // Reject duplicate answers using the persisted answers on the session row.
+  const alreadyAnswered =
+    round === 1
+      ? session.round_1_answer != null
+      : round === 2
+        ? session.round_2_answer != null
+        : session.round_3_answer != null;
+  if (alreadyAnswered) {
+    throw createError("Round already answered", 400);
+  }
+
+  const score = calculateRoundScore({
+    selectedOption: body.selectedOption,
+    correctOption: question.correct_option,
+    reactionTimeMs: body.reactionTimeMs,
+  });
+
+  const scoreCheck = validateRoundScore(score);
+  if (!scoreCheck.valid) {
+    throw createError(scoreCheck.message, 422, scoreCheck.code);
+  }
+
+  await recordRoundScore(session.id, round, score, body.selectedOption, body.reactionTimeMs);
+
+  // Set when round 3 finishes the session, so the client can build a
+  // shareable result-card link (#1011) without a separate round trip.
+  let sessionIdForShareCard: string | undefined;
+
+  if (round === 3) {
+    const completed = await finishSession(session.id);
+    if (completed) {
+      sessionIdForShareCard = completed.is_practice ? undefined : completed.id;
+      assertValidTotalScore(completed.total_score);
+      const hmac = computeSessionHmac(completed.id, completed.total_score, completed.completed_at!);
+      if (hmac) {
+        await storeSessionHmac(session.id, hmac);
+      }
+      if (!completed.is_practice) {
+        await updateStreak(completed.user_id);
+        await checkAndAwardSessionBadges(completed.user_id, {
+          total_score: completed.total_score,
+          is_practice: completed.is_practice,
+        });
+
+        // Invalidate Redis leaderboard cache
+        const keys = await redis.keys("leaderboard:*");
+        if (keys.length > 0) {
+          await redis.del(...keys);
+        }
+        await revalidateLeaderboard().catch(() => {});
+
+        // Notify any participants that were overtaken by this score (fire-and-forget)
+        void notifyOvertakenParticipants(
+          completed.user_id,
+          completed.challenge_id,
+          completed.total_score,
+          challenge.challenge_id
+        );
+      }
+    }
+    const token = bearerToken(req);
+    if (token) {
+      await revokeSessionToken(session.id, token, req.user!.exp);
+    }
+  }
+
+  res.json({
+    correct: validateAnswer(question, body.selectedOption),
+    score,
+    round,
+    sessionId: sessionIdForShareCard,
+  });
+});
 
 export default router;

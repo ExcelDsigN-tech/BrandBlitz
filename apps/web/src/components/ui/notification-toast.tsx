@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 
-export type NotificationType = "payout_received" | "badge_earned" | "streak_milestone";
+export type NotificationType =
+  | "payout_received"
+  | "badge_earned"
+  | "streak_milestone"
+  | "rank_overtaken";
 
 export interface Notification {
   id: string;
@@ -21,6 +25,7 @@ const ICONS: Record<NotificationType, string> = {
   payout_received: "💸",
   badge_earned: "🏅",
   streak_milestone: "🔥",
+  rank_overtaken: "📉",
 };
 
 function toastSummary(n: Notification): string {
@@ -36,6 +41,13 @@ function toastSummary(n: Notification): string {
     case "streak_milestone": {
       const days = n.payload.milestone as number | undefined;
       return days ? `${days}-day streak milestone reached!` : "Streak milestone reached!";
+    }
+    case "rank_overtaken": {
+      const rank = n.payload.new_rank as number | undefined;
+      const name = n.payload.challenge_name as string | undefined;
+      if (rank && name) return `You dropped to #${rank} on ${name}`;
+      if (rank) return `You dropped to rank #${rank}`;
+      return "You've been overtaken on the leaderboard!";
     }
   }
 }
@@ -56,14 +68,14 @@ export function NotificationToast({ notification, onDismiss }: NotificationToast
     <div
       role="alert"
       aria-live="polite"
-      className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 shadow-lg text-sm w-72 animate-in slide-in-from-right-4 duration-300"
+      className="animate-in slide-in-from-right-4 flex w-72 items-start gap-3 rounded-2xl border border-[var(--border)] bg-[var(--background)] px-4 py-3 text-sm shadow-lg duration-300"
     >
-      <span className="text-xl leading-none mt-0.5">{ICONS[notification.type]}</span>
+      <span className="mt-0.5 text-xl leading-none">{ICONS[notification.type]}</span>
       <p className="flex-1 text-[var(--foreground)]">{toastSummary(notification)}</p>
       <button
         aria-label="Dismiss notification"
         onClick={() => onDismiss(notification.id)}
-        className="text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors leading-none"
+        className="leading-none text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
       >
         ✕
       </button>

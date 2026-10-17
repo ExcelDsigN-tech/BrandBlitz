@@ -31,7 +31,7 @@ router.get("/", async (_req, res) => {
     PUBLIC_CONFIG_CACHE_KEY,
     JSON.stringify(payload),
     "EX",
-    PUBLIC_CONFIG_CACHE_TTL_SECONDS,
+    PUBLIC_CONFIG_CACHE_TTL_SECONDS
   );
 
   res.set("X-Cache", "MISS");

@@ -1,6 +1,10 @@
 import { pool } from "../apps/api/src/db";
 import { createBrand } from "../apps/api/src/db/queries/brands";
-import { createChallenge, insertChallengeQuestions, updateChallengeStatus } from "../apps/api/src/db/queries/challenges";
+import {
+  createChallenge,
+  insertChallengeQuestions,
+  updateChallengeStatus,
+} from "../apps/api/src/db/queries/challenges";
 import { upsertUser } from "../apps/api/src/db/queries/users";
 
 async function seed() {
@@ -42,7 +46,6 @@ async function seed() {
         question_type: "which_brand",
         prompt_type: "logo",
         question_text: "Which brand is this?",
-        correct_answer: "E2E Test Brand",
         option_a: "E2E Test Brand",
         option_b: "Generic Brand",
         option_c: "Other Brand",
@@ -55,7 +58,6 @@ async function seed() {
         question_type: "which_tagline",
         prompt_type: "tagline",
         question_text: "What is our tagline?",
-        correct_answer: "The best brand for testing",
         option_a: "Not this one",
         option_b: "The best brand for testing",
         option_c: "Maybe this?",
@@ -68,7 +70,6 @@ async function seed() {
         question_type: "which_product",
         prompt_type: "productImage1",
         question_text: "What do we sell?",
-        correct_answer: "100% test coverage",
         option_a: "Nothing",
         option_b: "Everything",
         option_c: "Something",

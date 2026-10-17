@@ -35,6 +35,8 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
   const lastSubmitRef = React.useRef(0);
 
   const canSubmit = reason !== "" && !submitting;
+  const isNearLimit = note.length >= MAX_NOTE_LENGTH * 0.85;
+  const isAtLimit = note.length >= MAX_NOTE_LENGTH;
 
   React.useEffect(() => {
     if (!open) {
@@ -81,7 +83,15 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
         <DialogHeader>
           <DialogTitle>Report Challenge</DialogTitle>
           <DialogDescription>
-            Help us keep BrandBlitz safe. Select a reason for your report.
+            Help us keep BrandBlitz safe. Select a reason for your report.{" "}
+            <a
+              href="/docs/guides/reporting-a-challenge"
+              className="underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Learn more
+            </a>
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -93,7 +103,7 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
                   key={opt.value}
                   className={`flex cursor-pointer items-center gap-3 rounded-lg border px-4 py-3 text-sm transition-colors ${
                     reason === opt.value
-                      ? "border-[var(--primary)] bg-[var(--primary)]/5"
+                      ? "bg-[var(--primary)]/5 border-[var(--primary)]"
                       : "border-[var(--border)] hover:bg-[var(--muted)]"
                   }`}
                 >
@@ -112,9 +122,7 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
                         : "border-[var(--muted-foreground)]"
                     }`}
                   >
-                    {reason === opt.value && (
-                      <span className="h-2 w-2 rounded-full bg-white" />
-                    )}
+                    {reason === opt.value && <span className="h-2 w-2 rounded-full bg-white" />}
                   </span>
                   {opt.label}
                 </label>
@@ -122,7 +130,10 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
             </div>
 
             <div className="mt-4">
-              <label htmlFor="report-note" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+              <label
+                htmlFor="report-note"
+                className="mb-1 block text-sm font-medium text-[var(--foreground)]"
+              >
                 Additional details (optional)
               </label>
               <textarea
@@ -135,14 +146,27 @@ export function ReportModal({ challengeId, open, onOpenChange }: ReportModalProp
                 rows={3}
                 className="w-full resize-none rounded-md border border-[var(--input)] bg-[var(--background)] px-3 py-2 text-sm placeholder:text-[var(--muted-foreground)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
               />
-              <p className="mt-1 text-right text-xs text-[var(--muted-foreground)]">
+              <p
+                className={`mt-1 text-right text-xs transition-colors ${
+                  isAtLimit
+                    ? "font-semibold text-red-600"
+                    : isNearLimit
+                      ? "font-medium text-amber-600"
+                      : "text-[var(--muted-foreground)]"
+                }`}
+              >
                 {note.length}/{MAX_NOTE_LENGTH}
               </p>
             </div>
           </fieldset>
 
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={submitting}
+            >
               Cancel
             </Button>
             <Button type="submit" variant="destructive" disabled={!canSubmit}>

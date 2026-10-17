@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fetchDepositEvents, getDepositConfirmationCount } from "./deposit";
+import {
+  fetchDepositEvents,
+  generateDepositMemo,
+  getDepositConfirmationCount,
+  validateDepositMemo,
+} from "./deposit";
 import * as client from "./client";
 
 vi.mock("./client", () => ({
@@ -8,6 +13,22 @@ vi.mock("./client", () => ({
   getNetworkConfig: vi.fn(),
   withRetry: vi.fn((fn) => fn()),
 }));
+
+describe("deposit memo generation", () => {
+  it("creates unique Stellar-compatible text memos", () => {
+    const first = generateDepositMemo();
+    const second = generateDepositMemo();
+
+    expect(first).not.toBe(second);
+    expect(Buffer.byteLength(first, "utf8")).toBeLessThanOrEqual(28);
+    expect(validateDepositMemo(first)).toEqual({ valid: true, memo: first });
+    expect(validateDepositMemo(second)).toEqual({ valid: true, memo: second });
+  });
+
+  it("rejects memos that exceed Stellar's 28-byte text memo limit", () => {
+    expect(validateDepositMemo("a".repeat(29))).toMatchObject({ valid: false });
+  });
+});
 
 describe("fetchDepositEvents", () => {
   beforeEach(() => {
@@ -21,7 +42,7 @@ describe("fetchDepositEvents", () => {
     const mockAsset = {
       contractId: vi.fn().mockReturnValue("mock-contract-id"),
     };
-    
+
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
     vi.mocked(client.getUsdcAsset).mockReturnValue(mockAsset as any);
     vi.mocked(client.getNetworkConfig).mockReturnValue({
@@ -41,7 +62,7 @@ describe("fetchDepositEvents", () => {
     const mockAsset = {
       contractId: vi.fn().mockReturnValue("mock-contract-id"),
     };
-    
+
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
     vi.mocked(client.getUsdcAsset).mockReturnValue(mockAsset as any);
     vi.mocked(client.getNetworkConfig).mockReturnValue({
@@ -51,7 +72,9 @@ describe("fetchDepositEvents", () => {
     await fetchDepositEvents("hot-wallet", 1, "public");
 
     expect(client.getNetworkConfig).toHaveBeenCalledWith("public");
-    expect(mockAsset.contractId).toHaveBeenCalledWith("Public Global Stellar Network ; September 2015");
+    expect(mockAsset.contractId).toHaveBeenCalledWith(
+      "Public Global Stellar Network ; September 2015"
+    );
   });
 });
 
@@ -72,11 +95,7 @@ describe("getDepositConfirmationCount", () => {
 
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(50);
   });
@@ -93,11 +112,7 @@ describe("getDepositConfirmationCount", () => {
 
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(0);
   });
@@ -110,11 +125,7 @@ describe("getDepositConfirmationCount", () => {
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
     vi.spyOn(console, "warn").mockImplementation(() => {});
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(0);
   });
@@ -131,11 +142,7 @@ describe("getDepositConfirmationCount", () => {
 
     vi.mocked(client.getRpcServer).mockReturnValue(mockRpc as any);
 
-    const confirmations = await getDepositConfirmationCount(
-      "abc123",
-      950,
-      "testnet"
-    );
+    const confirmations = await getDepositConfirmationCount("abc123", 950, "testnet");
 
     expect(confirmations).toBe(0);
   });

@@ -134,12 +134,12 @@ export default function AnalyticsPage() {
     return (
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="mb-8">
-          <div className="animate-pulse h-8 w-48 rounded bg-[var(--muted)]" />
-          <div className="animate-pulse mt-2 h-4 w-64 rounded bg-[var(--muted)]" />
+          <div className="h-8 w-48 animate-pulse rounded bg-[var(--muted)]" />
+          <div className="mt-2 h-4 w-64 animate-pulse rounded bg-[var(--muted)]" />
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse h-32 rounded-lg bg-[var(--muted)]" />
+            <div key={i} className="h-32 animate-pulse rounded-lg bg-[var(--muted)]" />
           ))}
         </div>
       </main>
@@ -209,18 +209,28 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      <div className="mb-6 flex items-center gap-2">
-        <span className="text-sm text-[var(--muted-foreground)]">Date range:</span>
-        {(["7", "30", "90"] as DateRange[]).map((range) => (
-          <Button
-            key={range}
-            variant={dateRange === range ? "default" : "outline"}
-            size="sm"
-            onClick={() => setDateRange(range)}
-          >
-            {range} days
-          </Button>
-        ))}
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-[var(--muted-foreground)]">Date range:</span>
+          {(["7", "30", "90"] as DateRange[]).map((range) => (
+            <Button
+              key={range}
+              variant={dateRange === range ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDateRange(range)}
+            >
+              {range} days
+            </Button>
+          ))}
+        </div>
+        <a
+          href="/docs/guides/brand-analytics-metrics"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-sm text-[var(--muted-foreground)] underline hover:text-[var(--foreground)]"
+        >
+          What do these metrics mean?
+        </a>
       </div>
 
       {analyticsLoadError ? (

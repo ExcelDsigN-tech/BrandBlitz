@@ -20,11 +20,11 @@ Step 2 uses the presigned PUT URL returned by step 1. The URL expires after **60
 
 ## Buckets and Key Prefixes
 
-| Upload type | Bucket | Key prefix | Max size |
-|---|---|---|---|
-| `brand-logo` | `brand-assets` | `logos/` | 2 MB |
-| `product-image` | `brand-assets` | `products/` | 5 MB |
-| `user-avatar` | `brand-assets` | `avatars/` | 1 MB |
+| Upload type     | Bucket         | Key prefix  | Max size |
+| --------------- | -------------- | ----------- | -------- |
+| `brand-logo`    | `brand-assets` | `logos/`    | 2 MB     |
+| `product-image` | `brand-assets` | `products/` | 5 MB     |
+| `user-avatar`   | `brand-assets` | `avatars/`  | 1 MB     |
 
 Allowed MIME types: `image/png`, `image/jpeg`, `image/webp`, `image/svg+xml`.
 
@@ -38,12 +38,12 @@ An **orphan** is an S3 object where step 2 (PUT) succeeded but step 3 (verify) n
 
 The client retries `POST /upload/verify` **3 times** before giving up:
 
-| Attempt | Delay before retry |
-|---|---|
-| 1 | immediate |
-| 2 | 200 ms |
-| 3 | 500 ms |
-| final | 1 000 ms then abort |
+| Attempt | Delay before retry  |
+| ------- | ------------------- |
+| 1       | immediate           |
+| 2       | 200 ms              |
+| 3       | 500 ms              |
+| final   | 1 000 ms then abort |
 
 ### Client-side abort on final failure
 
@@ -86,9 +86,10 @@ export async function reapOrphanUploads(_job: Job): Promise<void> {
   );
 
   for (const { key } of orphans.rows) {
-    const bucket = key.startsWith("logos/") || key.startsWith("products/") || key.startsWith("avatars/")
-      ? BUCKETS.BRAND_ASSETS
-      : BUCKETS.SHARE_CARDS;
+    const bucket =
+      key.startsWith("logos/") || key.startsWith("products/") || key.startsWith("avatars/")
+        ? BUCKETS.BRAND_ASSETS
+        : BUCKETS.SHARE_CARDS;
     await s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
   }
 
@@ -112,18 +113,19 @@ The `pending_uploads` table is not yet in the schema — add a migration when im
 
 ## Environment Variables
 
-| Variable | Description |
-|---|---|
-| `S3_ENDPOINT` | Storage endpoint URL (e.g. `http://localhost:9000` for MinIO) |
-| `S3_REGION` | AWS region or `auto` for Cloudflare R2 |
-| `S3_ACCESS_KEY_ID` | Access key |
-| `S3_SECRET_ACCESS_KEY` | Secret key |
-| `S3_FORCE_PATH_STYLE` | `true` for MinIO (path-style URLs) |
+| Variable               | Description                                                   |
+| ---------------------- | ------------------------------------------------------------- |
+| `S3_ENDPOINT`          | Storage endpoint URL (e.g. `http://localhost:9000` for MinIO) |
+| `S3_REGION`            | AWS region or `auto` for Cloudflare R2                        |
+| `S3_ACCESS_KEY_ID`     | Access key                                                    |
+| `S3_SECRET_ACCESS_KEY` | Secret key                                                    |
+| `S3_FORCE_PATH_STYLE`  | `true` for MinIO (path-style URLs)                            |
 
 ---
 
 ## Related
 
+- [Upload API reference](./api/upload.md) — Full endpoint reference for presign, verify, complete, abort
 - `apps/api/src/routes/upload.ts` — presign, verify, and abort API routes
 - `apps/web/src/components/brand/upload-field.tsx` — client upload component with retry logic
 - `packages/storage/src/client.ts` — S3 client and bucket constants

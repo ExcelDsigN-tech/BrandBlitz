@@ -2,7 +2,12 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { randomUUID } from "node:crypto";
 import { query } from "../db";
 import { createBrand } from "../db/queries/brands";
-import { createChallenge, getChallengeByIdAny, updateChallengeStatus, insertChallengeQuestions } from "../db/queries/challenges";
+import {
+  createChallenge,
+  getChallengeByIdAny,
+  updateChallengeStatus,
+  insertChallengeQuestions,
+} from "../db/queries/challenges";
 import { createSession, getSession, recordRoundScore } from "../db/queries/sessions";
 
 describe("Concurrent Session Answer Submissions Integration Tests", () => {
@@ -102,10 +107,7 @@ describe("Concurrent Session Answer Submissions Integration Tests", () => {
     sessionId = session.id;
 
     // Mark session as started
-    await query(
-      `UPDATE game_sessions SET challenge_started_at = NOW() WHERE id = $1`,
-      [sessionId]
-    );
+    await query(`UPDATE game_sessions SET challenge_started_at = NOW() WHERE id = $1`, [sessionId]);
   });
 
   afterAll(async () => {
@@ -133,9 +135,9 @@ describe("Concurrent Session Answer Submissions Integration Tests", () => {
 
     // All should resolve (no errors thrown)
     const results = await Promise.allSettled(promises);
-    
+
     // At least one should succeed
-    const successful = results.filter(r => r.status === "fulfilled");
+    const successful = results.filter((r) => r.status === "fulfilled");
     expect(successful.length).toBeGreaterThan(0);
 
     // Verify only one score was recorded in the database
@@ -224,7 +226,7 @@ describe("Concurrent Session Answer Submissions Integration Tests", () => {
 
     // Submit all rounds concurrently with some duplicates
     const promises = [
-      ...scores.map((score, idx) => 
+      ...scores.map((score, idx) =>
         recordRoundScore(sessionId, (idx + 1) as 1 | 2 | 3, score, "A", 1000)
       ),
       // Add some duplicate submissions
@@ -293,7 +295,7 @@ describe("Concurrent Session Answer Submissions Integration Tests", () => {
        RETURNING id`,
       [sessionId, round, 150, 1000]
     );
-    
+
     // The second insert should not return a row (conflict prevented)
     expect(secondInsert.rows.length).toBe(0);
 
@@ -311,7 +313,13 @@ describe("Concurrent Session Answer Submissions Integration Tests", () => {
       `INSERT INTO users (email, display_name, username, role, status)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id`,
-      ["concurrent-test-2@example.com", "Concurrent Test 2", "concurrent_test_2", "player", "active"]
+      [
+        "concurrent-test-2@example.com",
+        "Concurrent Test 2",
+        "concurrent_test_2",
+        "player",
+        "active",
+      ]
     );
     const testUserId2 = user2Result.rows[0].id;
 
@@ -322,10 +330,9 @@ describe("Concurrent Session Answer Submissions Integration Tests", () => {
       isPractice: false,
     });
 
-    await query(
-      `UPDATE game_sessions SET challenge_started_at = NOW() WHERE id = $1`,
-      [session2.id]
-    );
+    await query(`UPDATE game_sessions SET challenge_started_at = NOW() WHERE id = $1`, [
+      session2.id,
+    ]);
 
     // Submit answers for both users concurrently
     const promises = [

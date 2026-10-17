@@ -1,4 +1,5 @@
 import { defineConfig } from "vitest/config";
+import { sharedCoverageOptions } from "./packages/config/src/vitest-base";
 
 export default defineConfig({
   test: {
@@ -9,8 +10,7 @@ export default defineConfig({
       "./packages/storage/vitest.config.ts",
     ],
     coverage: {
-      provider: "v8",
-      reporter: ["text", "html"],
+      ...sharedCoverageOptions,
       thresholds: {
         branches: 0,
         functions: 0,

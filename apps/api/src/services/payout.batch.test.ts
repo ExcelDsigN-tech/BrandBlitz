@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
   verifySessionHmac: vi.fn().mockReturnValue(true),
   logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
   metricsInc: vi.fn(),
+  getLicensePayoutTerms: vi.fn(),
 }));
 
 vi.mock("../db", () => ({ query: mocks.query }));
@@ -35,7 +36,13 @@ vi.mock("../lib/integrity", () => ({
 vi.mock("../lib/logger", () => ({ logger: mocks.logger }));
 vi.mock("../lib/metrics", () => ({ metrics: { inc: mocks.metricsInc } }));
 vi.mock("../lib/redis", () => ({
-  stellarSequenceStore: { get: vi.fn(), set: vi.fn(), del: vi.fn(), incr: vi.fn(), setIfAbsent: vi.fn() },
+  stellarSequenceStore: {
+    get: vi.fn(),
+    set: vi.fn(),
+    del: vi.fn(),
+    incr: vi.fn(),
+    setIfAbsent: vi.fn(),
+  },
 }));
 vi.mock("../queues/leaderboard-refresh.queue", () => ({
   enqueueLeaderboardRefresh: vi.fn(),
@@ -45,6 +52,9 @@ vi.mock("./referrals", () => ({
 }));
 vi.mock("../db/queries/users", () => ({
   incrementUserEarnings: vi.fn(),
+}));
+vi.mock("../db/queries/challenge-licenses", () => ({
+  getLicensePayoutTerms: mocks.getLicensePayoutTerms,
 }));
 
 import { processPayout } from "./payout";
@@ -61,6 +71,7 @@ describe("processPayout - batch query optimization", () => {
       pool_amount_stroops: "1000000000",
       pool_amount_usdc: "100.0000000",
     });
+    mocks.getLicensePayoutTerms.mockResolvedValue(null);
 
     mocks.createPayout.mockImplementation(async ({ userId }) => ({
       id: `payout-${userId}`,

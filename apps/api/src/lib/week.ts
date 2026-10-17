@@ -17,4 +17,3 @@ export function addUtcDays(yyyyMmDd: string, days: number): string {
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
-

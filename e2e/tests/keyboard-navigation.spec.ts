@@ -12,14 +12,12 @@ async function expectVisibleFocusIndicator(locator: Locator) {
     };
   });
 
-  const hasOutline =
-    styles.outlineStyle !== "none" &&
-    styles.outlineWidth !== "0px";
+  const hasOutline = styles.outlineStyle !== "none" && styles.outlineWidth !== "0px";
   const hasShadow = styles.boxShadow !== "none";
 
   expect(
     hasOutline || hasShadow,
-    `Expected a visible focus indicator, got outline=${styles.outlineStyle}/${styles.outlineWidth} boxShadow=${styles.boxShadow}`,
+    `Expected a visible focus indicator, got outline=${styles.outlineStyle}/${styles.outlineWidth} boxShadow=${styles.boxShadow}`
   ).toBe(true);
 }
 
@@ -39,7 +37,7 @@ test("keyboard-only navigation works through preview, warmup, and answer selecti
   await signInWithMockGoogle(
     page,
     { email: "keyboard-player@example.com", name: "Keyboard Player" },
-    `/challenge/${seeded.challengeId}`,
+    `/challenge/${seeded.challengeId}`
   );
 
   await page.waitForURL(`**/challenge/${seeded.challengeId}`);

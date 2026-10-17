@@ -3,7 +3,10 @@ import { seedActiveChallenge, signInWithMockGoogle } from "./helpers";
 import { WARMUP_MIN_SECONDS } from "../../apps/web/src/components/game/constants";
 
 test.describe("Network Failure E2E", () => {
-  test("network failure during game shows error state, not blank screen", async ({ page, request }) => {
+  test("network failure during game shows error state, not blank screen", async ({
+    page,
+    request,
+  }) => {
     // Watch for console errors
     const errors: string[] = [];
     page.on("pageerror", (err) => errors.push(err.message));
@@ -23,7 +26,7 @@ test.describe("Network Failure E2E", () => {
     );
 
     await page.waitForURL(`**/challenge/${seeded.challengeId}`);
-    
+
     const startButton = page.getByRole("button", { name: "Start Challenge →" });
     await expect(startButton).toBeEnabled({ timeout: (WARMUP_MIN_SECONDS + 5) * 1000 });
     await startButton.click();
@@ -69,7 +72,7 @@ test.describe("Network Failure E2E", () => {
 
     // 3. Unroute and verify retry succeeds without reload
     await page.unroute("**/api/sessions/**");
-    
+
     if (await retryButton.isVisible()) {
       await retryButton.click();
     } else {
@@ -81,7 +84,9 @@ test.describe("Network Failure E2E", () => {
 
     // 4. No unhandled console errors
     // (We filter out the expected network errors from Playwright's perspective)
-    const unexpectedErrors = errors.filter(e => !e.includes("net::ERR_FAILED") && !e.includes("503"));
+    const unexpectedErrors = errors.filter(
+      (e) => !e.includes("net::ERR_FAILED") && !e.includes("503")
+    );
     expect(unexpectedErrors.length).toBe(0);
 
     // 5. Confirm session-timeout queue behavior not triggered (session still active)

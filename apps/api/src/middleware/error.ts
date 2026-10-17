@@ -92,6 +92,21 @@ export function errorHandler(
     payload.code = err.code;
   }
 
+  // A few call sites attach client-actionable hints to the error before
+  // throwing (e.g. sessions.ts / scoring.ts set remainingMs, phone.ts sets
+  // retryAfter). Surface them so callers can act on the value instead of
+  // just the error code.
+  if (!(isProduction && isServerError)) {
+    const remainingMs = (err as any).remainingMs;
+    if (typeof remainingMs === "number") {
+      payload.remainingMs = remainingMs;
+    }
+    const retryAfter = (err as any).retryAfter;
+    if (typeof retryAfter === "number") {
+      payload.retryAfter = retryAfter;
+    }
+  }
+
   if (!(isProduction && isServerError) && err instanceof ZodError) {
     payload.details = err.issues.map((issue) => ({
       path: issue.path,

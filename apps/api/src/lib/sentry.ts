@@ -39,7 +39,9 @@ function scrubBody(body: unknown): unknown {
   return scrubbed;
 }
 
-function scrubHeaders(headers: Record<string, string> | undefined): Record<string, string> | undefined {
+function scrubHeaders(
+  headers: Record<string, string> | undefined
+): Record<string, string> | undefined {
   if (!headers) return headers;
   const out: Record<string, string> = { ...headers };
   for (const h of ["authorization", "cookie", "set-cookie"]) {
@@ -108,10 +110,21 @@ export async function captureException(
  * impractical.  Uses the module-level cached reference; will silently no-op
  * if Sentry was not yet initialised.
  */
-export function captureExceptionSync(
-  err: unknown,
-  context?: Record<string, unknown>
-): void {
+export function captureExceptionSync(err: unknown, context?: Record<string, unknown>): void {
   if (!_sentry) return;
   _sentry.captureException(err, context ? { extra: context } : undefined);
+}
+
+/**
+ * Report a non-exception event (e.g. a CSP violation) to Sentry.  Safe to
+ * call even when Sentry is not initialised — the call is a no-op in that
+ * case.
+ */
+export async function captureMessage(
+  message: string,
+  context?: Record<string, unknown>
+): Promise<void> {
+  const Sentry = await getSentry();
+  if (!Sentry) return;
+  Sentry.captureMessage(message, { level: "warning", extra: context });
 }

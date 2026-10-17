@@ -21,6 +21,7 @@ vi.mock("sharp", () => {
     metadata: vi.fn().mockResolvedValue({ format: "png" }),
     resize: vi.fn().mockReturnThis(),
     webp: vi.fn().mockReturnThis(),
+    avif: vi.fn().mockReturnThis(),
     toBuffer: vi.fn().mockResolvedValue(Buffer.from("optimized")),
   }));
   return { default: mSharp };
@@ -34,9 +35,10 @@ describe("optimizeImage", () => {
   const dummyBuffer = Buffer.from("dummy");
 
   it("should process the image successfully (happy path)", async () => {
-    const optimizedContent = Buffer.from("optimized"); // matches the sharp mock's toBuffer result
-    const expectedHash = createHash("sha256").update(optimizedContent).digest("hex").slice(0, 8);
+    const optimizedContent = Buffer.from("optimized");
+    const expectedHash = createHash("sha256").update(dummyBuffer).digest("hex").slice(0, 8);
     const expectedKey = `test-image-${expectedHash}.webp`;
+    const expectedAvifKey = `test-image-${expectedHash}.avif`;
 
     vi.mocked(s3.send).mockResolvedValueOnce({
       Body: {
@@ -51,7 +53,8 @@ describe("optimizeImage", () => {
     // s3.send called once only (GetObjectCommand); upload goes through uploadObject
     expect(s3.send).toHaveBeenCalledTimes(1);
     expect(sharp).toHaveBeenCalledWith(dummyBuffer);
-    // uploadObject called with immutable: true so Cache-Control is set
+    // uploadObject called twice: once for webp, once for avif
+    expect(uploadObject).toHaveBeenCalledTimes(2);
     expect(uploadObject).toHaveBeenCalledWith({
       bucket: "brand-assets",
       key: expectedKey,
@@ -59,25 +62,32 @@ describe("optimizeImage", () => {
       contentType: "image/webp",
       immutable: true,
     });
+    expect(uploadObject).toHaveBeenCalledWith({
+      bucket: "brand-assets",
+      key: expectedAvifKey,
+      body: optimizedContent,
+      contentType: "image/avif",
+      immutable: true,
+    });
   });
 
-  it("uses different fingerprinted keys when the optimized content changes", async () => {
-    vi.mocked(s3.send).mockResolvedValue({
-      Body: { transformToByteArray: async () => dummyBuffer },
-    });
-    vi.mocked(sharp)
-      .mockReturnValueOnce({
-        metadata: vi.fn().mockResolvedValue({ format: "png" }),
-        resize: vi.fn().mockReturnThis(),
-        webp: vi.fn().mockReturnThis(),
-        toBuffer: vi.fn().mockResolvedValue(Buffer.from("first image")),
-      } as any)
-      .mockReturnValueOnce({
-        metadata: vi.fn().mockResolvedValue({ format: "png" }),
-        resize: vi.fn().mockReturnThis(),
-        webp: vi.fn().mockReturnThis(),
-        toBuffer: vi.fn().mockResolvedValue(Buffer.from("second image")),
-      } as any);
+  it("uses different fingerprinted keys when the original content changes", async () => {
+    const buffer1 = Buffer.from("first original image");
+    const buffer2 = Buffer.from("second original image");
+    vi.mocked(s3.send)
+      .mockResolvedValueOnce({
+        Body: { transformToByteArray: async () => buffer1 },
+      })
+      .mockResolvedValueOnce({
+        Body: { transformToByteArray: async () => buffer2 },
+      });
+    vi.mocked(sharp).mockReturnValueOnce({
+      metadata: vi.fn().mockResolvedValue({ format: "png" }),
+      resize: vi.fn().mockReturnThis(),
+      webp: vi.fn().mockReturnThis(),
+      avif: vi.fn().mockReturnThis(),
+      toBuffer: vi.fn().mockResolvedValue(Buffer.from("optimized")),
+    } as any);
 
     const first = await optimizeImage("logos/logo.png", "brand-logo");
     const second = await optimizeImage("logos/logo.png", "brand-logo");
@@ -92,8 +102,7 @@ describe("optimizeImage", () => {
       Body: undefined,
     });
 
-    await expect(optimizeImage("missing-image.png", "brand-logo"))
-      .rejects.toThrow(StorageError);
+    await expect(optimizeImage("missing-image.png", "brand-logo")).rejects.toThrow(StorageError);
   });
 
   it("should skip optimization and return original key for unsupported formats", async () => {
@@ -115,7 +124,7 @@ describe("optimizeImage", () => {
     expect(resultKey).toBe("test-image.gif");
     expect(s3.send).toHaveBeenCalledTimes(1); // Only GetObjectCommand
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Unsupported image format: gif"));
-    
+
     warnSpy.mockRestore();
   });
 
@@ -137,7 +146,9 @@ describe("optimizeImage", () => {
 
     expect(resultKey).toBe("corrupt.png");
     expect(s3.send).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to process image metadata"));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to process image metadata")
+    );
 
     warnSpy.mockRestore();
   });
@@ -158,7 +169,9 @@ describe("optimizeImage", () => {
     const resultKey = await optimizeImage("no-format.png", "brand-logo");
 
     expect(resultKey).toBe("no-format.png");
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Unsupported image format: undefined"));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Unsupported image format: undefined")
+    );
 
     warnSpy.mockRestore();
   });
@@ -206,6 +219,8 @@ describe("assertImageMatchesDeclaredType (issue #505)", () => {
   });
 
   it("throws for an unsupported declared MIME type", async () => {
-    await expect(assertImageMatchesDeclaredType(buf, "application/pdf")).rejects.toThrow(StorageError);
+    await expect(assertImageMatchesDeclaredType(buf, "application/pdf")).rejects.toThrow(
+      StorageError
+    );
   });
 });

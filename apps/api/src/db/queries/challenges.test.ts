@@ -99,9 +99,7 @@ describeIntegration("challenges db queries", () => {
         )
         `);
 
-    await query(
-      `CREATE INDEX idx_challenges_deposit_memo ON challenges (deposit_memo)`
-    );
+    await query(`CREATE INDEX idx_challenges_deposit_memo ON challenges (deposit_memo)`);
 
     // Challenge questions table
     await query(`
@@ -112,7 +110,6 @@ describeIntegration("challenges db queries", () => {
         question_type TEXT NOT NULL CHECK (question_type IN ('which_brand', 'which_tagline', 'which_product')),
         prompt_type TEXT NOT NULL CHECK (prompt_type IN ('logo', 'productImage1', 'tagline')),
         question_text TEXT NOT NULL,
-        correct_answer TEXT NOT NULL,
         option_a TEXT NOT NULL,
         option_b TEXT NOT NULL,
         option_c TEXT NOT NULL,
@@ -378,7 +375,6 @@ describeIntegration("challenges db queries", () => {
       question_type: "which_brand",
       prompt_type: "tagline",
       question_text: `Question ${round}?`,
-      correct_answer: `Answer ${round}`,
       option_a: "A answer",
       option_b: "B answer",
       option_c: "C answer",
@@ -410,7 +406,6 @@ describeIntegration("challenges db queries", () => {
       question_type: "which_brand",
       prompt_type: "tagline",
       question_text: "Duplicate?",
-      correct_answer: "Yes",
       option_a: "A",
       option_b: "B",
       option_c: "C",
@@ -419,15 +414,11 @@ describeIntegration("challenges db queries", () => {
     };
 
     // Insert round 1 first
-    await challenges.insertChallengeQuestions([
-      { ...baseQuestion, round: 1 as const },
-    ]);
+    await challenges.insertChallengeQuestions([{ ...baseQuestion, round: 1 as const }]);
 
     // Attempt to insert round 1 again should violate the unique constraint
     await expect(
-      challenges.insertChallengeQuestions([
-        { ...baseQuestion, round: 1 as const },
-      ])
+      challenges.insertChallengeQuestions([{ ...baseQuestion, round: 1 as const }])
     ).rejects.toThrow();
   });
 
@@ -449,7 +440,6 @@ describeIntegration("challenges db queries", () => {
       question_type: "which_brand",
       prompt_type: "tagline",
       question_text: `Question round ${round}`,
-      correct_answer: `Answer ${round}`,
       option_a: "A",
       option_b: "B",
       option_c: "C",
@@ -489,7 +479,6 @@ describeIntegration("challenges db queries", () => {
         question_type: "which_tagline",
         prompt_type: "logo",
         question_text: "Private test?",
-        correct_answer: "Yes",
         option_a: "A",
         option_b: "B",
         option_c: "C",
@@ -521,7 +510,6 @@ describeIntegration("challenges db queries", () => {
         question_type: "which_product",
         prompt_type: "productImage1",
         question_text: "Which brand makes this product?",
-        correct_answer: "Acme",
         option_a: "Acme",
         option_b: "Beta",
         option_c: "Cyan",

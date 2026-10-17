@@ -12,6 +12,8 @@ interface ResultScreenProps {
   rank?: number;
   estimatedUsdc?: string;
   challengeId: string;
+  /** Completed session id (#1011) — enables a shareable result card link. */
+  sessionId?: string;
   primaryColor?: string;
   secondaryColor?: string;
 }
@@ -19,8 +21,16 @@ interface ResultScreenProps {
 const COUNTER_DURATION_MS = 1200;
 
 const DEFAULT_CONFETTI_COLORS = [
-  "#6366f1", "#22c55e", "#f59e0b", "#ef4444", "#3b82f6",
-  "#a855f7", "#06b6d4", "#ec4899", "#84cc16", "#f97316",
+  "#6366f1",
+  "#22c55e",
+  "#f59e0b",
+  "#ef4444",
+  "#3b82f6",
+  "#a855f7",
+  "#06b6d4",
+  "#ec4899",
+  "#84cc16",
+  "#f97316",
 ];
 
 function useAnimatedValue(target: number, durationMs: number): number {
@@ -32,12 +42,12 @@ function useAnimatedValue(target: number, durationMs: number): number {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    
+
     if (hasStartedRef.current) {
       return;
     }
     hasStartedRef.current = true;
-    
+
     startTimeRef.current = null;
     lastTimestampRef.current = null;
 
@@ -83,9 +93,8 @@ function useConfetti(show: boolean, primaryColor?: string, secondaryColor?: stri
     const prefersReduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (prefersReduced) return;
 
-    const colors = primaryColor && secondaryColor
-      ? [primaryColor, secondaryColor]
-      : DEFAULT_CONFETTI_COLORS;
+    const colors =
+      primaryColor && secondaryColor ? [primaryColor, secondaryColor] : DEFAULT_CONFETTI_COLORS;
 
     const end = Date.now() + 3000;
 
@@ -119,6 +128,7 @@ export function ResultScreen({
   rank,
   estimatedUsdc,
   challengeId,
+  sessionId,
   primaryColor,
   secondaryColor,
 }: ResultScreenProps) {
@@ -128,20 +138,33 @@ export function ResultScreen({
   useConfetti(isRankOne, primaryColor, secondaryColor);
 
   const shareText = `I just scored ${formatScore(totalScore)} in a BrandBlitz challenge${estimatedUsdc ? ` and earned ~${formatUsdc(estimatedUsdc)}` : ""}! 🏆`;
+  // A completed, shareable session renders a public result card with an OG
+  // image; otherwise fall back to sharing the current page (#1011).
+  const shareUrl =
+    sessionId && typeof window !== "undefined"
+      ? `${window.location.origin}/share/result/${sessionId}`
+      : typeof window !== "undefined"
+        ? window.location.href
+        : undefined;
 
   async function handleShare(): Promise<void> {
     if (navigator.share) {
-      await navigator.share({ text: shareText, url: window.location.href });
+      try {
+        await navigator.share({ text: shareText, url: shareUrl });
+        setShareToast("Result shared successfully.");
+      } catch {
+        // The native share sheet was dismissed or failed — show no confirmation.
+      }
       return;
     }
 
-    await navigator.clipboard.writeText(shareText);
+    await navigator.clipboard.writeText(shareUrl ? `${shareText} ${shareUrl}` : shareText);
     setShareToast("Result copied to clipboard.");
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <Card className="max-w-sm w-full text-center">
+    <div className="flex min-h-screen items-center justify-center p-6">
+      <Card className="w-full max-w-sm text-center">
         <CardHeader>
           <CardTitle className="text-2xl">
             {isRankOne ? "Congratulations #1!" : "Challenge Complete!"}
@@ -150,20 +173,16 @@ export function ResultScreen({
         <CardContent className="space-y-6">
           <div>
             <p className="text-6xl font-bold text-[var(--primary)]">{formatScore(animatedScore)}</p>
-            <p className="text-[var(--muted-foreground)] mt-1">points</p>
+            <p className="mt-1 text-[var(--muted-foreground)]">points</p>
           </div>
 
-          {rank && (
-            <p className="text-lg font-medium">
-              Rank #{rank}
-            </p>
-          )}
+          {rank && <p className="text-lg font-medium">Rank #{rank}</p>}
 
           {estimatedUsdc && (
-            <div className="rounded-lg bg-green-50 border border-green-200 p-4 usdc-pulse">
+            <div className="usdc-pulse rounded-lg border border-green-200 bg-green-50 p-4">
               <p className="text-sm text-green-700">Estimated earnings</p>
               <p className="text-2xl font-bold text-green-800">{formatUsdc(estimatedUsdc)}</p>
-              <p className="text-xs text-green-600 mt-1">Paid out when challenge ends</p>
+              <p className="mt-1 text-xs text-green-600">Paid out when challenge ends</p>
             </div>
           )}
 
@@ -178,16 +197,12 @@ export function ResultScreen({
               Share Result
             </Button>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2" data-tutorial="leaderboard">
               <Button asChild variant="secondary" className="flex-1">
-                <Link href="/leaderboard">
-                  Global Leaderboard
-                </Link>
+                <Link href="/leaderboard">Global Leaderboard</Link>
               </Button>
               <Button asChild variant="secondary" className="flex-1">
-                <Link href={`/leaderboard/${challengeId}`}>
-                  Challenge Leaderboard
-                </Link>
+                <Link href={`/leaderboard/${challengeId}`}>Challenge Leaderboard</Link>
               </Button>
             </div>
 

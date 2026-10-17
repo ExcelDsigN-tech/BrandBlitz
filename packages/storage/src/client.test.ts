@@ -18,7 +18,7 @@ describe("storage client", () => {
     it("uses environment variables for bucket names if provided", async () => {
       process.env.S3_BUCKET_BRAND_ASSETS = "custom-brand-assets";
       process.env.S3_BUCKET_SHARE_CARDS = "custom-share-cards";
-      
+
       // We need to re-import because BUCKETS is a constant evaluated at load time
       const { BUCKETS: customBuckets } = await import("./client");
       expect(customBuckets.BRAND_ASSETS).toBe("custom-brand-assets");
@@ -45,9 +45,7 @@ describe("storage client", () => {
     it("falls back to empty string if both are missing", () => {
       process.env.S3_PUBLIC_URL = "";
       process.env.S3_ENDPOINT = "";
-      expect(getPublicUrl("my-bucket", "image.webp")).toBe(
-        "/my-bucket/image.webp"
-      );
+      expect(getPublicUrl("my-bucket", "image.webp")).toBe("/my-bucket/image.webp");
     });
   });
 
@@ -57,7 +55,7 @@ describe("storage client", () => {
     it("rejects an empty buffer before writing to storage", async () => {
       const sendSpy = vi.spyOn(s3, "send");
       await expect(
-        uploadObject({ bucket: "b", key: "k", body: Buffer.alloc(0), contentType: "image/png" }),
+        uploadObject({ bucket: "b", key: "k", body: Buffer.alloc(0), contentType: "image/png" })
       ).rejects.toBeInstanceOf(StorageValidationError);
       expect(sendSpy).not.toHaveBeenCalled();
     });
@@ -66,7 +64,7 @@ describe("storage client", () => {
       const sendSpy = vi.spyOn(s3, "send");
       const notPng = Buffer.from([0xff, 0xd8, 0xff, 0xe0]); // JPEG bytes, declared PNG
       await expect(
-        uploadObject({ bucket: "b", key: "k", body: notPng, contentType: "image/png" }),
+        uploadObject({ bucket: "b", key: "k", body: notPng, contentType: "image/png" })
       ).rejects.toBeInstanceOf(StorageValidationError);
       expect(sendSpy).not.toHaveBeenCalled();
     });

@@ -40,7 +40,10 @@ test.describe("Dark mode toggle persistence (#442)", () => {
 
     await expect(getHtmlClasses(page)).resolves.toContain("dark");
 
-    await page.getByRole("link", { name: /leaderboard/i }).first().click();
+    await page
+      .getByRole("link", { name: /leaderboard/i })
+      .first()
+      .click();
     await page.waitForURL("**/leaderboard");
 
     const classes = await getHtmlClasses(page);

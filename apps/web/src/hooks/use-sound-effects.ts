@@ -19,7 +19,12 @@ function getAudioContext(): AudioContext {
   return audioCtx;
 }
 
-function playTone(frequency: number, duration: number, type: OscillatorType = "sine", rampTo?: number) {
+function playTone(
+  frequency: number,
+  duration: number,
+  type: OscillatorType = "sine",
+  rampTo?: number
+) {
   try {
     const ctx = getAudioContext();
     const oscillator = ctx.createOscillator();
@@ -68,7 +73,9 @@ export function useSoundEffects() {
   useEffect(() => {
     mountedRef.current = true;
     setEnabled(getStoredPreference());
-    return () => { mountedRef.current = false; };
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const toggle = useCallback(() => {

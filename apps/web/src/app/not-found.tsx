@@ -2,11 +2,11 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] flex flex-col">
-      <header className="border-b border-[var(--border)] px-6 h-16 flex items-center">
+    <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
+      <header className="flex h-16 items-center border-b border-[var(--border)] px-6">
         <Link
           href="/"
-          className="font-extrabold text-xl text-[var(--primary)]"
+          className="text-xl font-extrabold text-[var(--primary)]"
           aria-label="BrandBlitz home"
         >
           BrandBlitz
@@ -17,23 +17,24 @@ export default function NotFound() {
         role="main"
         className="flex flex-1 flex-col items-center justify-center px-6 py-20 text-center"
       >
-        <p className="text-6xl font-extrabold text-[var(--primary)] mb-4" aria-hidden="true">
+        <p className="mb-4 text-6xl font-extrabold text-[var(--primary)]" aria-hidden="true">
           404
         </p>
-        <h1 className="text-2xl font-bold mb-3">This page doesn&apos;t exist</h1>
-        <p className="text-[var(--muted-foreground)] mb-8 max-w-sm">
-          This challenge doesn&apos;t exist — try a live one from the home page.
+        <h1 className="mb-3 text-2xl font-bold">Page not found</h1>
+        <p className="mb-8 max-w-sm text-[var(--muted-foreground)]">
+          We couldn&apos;t find what you were looking for. Try a live challenge from the home page
+          instead.
         </p>
-        <div className="flex flex-wrap gap-3 justify-center">
+        <div className="flex flex-wrap justify-center gap-3">
           <Link
             href="/"
-            className="inline-flex items-center justify-center rounded-md bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-white hover:opacity-90 transition-opacity min-h-[44px]"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md bg-[var(--primary)] px-5 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
           >
             Play a live challenge
           </Link>
           <Link
             href="/leaderboard"
-            className="inline-flex items-center justify-center rounded-md border border-[var(--border)] bg-[var(--background)] px-5 py-2.5 text-sm font-medium text-[var(--foreground)] hover:bg-[var(--muted)] transition-colors min-h-[44px]"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-[var(--border)] bg-[var(--background)] px-5 py-2.5 text-sm font-medium text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]"
           >
             View leaderboard
           </Link>

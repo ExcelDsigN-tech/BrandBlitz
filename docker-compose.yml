@@ -1,12 +1,18 @@
 services:
   postgres:
     image: postgres:17-alpine
+    profiles: ["infra"]
     environment:
       POSTGRES_DB: brandblitz
       POSTGRES_USER: brandblitz
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-brandblitz_dev}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # init.sql is the sole auto-run entrypoint: Postgres's docker-entrypoint.sh
+      # only executes files directly inside /docker-entrypoint-initdb.d/ (no recursion).
+      # init.sql itself uses \ir (include-relative) to pull in migration files, so
+      # the migrations mount below is NOT auto-run — it exists purely to give init.sql
+      # access to those files at the path its \ir directives expect.
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
       - ./apps/api/migrations:/docker-entrypoint-initdb.d/apps/api/migrations:ro
     healthcheck:
@@ -17,6 +23,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    profiles: ["infra"]
     # `volatile-lru` only evicts keys that carry a TTL. BullMQ dead-letter
     # queue jobs are stored without a TTL (removeOnComplete: false), so DLQ
     # keys are never evicted and are retained well beyond the 7-day
@@ -31,7 +38,11 @@ services:
       retries: 5
 
   minio:
-    image: minio/minio:latest
+    # minio/minio was deleted from Docker Hub in Sep 2026 (no longer pullable).
+    # alpine/minio mirrors official MinIO releases with pinnable RELEASE tags.
+    # Pin: RELEASE.2025-10-15T17-29-55Z (last OSS CE release before EOL).
+    # To upgrade: check https://hub.docker.com/r/alpine/minio/tags for new RELEASE tags.
+    image: alpine/minio:RELEASE.2025-10-15T17-29-55Z
     command: server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-brandblitz}
@@ -45,7 +56,12 @@ services:
       retries: 5
 
   minio-setup:
-    image: minio/mc:latest
+    # minio/mc was deleted from Docker Hub in Sep 2026 (no longer pullable).
+    # cgr.dev/chainguard/minio-client is free, distroless, and rebuilt daily
+    # with the latest mc binary. Only :latest is available on the free tier;
+    # the image is continuously patched so this is acceptable for a one-shot
+    # provisioning container. See: https://images.chainguard.dev/directory/image/minio-client/overview
+    image: cgr.dev/chainguard/minio-client:latest
     depends_on:
       minio:
         condition: service_healthy
@@ -118,6 +134,12 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     command: ["node", "dist/worker.js"]
+    # The worker is a pure BullMQ queue processor — it never opens an HTTP
+    # server or listens on any port, so the HEALTHCHECK baked into the shared
+    # apps/api Dockerfile (wget http://localhost:3000/health) can never succeed
+    # for the worker. Disable it rather than forking a Dockerfile per service.
+    healthcheck:
+      disable: true
     stop_grace_period: 35s
     deploy:
       resources:
@@ -145,6 +167,11 @@ services:
     build:
       context: .
       dockerfile: apps/deposit-monitor/Dockerfile
+    # Matches api/worker's 35s grace period. The SIGTERM handler in
+    # apps/deposit-monitor/src/index.ts drains in-flight Stellar deposit
+    # polling work before exiting; without an explicit grace period Docker
+    # Compose would SIGKILL after its 10s default, defeating that handler.
+    stop_grace_period: 35s
     deploy:
       resources:
         limits:
@@ -171,6 +198,11 @@ services:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
+      # Keep these aligned with the web service's runtime environment values.
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
+        NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+        NEXT_PUBLIC_CDN_HOST: ${NEXT_PUBLIC_CDN_HOST:-}
     deploy:
       resources:
         limits:

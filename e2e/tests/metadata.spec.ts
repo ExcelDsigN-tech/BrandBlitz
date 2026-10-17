@@ -21,16 +21,16 @@ test.describe("Metadata", () => {
     // We need a challenge ID. We'll try to find one on the home page or use a placeholder.
     await page.goto("/");
     const challengeLink = page.locator("a[href^='/challenge/']").first();
-    
+
     // If no challenges are active, we might need a fallback or mock
-    if (await challengeLink.count() > 0) {
+    if ((await challengeLink.count()) > 0) {
       const href = await challengeLink.getAttribute("href");
       const id = href?.split("/").pop();
       await page.goto(`/challenge/${id}`);
-      
+
       // Title should contain "Challenge" and "USDC"
       await expect(page).toHaveTitle(/Challenge — Win .* USDC/);
-      
+
       const ogImage = await page.locator("meta[property='og:image']").getAttribute("content");
       expect(ogImage).toContain(`/api/og/challenge/${id}`);
     } else {
@@ -43,14 +43,14 @@ test.describe("Metadata", () => {
     await page.goto("/leaderboard");
     const profileLink = page.locator("a[href^='/profile/']").first();
 
-    if (await profileLink.count() > 0) {
+    if ((await profileLink.count()) > 0) {
       const href = await profileLink.getAttribute("href");
       const username = href?.split("/").pop();
       await page.goto(`/profile/${username}`);
 
       // Title should contain @username
       await expect(page).toHaveTitle(new RegExp(`@${username}`));
-      
+
       const ogTitle = await page.locator("meta[property='og:title']").getAttribute("content");
       expect(ogTitle).toContain(username);
     } else {

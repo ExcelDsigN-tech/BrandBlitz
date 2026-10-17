@@ -43,24 +43,28 @@ describe("completeWarmupWithLock", () => {
           if (sql.includes("FROM game_sessions") && sql.includes("FOR UPDATE")) {
             if (connection === 1) await firstTransactionFinished;
             return {
-              rows: [{
-                id: "session-1",
-                user_id: "user-1",
-                challenge_id: "challenge-1",
-                warmup_completed_at: warmupCompletedAt,
-              }],
+              rows: [
+                {
+                  id: "session-1",
+                  user_id: "user-1",
+                  challenge_id: "challenge-1",
+                  warmup_completed_at: warmupCompletedAt,
+                },
+              ],
             };
           }
 
           if (sql.includes("UPDATE game_sessions")) {
             warmupCompletedAt = "2026-06-23T20:00:00.000Z";
             return {
-              rows: [{
-                id: "session-1",
-                user_id: "user-1",
-                challenge_id: "challenge-1",
-                warmup_completed_at: warmupCompletedAt,
-              }],
+              rows: [
+                {
+                  id: "session-1",
+                  user_id: "user-1",
+                  challenge_id: "challenge-1",
+                  warmup_completed_at: warmupCompletedAt,
+                },
+              ],
             };
           }
 

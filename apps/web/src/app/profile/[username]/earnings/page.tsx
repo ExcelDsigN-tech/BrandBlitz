@@ -63,14 +63,13 @@ export default function EarningsPage() {
         setData(res.data);
         setPage(p);
       } catch (err: unknown) {
-        const msg =
-          err instanceof Error ? err.message : "Failed to load earnings";
+        const msg = err instanceof Error ? err.message : "Failed to load earnings";
         setError(msg);
       } finally {
         setLoading(false);
       }
     },
-    [apiToken, username],
+    [apiToken, username]
   );
 
   useEffect(() => {
@@ -85,6 +84,18 @@ export default function EarningsPage() {
         </Button>
         <h1 className="text-2xl font-bold">Earnings History</h1>
       </div>
+
+      <p className="-mt-4 mb-8 text-xs text-[var(--muted-foreground)]">
+        Only sessions with zero fraud flags share in a challenge&apos;s prize pool.{" "}
+        <Link
+          href="/docs/guides/fair-play-for-players"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline hover:text-[var(--foreground)]"
+        >
+          How fair play affects payouts
+        </Link>
+      </p>
 
       {/* Cumulative summary */}
       <Card className="mb-8">
@@ -107,11 +118,11 @@ export default function EarningsPage() {
       {/* Timeline */}
       <div className="relative">
         {/* Vertical line */}
-        <div className="absolute left-5 top-0 bottom-0 w-px bg-[var(--border)]" />
+        <div className="absolute bottom-0 left-5 top-0 w-px bg-[var(--border)]" />
 
         {loading && !data
           ? Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="relative flex items-start gap-4 mb-6 pl-12">
+              <div key={i} className="relative mb-6 flex items-start gap-4 pl-12">
                 <div className="absolute left-3.5 top-1.5 h-3 w-3 rounded-full border-2 border-[var(--border)] bg-[var(--background)]" />
                 <div className="flex-1 space-y-2">
                   <Skeleton className="h-4 w-48" />
@@ -121,25 +132,23 @@ export default function EarningsPage() {
             ))
           : null}
 
-        {error && (
-          <p className="text-sm text-red-500 pl-12">{error}</p>
-        )}
+        {error && <p className="pl-12 text-sm text-red-500">{error}</p>}
 
         {data?.earnings.length === 0 && (
           <p className="pl-12 text-sm text-[var(--muted-foreground)]">No payouts yet.</p>
         )}
 
         {data?.earnings.map((record, i) => (
-          <div key={i} className="relative flex items-start gap-4 mb-6 pl-12">
+          <div key={i} className="relative mb-6 flex items-start gap-4 pl-12">
             <div className="absolute left-3.5 top-1.5 h-3 w-3 rounded-full border-2 border-[var(--primary)] bg-[var(--background)]" />
             <div className="flex-1">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-medium text-sm">{record.challenge_title}</p>
-                <p className="text-sm font-bold text-[var(--primary)] whitespace-nowrap">
+                <p className="text-sm font-medium">{record.challenge_title}</p>
+                <p className="whitespace-nowrap text-sm font-bold text-[var(--primary)]">
                   +{formatUsdc(record.amount_usdc)}
                 </p>
               </div>
-              <p className="text-xs text-[var(--muted-foreground)] mt-0.5">
+              <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
                 {formatDate(record.payout_at)}
               </p>
               {record.stellar_tx_id && (
@@ -147,7 +156,7 @@ export default function EarningsPage() {
                   href={`${STELLAR_EXPERT_BASE}/${record.stellar_tx_id}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-[var(--primary)] hover:underline mt-0.5 inline-block"
+                  className="mt-0.5 inline-block text-xs text-[var(--primary)] hover:underline"
                 >
                   View on Stellar Expert ↗
                 </Link>
@@ -159,7 +168,7 @@ export default function EarningsPage() {
 
       {/* Pagination */}
       {data && data.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between mt-8 text-sm">
+        <div className="mt-8 flex items-center justify-between text-sm">
           <span className="text-[var(--muted-foreground)]">
             Page {data.pagination.page} of {data.pagination.totalPages}
           </span>

@@ -87,11 +87,23 @@ export async function getCurrentLeagueGroup(
     sums AS (
       SELECT
         gs.user_id,
-        COALESCE(SUM(gs.total_score), 0)::bigint AS points
-      FROM game_sessions gs, window w
+        COALESCE(SUM(ROUND(1000 * (
+          ((CASE WHEN gs.round_1_score > 0 THEN 1 ELSE 0 END + CASE WHEN gs.round_2_score > 0 THEN 1 ELSE 0 END + CASE WHEN gs.round_3_score > 0 THEN 1 ELSE 0 END)::numeric / 3) * COALESCE((la.scoring_weights->>'accuracy')::numeric, (l.scoring_weights->>'accuracy')::numeric, 0.4)
+          + COALESCE(1 - ((gs.round_1_reaction_ms + gs.round_2_reaction_ms + gs.round_3_reaction_ms)::numeric / NULLIF(90000, 0)), 0) * COALESCE((la.scoring_weights->>'speed')::numeric, (l.scoring_weights->>'speed')::numeric, 0.4)
+          + LEAST(u.streak::numeric / 10, 1) * COALESCE((la.scoring_weights->>'streak')::numeric, (l.scoring_weights->>'streak')::numeric, 0.2)
+        ))), 0)::bigint AS points
+      FROM game_sessions gs CROSS JOIN window w
+      JOIN users u ON u.id = gs.user_id
+      JOIN league_assignments la ON la.user_id = gs.user_id AND la.week_start = $1::date
+      LEFT JOIN leagues l ON l.id = la.league_id OR (la.league_id IS NULL AND l.brand_id IS NULL AND l.name = la.league)
       WHERE gs.status = 'completed'
         AND gs.completed_at >= w.start_date
         AND gs.completed_at < w.end_date
+        AND gs.user_id IN (
+          SELECT member.user_id
+          FROM league_assignments member
+          WHERE member.week_start = $1 AND member.league = $2 AND member.group_id = $3
+        )
       GROUP BY gs.user_id
     ),
     scoped AS (
@@ -135,8 +147,15 @@ export async function recalculateWeeklyPoints(weekStart: string): Promise<void> 
     sums AS (
       SELECT
         gs.user_id,
-        COALESCE(SUM(gs.total_score), 0)::bigint AS points
-      FROM game_sessions gs, window w
+        COALESCE(SUM(ROUND(1000 * (
+          ((CASE WHEN gs.round_1_score > 0 THEN 1 ELSE 0 END + CASE WHEN gs.round_2_score > 0 THEN 1 ELSE 0 END + CASE WHEN gs.round_3_score > 0 THEN 1 ELSE 0 END)::numeric / 3) * COALESCE((la.scoring_weights->>'accuracy')::numeric, (l.scoring_weights->>'accuracy')::numeric, 0.4)
+          + COALESCE(1 - ((gs.round_1_reaction_ms + gs.round_2_reaction_ms + gs.round_3_reaction_ms)::numeric / NULLIF(90000, 0)), 0) * COALESCE((la.scoring_weights->>'speed')::numeric, (l.scoring_weights->>'speed')::numeric, 0.4)
+          + LEAST(u.streak::numeric / 10, 1) * COALESCE((la.scoring_weights->>'streak')::numeric, (l.scoring_weights->>'streak')::numeric, 0.2)
+        ))), 0)::bigint AS points
+      FROM game_sessions gs CROSS JOIN window w
+      JOIN users u ON u.id = gs.user_id
+      JOIN league_assignments la ON la.user_id = gs.user_id AND la.week_start = $1::date
+      LEFT JOIN leagues l ON l.id = la.league_id OR (la.league_id IS NULL AND l.brand_id IS NULL AND l.name = la.league)
       WHERE gs.status = 'completed'
         AND gs.completed_at >= w.start_date
         AND gs.completed_at < w.end_date

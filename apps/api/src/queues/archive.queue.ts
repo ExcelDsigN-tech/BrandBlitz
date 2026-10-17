@@ -40,7 +40,7 @@ export function createArchiveWorker(): Worker {
         // 1. Collect the ids of every session about to be archived/deleted.
         const sessionRows = await client.query<{ id: string }>(
           `SELECT id FROM game_sessions
-            WHERE challenge_id IN (SELECT id FROM challenges WHERE ${ARCHIVE_PREDICATE})`,
+            WHERE challenge_id IN (SELECT id FROM challenges WHERE ${ARCHIVE_PREDICATE})`
         );
         const sessionIds = sessionRows.rows.map((r) => r.id);
 
@@ -52,7 +52,7 @@ export function createArchiveWorker(): Worker {
         if (sessionIds.length > 0) {
           const scoreResult = await client.query(
             `DELETE FROM session_round_scores WHERE session_id = ANY($1::uuid[])`,
-            [sessionIds],
+            [sessionIds]
           );
           deletedRoundScores = scoreResult.rowCount ?? 0;
         }

@@ -48,7 +48,7 @@ describeIntegration("JWT Token Rotation on Profile Update", () => {
 
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
     await query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
-    
+
     const fs = await import("fs");
     const path = await import("path");
     const initSqlPath = path.resolve(__dirname, "../../../../../init.sql");
@@ -73,17 +73,17 @@ describeIntegration("JWT Token Rotation on Profile Update", () => {
 
   it("rotates token on profile update and invalidates the old one", async () => {
     const userId = randomUUID();
-    await query(
-      `INSERT INTO users (id, email, username, display_name) VALUES ($1, $2, $3, $4)`,
-      [userId, "rotation-test@test.com", "rotationtest", "Rotation Test"]
-    );
+    await query(`INSERT INTO users (id, email, username, display_name) VALUES ($1, $2, $3, $4)`, [
+      userId,
+      "rotation-test@test.com",
+      "rotationtest",
+      "Rotation Test",
+    ]);
 
     const oldToken = signToken(userId, "rotation-test@test.com");
 
     // 1. Initial check - old token is accepted
-    const checkRes = await request(app)
-      .get("/users/me")
-      .set("Authorization", `Bearer ${oldToken}`);
+    const checkRes = await request(app).get("/users/me").set("Authorization", `Bearer ${oldToken}`);
     expect(checkRes.status).toBe(200);
 
     // 2. Perform profile update
@@ -91,7 +91,7 @@ describeIntegration("JWT Token Rotation on Profile Update", () => {
       .patch("/users/me/profile")
       .set("Authorization", `Bearer ${oldToken}`)
       .send({ username: "rotation-updated" });
-    
+
     expect(updateRes.status).toBe(200);
     const newToken = updateRes.body.token;
     expect(newToken).toBeDefined();
@@ -123,20 +123,25 @@ describeIntegration("JWT Token Rotation on Profile Update", () => {
 
   it("handles concurrent requests gracefully during the update window", async () => {
     const userId = randomUUID();
-    await query(
-      `INSERT INTO users (id, email, username, display_name) VALUES ($1, $2, $3, $4)`,
-      [userId, "concurrent-test@test.com", "concurrent", "Concurrent Test"]
-    );
+    await query(`INSERT INTO users (id, email, username, display_name) VALUES ($1, $2, $3, $4)`, [
+      userId,
+      "concurrent-test@test.com",
+      "concurrent",
+      "Concurrent Test",
+    ]);
 
     const token = signToken(userId, "concurrent-test@test.com");
 
     // Fire 5 requests at the exact same time: 1 update, 4 GETs
     const results = await Promise.all([
-      request(app).patch("/users/me/profile").set("Authorization", `Bearer ${token}`).send({ username: "concurrent-updated" }),
+      request(app)
+        .patch("/users/me/profile")
+        .set("Authorization", `Bearer ${token}`)
+        .send({ username: "concurrent-updated" }),
       request(app).get("/users/me").set("Authorization", `Bearer ${token}`),
       request(app).get("/users/me").set("Authorization", `Bearer ${token}`),
       request(app).get("/users/me").set("Authorization", `Bearer ${token}`),
-      request(app).get("/users/me").set("Authorization", `Bearer ${token}`)
+      request(app).get("/users/me").set("Authorization", `Bearer ${token}`),
     ]);
 
     const updateRes = results[0];

@@ -70,12 +70,7 @@ describe("ResultScreen", () => {
 
   it("renders the total score, rank, and estimated earnings when provided", () => {
     render(
-      <ResultScreen
-        totalScore={12345}
-        rank={7}
-        estimatedUsdc="42.5"
-        challengeId="challenge-123"
-      />
+      <ResultScreen totalScore={12345} rank={7} estimatedUsdc="42.5" challengeId="challenge-123" />
     );
 
     expect(screen.getByText("Challenge Complete!")).toBeInTheDocument();
@@ -111,6 +106,26 @@ describe("ResultScreen", () => {
       url: "http://localhost:3000/challenge/challenge-123/results",
     });
     expect(clipboardWrite).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(screen.getByRole("status")).toHaveTextContent("Result shared successfully.");
+    });
+  });
+
+  it("shows no confirmation when the user cancels the native share sheet", async () => {
+    const user = userEvent.setup();
+    const share = vi.fn().mockRejectedValue(new DOMException("Share cancelled.", "AbortError"));
+
+    Object.defineProperty(navigator, "share", {
+      configurable: true,
+      value: share,
+    });
+
+    render(<ResultScreen totalScore={1500} challengeId="challenge-123" />);
+
+    await user.click(screen.getByRole("button", { name: "Share Result" }));
+
+    expect(share).toHaveBeenCalled();
+    expect(clipboardWrite).not.toHaveBeenCalled();
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
@@ -137,33 +152,25 @@ describe("ResultScreen", () => {
   });
 
   it("shows Congratulations heading for rank 1", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />);
 
     expect(screen.getByText("Congratulations #1!")).toBeInTheDocument();
   });
 
   it("shows standard heading for rank 2 or higher", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />);
 
     expect(screen.getByText("Challenge Complete!")).toBeInTheDocument();
   });
 
   it("fires confetti when rank is 1", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />);
 
     expect(confettiMock).toHaveBeenCalled();
   });
 
   it("does not fire confetti when rank is 2 or greater", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />);
 
     expect(confettiMock).not.toHaveBeenCalled();
   });

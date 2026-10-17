@@ -7,6 +7,8 @@ import {
   getFraudFlags,
   getFraudFlagById,
   updateFraudFlagStatus,
+  setFraudScoreOverride,
+  getUserReports,
 } from "../../db/queries/fraud-flags";
 import { CursorQuerySchema } from "../../db/pagination";
 
@@ -21,10 +23,20 @@ const ListQuerySchema = CursorQuerySchema.extend({
   message: "Use ?cursor for pagination. Legacy ?page parameter is no longer supported.",
 });
 
-const PatchBodySchema = z.object({
-  status: z.enum(["resolved", "escalated"]),
-  reason: z.string().min(1, "Resolution reason is required"),
-}).strict();
+const PatchBodySchema = z
+  .object({
+    status: z.enum(["resolved", "escalated"]),
+    reason: z.string().min(1, "Resolution reason is required"),
+  })
+  .strict();
+
+const FraudScoreOverrideBodySchema = z
+  .object({
+    // null clears a previously set override, reverting to the computed score.
+    score: z.number().int().min(0).nullable(),
+    reason: z.string().min(1, "Override reason is required"),
+  })
+  .strict();
 
 /**
  * GET /admin/fraud-flags
@@ -33,7 +45,8 @@ const PatchBodySchema = z.object({
  */
 router.get("/", async (req, res) => {
   const { status, cursor, limit: pageSize } = ListQuerySchema.parse(req.query);
-  const { flags, total, nextCursor } = await getFraudFlags({ status, cursor, pageSize });
+  const { flags, nextCursor } = await getFraudFlags({ status, cursor, pageSize });
+  const reports = await getUserReports({ status, limit: pageSize });
 
   res.json({
     flags: flags.map((f) => ({
@@ -58,9 +71,18 @@ router.get("/", async (req, res) => {
       sessionFlagReasons: f.session_flag_reasons,
       deviceId: f.device_id,
     })),
+    reports: reports.map((report) => ({
+      id: report.id,
+      type: "user_report",
+      reporterId: report.reporter_id,
+      reportedId: report.reported_id,
+      reason: report.reason,
+      details: report.details,
+      status: report.status,
+      createdAt: report.created_at,
+    })),
     pagination: {
       pageSize,
-      total,
       nextCursor,
     },
   });
@@ -77,12 +99,7 @@ router.patch("/:id", async (req, res) => {
   const existing = await getFraudFlagById(req.params.id);
   if (!existing) throw createError("Fraud flag not found", 404, "NOT_FOUND");
 
-  const updated = await updateFraudFlagStatus(
-    req.params.id,
-    status,
-    reason,
-    req.user!.sub
-  );
+  const updated = await updateFraudFlagStatus(req.params.id, status, reason, req.user!.sub);
 
   res.json({
     id: updated!.id,
@@ -90,6 +107,26 @@ router.patch("/:id", async (req, res) => {
     resolutionReason: updated!.resolution_reason,
     resolvedBy: updated!.resolved_by,
     resolvedAt: updated!.resolved_at,
+  });
+});
+
+/**
+ * POST /admin/fraud-flags/users/:userId/score-override
+ * Manually overrides a user's fraud score (null clears the override),
+ * with a required reason logged to audit_log (#1010).
+ */
+router.post("/users/:userId/score-override", async (req, res) => {
+  const { score, reason } = FraudScoreOverrideBodySchema.parse(req.body);
+
+  const updated = await setFraudScoreOverride(req.params.userId, score, reason, req.user!.sub);
+  if (!updated) throw createError("User not found", 404, "NOT_FOUND");
+
+  res.json({
+    userId: updated.user_id,
+    fraudScoreOverride: updated.fraud_score_override,
+    fraudScoreOverrideReason: updated.fraud_score_override_reason,
+    fraudScoreOverrideBy: updated.fraud_score_override_by,
+    fraudScoreOverrideAt: updated.fraud_score_override_at,
   });
 });
 

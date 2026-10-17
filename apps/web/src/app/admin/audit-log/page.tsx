@@ -9,12 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -40,6 +35,82 @@ interface Pagination {
   pageSize: number;
   total: number;
   totalPages: number;
+}
+
+interface ConfigDiffRow {
+  key: string;
+  kind: "added" | "removed" | "changed";
+  before?: unknown;
+  after?: unknown;
+}
+
+/**
+ * Diffs a config change's before/after JSON into per-key added/removed/
+ * changed rows (#1005), instead of making the admin eyeball two raw blobs.
+ */
+function computeConfigDiff(
+  before: Record<string, unknown> | null,
+  after: Record<string, unknown> | null
+): ConfigDiffRow[] {
+  const b = before ?? {};
+  const a = after ?? {};
+  const keys = Array.from(new Set([...Object.keys(b), ...Object.keys(a)])).sort();
+
+  const rows: ConfigDiffRow[] = [];
+  for (const key of keys) {
+    const hasBefore = Object.prototype.hasOwnProperty.call(b, key);
+    const hasAfter = Object.prototype.hasOwnProperty.call(a, key);
+    if (!hasBefore && hasAfter) {
+      rows.push({ key, kind: "added", after: a[key] });
+    } else if (hasBefore && !hasAfter) {
+      rows.push({ key, kind: "removed", before: b[key] });
+    } else if (JSON.stringify(b[key]) !== JSON.stringify(a[key])) {
+      rows.push({ key, kind: "changed", before: b[key], after: a[key] });
+    }
+  }
+  return rows;
+}
+
+function formatDiffValue(value: unknown): string {
+  if (value === undefined) return "—";
+  return typeof value === "string" ? value : JSON.stringify(value);
+}
+
+function ConfigDiffView({ rows }: { rows: ConfigDiffRow[] }) {
+  if (rows.length === 0) {
+    return <p className="text-sm text-[var(--muted-foreground)]">No field-level changes.</p>;
+  }
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row) => (
+        <div
+          key={row.key}
+          className={`rounded border px-3 py-2 text-sm ${
+            row.kind === "added"
+              ? "border-green-700 bg-green-950/40"
+              : row.kind === "removed"
+                ? "border-red-700 bg-red-950/40"
+                : "border-amber-700 bg-amber-950/40"
+          }`}
+        >
+          <div className="font-mono text-xs uppercase tracking-wide text-[var(--muted-foreground)]">
+            {row.kind} · {row.key}
+          </div>
+          {row.kind === "changed" ? (
+            <div className="mt-1 flex flex-col gap-1 font-mono text-xs">
+              <span className="text-red-300 line-through">{formatDiffValue(row.before)}</span>
+              <span className="text-green-300">{formatDiffValue(row.after)}</span>
+            </div>
+          ) : (
+            <div className="mt-1 font-mono text-xs">
+              {formatDiffValue(row.kind === "added" ? row.after : row.before)}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function AdminAuditLogPage() {
@@ -141,9 +212,7 @@ export default function AdminAuditLogPage() {
     <main className="mx-auto max-w-6xl px-6 py-12">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Audit Log</h1>
-        <p className="text-sm text-[var(--muted-foreground)]">
-          View and search all admin actions
-        </p>
+        <p className="text-sm text-[var(--muted-foreground)]">View and search all admin actions</p>
       </div>
 
       <Card className="mb-8">
@@ -164,20 +233,12 @@ export default function AdminAuditLogPage() {
 
             <div>
               <label className="mb-2 block text-sm font-medium">From Date</label>
-              <Input
-                type="date"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-              />
+              <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} />
             </div>
 
             <div>
               <label className="mb-2 block text-sm font-medium">To Date</label>
-              <Input
-                type="date"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-              />
+              <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} />
             </div>
 
             <div>
@@ -192,10 +253,7 @@ export default function AdminAuditLogPage() {
           </div>
 
           <div className="mt-4 flex gap-2">
-            <Button
-              onClick={() => loadEntries(1)}
-              disabled={loading}
-            >
+            <Button onClick={() => loadEntries(1)} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
             <Button
@@ -215,9 +273,7 @@ export default function AdminAuditLogPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Entries ({pagination.total})
-          </CardTitle>
+          <CardTitle>Entries ({pagination.total})</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {entries.length > 0 ? (
@@ -248,10 +304,7 @@ export default function AdminAuditLogPage() {
                   </thead>
                   <tbody>
                     {entries.map((entry) => (
-                      <tr
-                        key={entry.id}
-                        className="border-b border-[var(--border)] last:border-0"
-                      >
+                      <tr key={entry.id} className="border-b border-[var(--border)] last:border-0">
                         <td className="px-6 py-3 font-medium">
                           {entry.actor_username ? (
                             <Badge variant="secondary">{entry.actor_username}</Badge>
@@ -262,9 +315,7 @@ export default function AdminAuditLogPage() {
                         <td className="px-6 py-3">
                           <Badge variant="default">{entry.action}</Badge>
                         </td>
-                        <td className="px-6 py-3 text-[var(--muted-foreground)]">
-                          {entry.entity}
-                        </td>
+                        <td className="px-6 py-3 text-[var(--muted-foreground)]">{entry.entity}</td>
                         <td className="px-6 py-3 text-[var(--muted-foreground)]">
                           {entry.entity_key || "—"}
                         </td>
@@ -275,9 +326,7 @@ export default function AdminAuditLogPage() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() =>
-                              setExpandedId(expandedId === entry.id ? null : entry.id)
-                            }
+                            onClick={() => setExpandedId(expandedId === entry.id ? null : entry.id)}
                           >
                             {expandedId === entry.id ? "Hide" : "Show"}
                           </Button>
@@ -296,32 +345,42 @@ export default function AdminAuditLogPage() {
                         {entries.find((e) => e.id === expandedId)?.action} Details
                       </DialogTitle>
                     </DialogHeader>
-                    <div className="space-y-6">
-                      {entries.find((e) => e.id === expandedId)?.before && (
-                        <div>
-                          <h3 className="mb-2 font-semibold">Before</h3>
-                          <pre className="rounded bg-slate-900 p-4 text-xs text-white overflow-auto max-h-64">
-                            {JSON.stringify(
-                              entries.find((e) => e.id === expandedId)?.before,
-                              null,
-                              2
-                            )}
-                          </pre>
+                    {(() => {
+                      const entry = entries.find((e) => e.id === expandedId);
+                      if (!entry) return null;
+
+                      if (entry.entity === "app_config") {
+                        return (
+                          <div>
+                            <h3 className="mb-2 font-semibold">Changes</h3>
+                            <div className="max-h-64 overflow-auto">
+                              <ConfigDiffView rows={computeConfigDiff(entry.before, entry.after)} />
+                            </div>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-6">
+                          {entry.before && (
+                            <div>
+                              <h3 className="mb-2 font-semibold">Before</h3>
+                              <pre className="max-h-64 overflow-auto rounded bg-slate-900 p-4 text-xs text-white">
+                                {JSON.stringify(entry.before, null, 2)}
+                              </pre>
+                            </div>
+                          )}
+                          {entry.after && (
+                            <div>
+                              <h3 className="mb-2 font-semibold">After</h3>
+                              <pre className="max-h-64 overflow-auto rounded bg-slate-900 p-4 text-xs text-white">
+                                {JSON.stringify(entry.after, null, 2)}
+                              </pre>
+                            </div>
+                          )}
                         </div>
-                      )}
-                      {entries.find((e) => e.id === expandedId)?.after && (
-                        <div>
-                          <h3 className="mb-2 font-semibold">After</h3>
-                          <pre className="rounded bg-slate-900 p-4 text-xs text-white overflow-auto max-h-64">
-                            {JSON.stringify(
-                              entries.find((e) => e.id === expandedId)?.after,
-                              null,
-                              2
-                            )}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
+                      );
+                    })()}
                   </DialogContent>
                 </Dialog>
               )}

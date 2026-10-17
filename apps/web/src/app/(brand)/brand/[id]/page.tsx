@@ -34,12 +34,11 @@ async function fetchPublicBrand(id: string): Promise<PublicBrand | null> {
 /** Pre-render the newest active brand profiles; all other IDs use ISR on demand. */
 export async function generateStaticParams(): Promise<Array<{ id: string }>> {
   try {
-    const response = await fetch(
-      `${apiBaseUrl()}/brands/public?limit=${TOP_BRAND_PROFILE_COUNT}`,
-      { next: { revalidate } },
-    );
+    const response = await fetch(`${apiBaseUrl()}/brands/public?limit=${TOP_BRAND_PROFILE_COUNT}`, {
+      next: { revalidate },
+    });
     if (!response.ok) return [];
-    const data = await response.json() as { brands: Array<{ id: string }> };
+    const data = (await response.json()) as { brands: Array<{ id: string }> };
     return data.brands.map(({ id }) => ({ id }));
   } catch {
     // The API may not be available during a standalone web build. Profiles
@@ -48,11 +47,7 @@ export async function generateStaticParams(): Promise<Array<{ id: string }>> {
   }
 }
 
-export default async function BrandProfilePage({
-  params,
-}: {
-  params: Promise<{ id: string }>;
-}) {
+export default async function BrandProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const brand = await fetchPublicBrand(id);
   if (!brand) notFound();
@@ -87,7 +82,9 @@ export default async function BrandProfilePage({
       {brand.brand_story ? (
         <section className="mt-10">
           <h2 className="text-xl font-semibold">Our story</h2>
-          <p className="mt-3 whitespace-pre-line text-[var(--muted-foreground)]">{brand.brand_story}</p>
+          <p className="mt-3 whitespace-pre-line text-[var(--muted-foreground)]">
+            {brand.brand_story}
+          </p>
         </section>
       ) : null}
 

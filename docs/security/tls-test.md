@@ -17,14 +17,14 @@ docker run --rm drwetter/testssl.sh --severity MEDIUM https://staging.brandblitz
 
 Key items to verify:
 
-| Check | Expected |
-|-------|----------|
-| `ssl_prefer_server_ciphers` | `on` |
-| Protocols offered | TLSv1.2, TLSv1.3 only |
-| BEAST | not vulnerable |
-| POODLE (SSLv3) | not vulnerable |
-| RC4 | not offered |
-| Overall grade | A or A+ |
+| Check                       | Expected              |
+| --------------------------- | --------------------- |
+| `ssl_prefer_server_ciphers` | `on`                  |
+| Protocols offered           | TLSv1.2, TLSv1.3 only |
+| BEAST                       | not vulnerable        |
+| POODLE (SSLv3)              | not vulnerable        |
+| RC4                         | not offered           |
+| Overall grade               | A or A+               |
 
 ## CI enforcement
 

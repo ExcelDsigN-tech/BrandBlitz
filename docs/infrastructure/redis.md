@@ -10,9 +10,9 @@ BrandBlitz runs a single Redis 7 instance that is shared by:
 
 ## Memory configuration
 
-| Setting | Value | Rationale |
-|---|---|---|
-| `maxmemory` | `1gb` | Provides enough headroom for BullMQ job payloads alongside rate-limit and lock keys. |
+| Setting            | Value          | Rationale                                                                                                                                                                                                                   |
+| ------------------ | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `maxmemory`        | `1gb`          | Provides enough headroom for BullMQ job payloads alongside rate-limit and lock keys.                                                                                                                                        |
 | `maxmemory-policy` | `volatile-lru` | Only keys that have an explicit TTL are eligible for eviction. BullMQ job keys have **no TTL**, so they are never silently discarded under memory pressure. Rate-limit counters and locks carry TTLs and are safe to evict. |
 
 ### Why not `allkeys-lru`?

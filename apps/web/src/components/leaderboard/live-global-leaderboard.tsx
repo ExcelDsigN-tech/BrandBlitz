@@ -3,36 +3,57 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { api } from "@/lib/api";
+import { api, createApiClient } from "@/lib/api";
 import { formatScore, formatUsdc } from "@/lib/format";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import type { LeaderboardEntry } from "@/lib/api";
+import { triggerMilestoneCelebration } from "@/components/gamification/milestone-celebration";
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 const PAGE_SIZE = 50;
 const STORAGE_KEY = "brandblitz:leaderboard:global";
 
-async function fetchLeaderboardPage(cursor?: string): Promise<{
+export type LeaderboardScope = "global" | "friends" | "teams";
+
+async function fetchLeaderboardPage(
+  cursor?: string,
+  opts?: {
+    challengeId?: string;
+    scope?: LeaderboardScope;
+    apiToken?: string;
+  }
+): Promise<{
   entries: LeaderboardEntry[];
   nextCursor: string | null;
 }> {
   const params = new URLSearchParams({ limit: String(PAGE_SIZE) });
   if (cursor) params.set("cursor", cursor);
-  const res = await api.get(`/leaderboard/global?${params.toString()}`);
-  const entries: LeaderboardEntry[] = res.data.data;
+  if (opts?.scope) params.set("scope", opts.scope);
+
+  const client = opts?.apiToken ? createApiClient(opts.apiToken) : api;
+  const path = opts?.challengeId
+    ? `/leaderboard/${opts.challengeId}?${params.toString()}`
+    : `/leaderboard/global?${params.toString()}`;
+  const res = await client.get(path);
+  const entries: LeaderboardEntry[] = res.data.data || res.data.sessions || [];
   const nextCursor: string | null = res.data.nextCursor ?? null;
   return { entries, nextCursor };
 }
 
-function loadSavedState(): { scrollY: number; loadedCount: number } | null {
+function loadSavedState(
+  challengeId?: string,
+  scope: LeaderboardScope = "global"
+): { scrollY: number; loadedCount: number } | null {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const raw = window.sessionStorage.getItem(STORAGE_KEY);
+  const key = `${STORAGE_KEY}:${challengeId ?? "global"}:${scope}`;
+  const raw = window.sessionStorage.getItem(key);
   if (!raw) {
     return null;
   }
@@ -54,10 +75,17 @@ function loadSavedState(): { scrollY: number; loadedCount: number } | null {
 export function LiveGlobalLeaderboard({
   initial,
   initialHasMore = initial.length === PAGE_SIZE,
+  challengeId,
+  scope = "global",
 }: {
   initial: LeaderboardEntry[];
   initialHasMore?: boolean;
+  challengeId?: string;
+  scope?: LeaderboardScope;
 }) {
+  const { data: session } = useSession();
+  const apiToken = (session as { apiToken?: string } | null)?.apiToken;
+
   const [entries, setEntries] = useState(initial);
   const [nextCursor, setNextCursor] = useState<string | null>(initialHasMore ? "first" : null);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -75,7 +103,86 @@ export function LiveGlobalLeaderboard({
   }, [entries]);
 
   useEffect(() => {
-    const saved = loadSavedState();
+    setEntries(initial);
+    setNextCursor(initialHasMore ? "first" : null);
+    restoreOnceRef.current = false;
+    prevRankByUserRef.current.clear();
+    setChangedUsers(new Set());
+  }, [initial, initialHasMore, challengeId, scope]);
+
+  // Detect top-3 or new personal best milestone celebration (#1029)
+  const celebratedMilestonesRef = useRef<Set<string>>(new Set());
+  const userIdentifier =
+    (session?.user as { id?: string; email?: string } | null)?.id ?? session?.user?.email;
+
+  useEffect(() => {
+    if (!userIdentifier || rows.length === 0) return;
+
+    const myEntry = rows.find(
+      (r) =>
+        r.userId === userIdentifier ||
+        r.username === (session?.user as { username?: string } | null)?.username ||
+        r.displayName === session?.user?.name
+    );
+
+    if (!myEntry) return;
+
+    const boardKey = challengeId ?? "global";
+
+    // 1. Podium finish (rank <= 3)
+    if (myEntry.rank && myEntry.rank <= 3) {
+      const podiumEventKey = `podium:${boardKey}:${userIdentifier}:${myEntry.rank}`;
+      let alreadyTriggered = false;
+      try {
+        alreadyTriggered = sessionStorage.getItem(`milestone:${podiumEventKey}`) === "true";
+      } catch {
+        // ignore
+      }
+      if (!celebratedMilestonesRef.current.has(podiumEventKey) && !alreadyTriggered) {
+        celebratedMilestonesRef.current.add(podiumEventKey);
+        try {
+          sessionStorage.setItem(`milestone:${podiumEventKey}`, "true");
+        } catch {
+          // ignore
+        }
+        triggerMilestoneCelebration("podium", { rank: myEntry.rank });
+      }
+    }
+
+    // 2. Personal best score
+    const bestScoreKey = `pb:${boardKey}:${userIdentifier}`;
+    let storedBest: string | null = null;
+    try {
+      storedBest = sessionStorage.getItem(`milestone:${bestScoreKey}`);
+    } catch {
+      // ignore
+    }
+    const previousScore = storedBest ? Number(storedBest) : null;
+
+    if (myEntry.totalScore > 0) {
+      if (previousScore !== null && myEntry.totalScore > previousScore) {
+        const pbEventKey = `pb_event:${boardKey}:${userIdentifier}:${myEntry.totalScore}`;
+        if (!celebratedMilestonesRef.current.has(pbEventKey)) {
+          celebratedMilestonesRef.current.add(pbEventKey);
+          try {
+            sessionStorage.setItem(`milestone:${bestScoreKey}`, String(myEntry.totalScore));
+          } catch {
+            // ignore
+          }
+          triggerMilestoneCelebration("personal_best", { score: myEntry.totalScore });
+        }
+      } else if (previousScore === null) {
+        try {
+          sessionStorage.setItem(`milestone:${bestScoreKey}`, String(myEntry.totalScore));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [rows, userIdentifier, challengeId, session?.user]);
+
+  useEffect(() => {
+    const saved = loadSavedState(challengeId, scope);
     if (restoreOnceRef.current || !saved) {
       return;
     }
@@ -89,7 +196,11 @@ export function LiveGlobalLeaderboard({
       let cursor: string | undefined = currentEntries.length > 0 ? undefined : "first";
 
       while (currentEntries.length < saved.loadedCount) {
-        const page = await fetchLeaderboardPage(cursor === "first" ? undefined : cursor);
+        const page = await fetchLeaderboardPage(cursor === "first" ? undefined : cursor, {
+          challengeId,
+          scope,
+          apiToken,
+        });
         if (cancelled || page.entries.length === 0) {
           break;
         }
@@ -115,12 +226,13 @@ export function LiveGlobalLeaderboard({
     return () => {
       cancelled = true;
     };
-  }, [initial]);
+  }, [initial, challengeId, scope, apiToken]);
 
   useEffect(() => {
     const persistState = () => {
+      const key = `${STORAGE_KEY}:${challengeId ?? "global"}:${scope}`;
       window.sessionStorage.setItem(
-        STORAGE_KEY,
+        key,
         JSON.stringify({
           scrollY: window.scrollY,
           loadedCount: entries.length,
@@ -135,7 +247,7 @@ export function LiveGlobalLeaderboard({
       window.removeEventListener("beforeunload", persistState);
       persistState();
     };
-  }, [entries.length]);
+  }, [entries.length, challengeId, scope]);
 
   useEffect(() => {
     const prev = prevRankByUserRef.current;
@@ -162,7 +274,11 @@ export function LiveGlobalLeaderboard({
     if (isLoadingMore || !nextCursor) return;
     setIsLoadingMore(true);
     try {
-      const page = await fetchLeaderboardPage(nextCursor === "first" ? undefined : nextCursor);
+      const page = await fetchLeaderboardPage(nextCursor === "first" ? undefined : nextCursor, {
+        challengeId,
+        scope,
+        apiToken,
+      });
       if (page.entries.length === 0) {
         setNextCursor(null);
         return;
@@ -186,15 +302,28 @@ export function LiveGlobalLeaderboard({
         <EmptyState
           title="Connection lost"
           description="We couldn't connect to the live leaderboard. Please refresh the page to try again."
-          action={
-            <Button onClick={() => window.location.reload()}>Refresh to Retry</Button>
-          }
+          action={<Button onClick={() => window.location.reload()}>Refresh to Retry</Button>}
         />
       </div>
     );
   }
 
   if (rows.length === 0) {
+    if (scope === "friends") {
+      return (
+        <div className="p-6">
+          <EmptyState
+            title="No friends on the leaderboard yet"
+            description="Invite friends using your referral code or play a challenge to see them here."
+            action={
+              <Link href="/challenge">
+                <Button>Browse Challenges</Button>
+              </Link>
+            }
+          />
+        </div>
+      );
+    }
     return (
       <div className="p-6">
         <EmptyState
@@ -222,9 +351,15 @@ export function LiveGlobalLeaderboard({
         <thead>
           <tr className="border-b border-[var(--border)]">
             <th className="px-6 py-3 text-left font-medium text-[var(--muted-foreground)]">Rank</th>
-            <th className="px-6 py-3 text-left font-medium text-[var(--muted-foreground)]">Player</th>
-            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">Score</th>
-            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">Earned</th>
+            <th className="px-6 py-3 text-left font-medium text-[var(--muted-foreground)]">
+              Player
+            </th>
+            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">
+              Score
+            </th>
+            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">
+              Earned
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -232,7 +367,7 @@ export function LiveGlobalLeaderboard({
             <tr
               key={entry._key}
               className={[
-                "border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)]/50 transition-colors",
+                "hover:bg-[var(--muted)]/50 border-b border-[var(--border)] transition-colors last:border-0",
                 changedUsers.has(entry._key) ? "bg-[var(--muted)]" : "",
               ].join(" ")}
             >
@@ -271,9 +406,7 @@ export function LiveGlobalLeaderboard({
       </table>
 
       <div className="flex items-center justify-between gap-4 px-6 pb-2">
-        <p className="text-sm text-[var(--muted-foreground)]">
-          Showing {rows.length} players
-        </p>
+        <p className="text-sm text-[var(--muted-foreground)]">Showing {rows.length} players</p>
         {!nextCursor && rows.length > 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">You&apos;ve seen everything</p>
         ) : null}

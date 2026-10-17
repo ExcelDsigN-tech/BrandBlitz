@@ -31,7 +31,13 @@ const describeIntegration = originalDatabaseUrl ? describe : describe.skip;
 async function startServer(): Promise<{ server: Server; baseUrl: string }> {
   const app = express();
   // Provide rawBody for verifyWebhook middleware
-  app.use(express.json({ verify: (req, _res, buf) => { (req as any).rawBody = buf; } }));
+  app.use(
+    express.json({
+      verify: (req, _res, buf) => {
+        (req as any).rawBody = buf;
+      },
+    })
+  );
   app.use("/webhooks", webhooksRouter);
   app.use(errorHandler);
 
@@ -133,9 +139,9 @@ describeIntegration("Webhooks Integration", () => {
     const signature = signWebhookPayload(body, timestamp, secret);
     return {
       "Content-Type": "application/json",
-      "X-Webhook-Signature": \`sha256=\${signature}\`,
+      "X-Webhook-Signature": `sha256=${signature}`,
       "X-Webhook-Timestamp": timestamp.toString(),
-      "X-Webhook-Id": randomUUID()
+      "X-Webhook-Id": randomUUID(),
     };
   }
 
@@ -167,16 +173,16 @@ describeIntegration("Webhooks Integration", () => {
     const res = await fetch(`${baseUrl}/webhooks/stellar/deposit`, {
       method: "POST",
       headers: createHeaders(payload),
-      body: payload
+      body: payload,
     });
 
     expect(res.status).toBe(200);
 
-    const updated = await query<{ status: string, deposit_tx: string, activated_at: string }>(
+    const updated = await query<{ status: string; deposit_tx: string; activated_at: string }>(
       `SELECT status, deposit_tx, activated_at FROM challenges WHERE id = $1`,
       [challengeId]
     );
-    
+
     expect(updated.rows[0].status).toBe("active");
     expect(updated.rows[0].deposit_tx).toBe("a".repeat(64));
     expect(updated.rows[0].activated_at).not.toBeNull();
@@ -185,7 +191,7 @@ describeIntegration("Webhooks Integration", () => {
     const res2 = await fetch(`${baseUrl}/webhooks/stellar/deposit`, {
       method: "POST",
       headers: createHeaders(payload),
-      body: payload
+      body: payload,
     });
     expect(res2.status).toBe(200);
     const res2Body = await res2.json();
@@ -202,7 +208,7 @@ describeIntegration("Webhooks Integration", () => {
     const res = await fetch(`${baseUrl}/webhooks/stellar/deposit`, {
       method: "POST",
       headers: createHeaders(payload, "wrong-secret"),
-      body: payload
+      body: payload,
     });
 
     expect(res.status).toBe(401);
@@ -235,16 +241,15 @@ describeIntegration("Webhooks Integration", () => {
     const res = await fetch(`${baseUrl}/webhooks/stellar/deposit`, {
       method: "POST",
       headers: createHeaders(payload),
-      body: payload
+      body: payload,
     });
 
     // Our mocked balance is 100 USDC, but the requirement is 1000.
     expect(res.status).toBe(422);
 
-    const updated = await query<{ status: string }>(
-      `SELECT status FROM challenges WHERE id = $1`,
-      [challengeId]
-    );
+    const updated = await query<{ status: string }>(`SELECT status FROM challenges WHERE id = $1`, [
+      challengeId,
+    ]);
     expect(updated.rows[0].status).toBe("pending_deposit");
   });
 });

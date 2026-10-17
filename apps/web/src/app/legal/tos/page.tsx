@@ -31,12 +31,36 @@ export default async function TosPage() {
       <div className="prose prose-neutral dark:prose-invert max-w-none">
         {doc ? (
           doc.body_markdown.split("\n").map((line, i) => {
-            if (line.startsWith("# ")) return <h1 key={i} className="text-3xl font-bold mt-8 mb-4">{line.slice(2)}</h1>;
-            if (line.startsWith("## ")) return <h2 key={i} className="text-2xl font-semibold mt-6 mb-3">{line.slice(3)}</h2>;
-            if (line.startsWith("### ")) return <h3 key={i} className="text-xl font-medium mt-5 mb-2">{line.slice(4)}</h3>;
-            if (line.startsWith("- ")) return <li key={i} className="ml-6 list-disc">{line.slice(2)}</li>;
+            if (line.startsWith("# "))
+              return (
+                <h1 key={i} className="mb-4 mt-8 text-3xl font-bold">
+                  {line.slice(2)}
+                </h1>
+              );
+            if (line.startsWith("## "))
+              return (
+                <h2 key={i} className="mb-3 mt-6 text-2xl font-semibold">
+                  {line.slice(3)}
+                </h2>
+              );
+            if (line.startsWith("### "))
+              return (
+                <h3 key={i} className="mb-2 mt-5 text-xl font-medium">
+                  {line.slice(4)}
+                </h3>
+              );
+            if (line.startsWith("- "))
+              return (
+                <li key={i} className="ml-6 list-disc">
+                  {line.slice(2)}
+                </li>
+              );
             if (line.trim() === "") return <br key={i} />;
-            return <p key={i} className="mb-3 leading-relaxed">{line}</p>;
+            return (
+              <p key={i} className="mb-3 leading-relaxed">
+                {line}
+              </p>
+            );
           })
         ) : (
           <p>No current Terms of Service available.</p>

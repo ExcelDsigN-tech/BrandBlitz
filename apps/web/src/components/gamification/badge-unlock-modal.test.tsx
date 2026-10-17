@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, act } from "@testing-library/react";
 import { BadgeUnlockModal, type Badge } from "./badge-unlock-modal";
 
 // Mock sessionStorage
@@ -7,14 +7,28 @@ const sessionStorageMock = (() => {
   let store: Record<string, string> = {};
   return {
     getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value; },
-    clear: () => { store = {}; },
+    setItem: (key: string, value: string) => {
+      store[key] = value;
+    },
+    clear: () => {
+      store = {};
+    },
   };
 })();
 Object.defineProperty(window, "sessionStorage", { value: sessionStorageMock });
 
-const badge1: Badge = { id: "b1", name: "First Win", description: "You won your first challenge!", iconUrl: undefined };
-const badge2: Badge = { id: "b2", name: "Streak Master", description: "7-day streak!", iconUrl: undefined };
+const badge1: Badge = {
+  id: "b1",
+  name: "First Win",
+  description: "You won your first challenge!",
+  iconUrl: undefined,
+};
+const badge2: Badge = {
+  id: "b2",
+  name: "Streak Master",
+  description: "7-day streak!",
+  iconUrl: undefined,
+};
 
 describe("BadgeUnlockModal", () => {
   beforeEach(() => {
@@ -32,10 +46,12 @@ describe("BadgeUnlockModal", () => {
     expect(screen.getByText("You won your first challenge!")).toBeTruthy();
   });
 
-  it("share link uses correct badge name", () => {
+  it("share link uses correct badge name and product name", () => {
     render(<BadgeUnlockModal badges={[badge1]} onClose={() => {}} />);
     const link = screen.getByRole("link", { name: /Share on X/i });
     expect(link.getAttribute("href")).toContain(encodeURIComponent("First Win"));
+    expect(link.getAttribute("href")).toContain("BrandBlitz!");
+    expect(link.getAttribute("href")).not.toContain("StreamFi!");
     expect(link.getAttribute("href")).toContain("x.com/intent/tweet");
   });
 
@@ -47,6 +63,29 @@ describe("BadgeUnlockModal", () => {
     fireEvent.click(closeBtn);
     vi.advanceTimersByTime(400);
     expect(onClose).toHaveBeenCalled();
+    vi.useRealTimers();
+  });
+
+  it("navigates between badges in multi-badge carousel with transition", () => {
+    vi.useFakeTimers();
+    render(<BadgeUnlockModal badges={[badge1, badge2]} onClose={() => {}} />);
+    expect(screen.getByText("First Win")).toBeTruthy();
+
+    const nextBtn = screen.getByRole("button", { name: /next badge/i });
+    const prevBtn = screen.getByRole("button", { name: /previous badge/i });
+
+    expect((prevBtn as HTMLButtonElement).disabled).toBe(true);
+    expect((nextBtn as HTMLButtonElement).disabled).toBe(false);
+
+    fireEvent.click(nextBtn);
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(screen.getByText("Streak Master")).toBeTruthy();
+    expect((nextBtn as HTMLButtonElement).disabled).toBe(true);
+    expect((prevBtn as HTMLButtonElement).disabled).toBe(false);
+
     vi.useRealTimers();
   });
 });

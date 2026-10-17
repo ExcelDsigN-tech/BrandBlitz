@@ -1,16 +1,11 @@
-import {
-  Queue,
-  Worker,
-  type Job,
-  type JobsOptions,
-  type WorkerOptions,
-} from "bullmq";
+import { Queue, Worker, type Job, type JobsOptions, type WorkerOptions } from "bullmq";
 import { redis } from "../lib/redis";
 import { logger } from "../lib/logger";
 import { query } from "../db";
 import { payoutQueue } from "./payout.queue";
 import { referralBonusQueue } from "./referral-bonus.queue";
 import { leagueQueue } from "./league.queue";
+import { recurringChallengesQueue } from "./recurring-challenges.queue";
 
 /**
  * dlq.ts — Dead-letter queue plumbing for the BullMQ pipelines.
@@ -43,6 +38,7 @@ export const dlqJobOptions = {
 export const PAYOUT_DLQ_NAME = "payout-dlq";
 export const REFERRAL_BONUS_DLQ_NAME = "referral-bonus-dlq";
 export const LEAGUE_DLQ_NAME = "league-dlq";
+export const RECURRING_CHALLENGES_DLQ_NAME = "recurring-challenges-dlq";
 
 export const payoutDlqQueue = new Queue(PAYOUT_DLQ_NAME, {
   connection: redis,
@@ -59,11 +55,17 @@ export const leagueDlqQueue = new Queue(LEAGUE_DLQ_NAME, {
   defaultJobOptions: dlqJobOptions,
 });
 
+export const recurringChallengesDlqQueue = new Queue(RECURRING_CHALLENGES_DLQ_NAME, {
+  connection: redis,
+  defaultJobOptions: dlqJobOptions,
+});
+
 /** Lookup of DLQ name → queue, used by the admin inspection endpoint. */
 export const DLQ_QUEUES: Record<string, Queue> = {
   [PAYOUT_DLQ_NAME]: payoutDlqQueue,
   [REFERRAL_BONUS_DLQ_NAME]: referralBonusDlqQueue,
   [LEAGUE_DLQ_NAME]: leagueDlqQueue,
+  [RECURRING_CHALLENGES_DLQ_NAME]: recurringChallengesDlqQueue,
 };
 
 /** Lookup of DLQ name → the original queue jobs should be replayed onto. */
@@ -71,6 +73,7 @@ export const DLQ_SOURCE_QUEUES: Record<string, Queue> = {
   [PAYOUT_DLQ_NAME]: payoutQueue,
   [REFERRAL_BONUS_DLQ_NAME]: referralBonusQueue,
   [LEAGUE_DLQ_NAME]: leagueQueue,
+  [RECURRING_CHALLENGES_DLQ_NAME]: recurringChallengesQueue,
 };
 
 export interface DeadLetterPayload {
@@ -98,7 +101,7 @@ export interface DeadLetterPayload {
 export async function forwardToDlq(
   dlqQueue: Queue,
   job: Job | undefined,
-  err: Error,
+  err: Error
 ): Promise<void> {
   if (!job) return;
 
@@ -134,10 +137,9 @@ function truncate(message: string, max = 480): string {
 // ── DLQ processors ──────────────────────────────────────────────────────────
 
 async function processPayoutDlqJob(job: Job<DeadLetterPayload>): Promise<void> {
-  const challengeId = (job.data.data as { challengeId?: string } | undefined)
-    ?.challengeId;
+  const challengeId = (job.data.data as { challengeId?: string } | undefined)?.challengeId;
   const message = truncate(
-    `Payout job exhausted all ${job.data.attemptsMade} retries: ${job.data.failedReason}`,
+    `Payout job exhausted all ${job.data.attemptsMade} retries: ${job.data.failedReason}`
   );
 
   let affected: string[] = [];
@@ -147,7 +149,7 @@ async function processPayoutDlqJob(job: Job<DeadLetterPayload>): Promise<void> {
           SET status = 'failed', error_message = $2, updated_at = NOW()
         WHERE challenge_id = $1 AND status IN ('pending', 'processing')
         RETURNING id`,
-      [challengeId, message],
+      [challengeId, message]
     );
     affected = result.rows.map((r) => r.id);
   } else {
@@ -165,7 +167,7 @@ async function processPayoutDlqJob(job: Job<DeadLetterPayload>): Promise<void> {
         originalJobId: job.data.originalJobId,
         affectedPayouts: affected,
       }),
-    ],
+    ]
   );
 
   logger.error("Payout permanently failed — dead-lettered", {
@@ -174,14 +176,11 @@ async function processPayoutDlqJob(job: Job<DeadLetterPayload>): Promise<void> {
   });
 }
 
-async function processReferralBonusDlqJob(
-  job: Job<DeadLetterPayload>,
-): Promise<void> {
-  const referralPayoutId = (
-    job.data.data as { referralPayoutId?: string } | undefined
-  )?.referralPayoutId;
+async function processReferralBonusDlqJob(job: Job<DeadLetterPayload>): Promise<void> {
+  const referralPayoutId = (job.data.data as { referralPayoutId?: string } | undefined)
+    ?.referralPayoutId;
   const message = truncate(
-    `Referral bonus job exhausted all ${job.data.attemptsMade} retries: ${job.data.failedReason}`,
+    `Referral bonus job exhausted all ${job.data.attemptsMade} retries: ${job.data.failedReason}`
   );
 
   if (referralPayoutId) {
@@ -189,7 +188,7 @@ async function processReferralBonusDlqJob(
       `UPDATE referral_payouts
           SET status = 'failed', error_message = $2
         WHERE id = $1 AND status NOT IN ('sent', 'failed')`,
-      [referralPayoutId, message],
+      [referralPayoutId, message]
     );
   } else {
     logger.error("Referral-bonus DLQ job missing referralPayoutId", {
@@ -207,7 +206,7 @@ async function processReferralBonusDlqJob(
         attemptsMade: job.data.attemptsMade,
         originalJobId: job.data.originalJobId,
       }),
-    ],
+    ]
   );
 
   logger.error("Referral bonus permanently failed — dead-lettered", {
@@ -228,11 +227,54 @@ async function processLeagueDlqJob(job: Job<DeadLetterPayload>): Promise<void> {
         attemptsMade: job.data.attemptsMade,
         originalJobId: job.data.originalJobId,
       }),
-    ],
+    ]
   );
 
   logger.error("League job permanently failed — dead-lettered", {
     jobName: job.data.jobName,
+  });
+}
+
+async function processRecurringChallengesDlqJob(job: Job<DeadLetterPayload>): Promise<void> {
+  const templateId = (job.data.data as { templateId?: string } | undefined)?.templateId;
+  const message = truncate(
+    `Recurring-challenges job exhausted all ${job.data.attemptsMade} retries: ${job.data.failedReason}`
+  );
+
+  if (templateId) {
+    try {
+      await query(
+        `UPDATE challenge_templates
+         SET status = 'paused', updated_at = NOW()
+         WHERE id = $1 AND status = 'active' AND deleted_at IS NULL`,
+        [templateId]
+      );
+    } catch (err) {
+      logger.error("Failed to auto-pause dead-lettered template", {
+        templateId,
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  await query(
+    `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+     VALUES (NULL, 'recurring_challenges.dead_letter', 'challenge_template', $1, $2)`,
+    [
+      templateId ?? null,
+      JSON.stringify({
+        jobName: job.data.jobName,
+        failedReason: job.data.failedReason,
+        attemptsMade: job.data.attemptsMade,
+        originalJobId: job.data.originalJobId,
+      }),
+    ]
+  );
+
+  logger.error("Recurring challenges job permanently failed — dead-lettered", {
+    jobName: job.data.jobName,
+    templateId,
+    message,
   });
 }
 
@@ -241,15 +283,16 @@ const dlqWorkerOptions = {
   concurrency: 1,
 } satisfies WorkerOptions;
 
-/** Create the three DLQ workers. Returns them so the caller can close them. */
+/** Create DLQ workers. Returns them so the caller can close them. */
 export function createDlqWorkers(WorkerImpl: typeof Worker = Worker): Worker[] {
   return [
     new WorkerImpl(PAYOUT_DLQ_NAME, processPayoutDlqJob, dlqWorkerOptions),
-    new WorkerImpl(
-      REFERRAL_BONUS_DLQ_NAME,
-      processReferralBonusDlqJob,
-      dlqWorkerOptions,
-    ),
+    new WorkerImpl(REFERRAL_BONUS_DLQ_NAME, processReferralBonusDlqJob, dlqWorkerOptions),
     new WorkerImpl(LEAGUE_DLQ_NAME, processLeagueDlqJob, dlqWorkerOptions),
+    new WorkerImpl(
+      RECURRING_CHALLENGES_DLQ_NAME,
+      processRecurringChallengesDlqJob,
+      dlqWorkerOptions
+    ),
   ];
 }

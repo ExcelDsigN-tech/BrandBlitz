@@ -10,10 +10,11 @@ import "dotenv/config";
 import { Pool } from "pg";
 import path from "path";
 
-// ─── DB connection ────────────────────────────────────────────────────────────
+// DB connection
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/brandblitz",
+  connectionString:
+    process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/brandblitz",
   max: 5,
 });
 
@@ -25,7 +26,7 @@ async function sql<T extends Record<string, unknown> = Record<string, unknown>>(
   return result.rows;
 }
 
-// ─── Deterministic RNG (mulberry32, seed = 0xDEADBEEF) ──────────────────────
+// Deterministic RNG (mulberry32, seed = 0xDEADBEEF)
 
 let _rngState = 0xdeadbeef;
 
@@ -44,7 +45,7 @@ function rngChoice<T>(arr: T[]): T {
   return arr[Math.floor(rng() * arr.length)];
 }
 
-// ─── Fixture definitions ──────────────────────────────────────────────────────
+// Fixture definitions
 
 const BRANDS = [
   {
@@ -73,11 +74,18 @@ const BRANDS = [
   },
 ];
 
-const CHALLENGE_STATUSES = ["active", "active", "completed", "completed", "draft", "active"] as const;
+const CHALLENGE_STATUSES = [
+  "active",
+  "active",
+  "completed",
+  "completed",
+  "draft",
+  "active",
+] as const;
 
 const QUESTION_TYPES = ["tagline", "usp", "product"] as const;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// Helpers
 
 function logoUrl(filename: string): string {
   return `local://fixtures/logos/${filename}`;
@@ -95,24 +103,49 @@ function futureDate(daysAhead: number): string {
   return d.toISOString();
 }
 
-// ─── Reset ────────────────────────────────────────────────────────────────────
+// Progress
+// Seeding thousands of rows can take minutes; overwrite in-place so the user
+// sees live progress instead of a silent wait.
+
+function progress(done: number, total: number, label: string): void {
+  const pct = Math.round((done / total) * 100);
+  process.stdout.write(`\r    ${label}: ${done}/${total} (${pct}%)    `, () => {
+    // Ensure the write is flushed so progress renders live even when stdout is piped (e.g. CI or `tee`).
+  });
+}
+
+function progressEnd(): void {
+  process.stdout.write("\n");
+}
+
+// Reset
 
 async function resetFixtures(): Promise<void> {
   console.log("  Resetting seed fixtures…");
   // Delete in dependency order
-  await sql(`DELETE FROM fraud_flags      WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
+  await sql(
+    `DELETE FROM fraud_flags      WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
   await sql(`DELETE FROM session_round_scores WHERE session_id IN (
                SELECT id FROM game_sessions WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')
              )`);
-  await sql(`DELETE FROM game_sessions    WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
-  await sql(`DELETE FROM payouts          WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
-  await sql(`DELETE FROM challenges       WHERE brand_id IN (SELECT id FROM brands WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%'))`);
-  await sql(`DELETE FROM brands           WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
+  await sql(
+    `DELETE FROM game_sessions    WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
+  await sql(
+    `DELETE FROM payouts          WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
+  await sql(
+    `DELETE FROM challenges       WHERE brand_id IN (SELECT id FROM brands WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%'))`
+  );
+  await sql(
+    `DELETE FROM brands           WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
   await sql(`DELETE FROM users            WHERE email LIKE 'seed-%'`);
   console.log("  Reset complete.");
 }
 
-// ─── Seeding ──────────────────────────────────────────────────────────────────
+// Seeding
 
 async function seedUsers(): Promise<Record<string, string>> {
   console.log("  Seeding users (50)…");
@@ -142,7 +175,8 @@ async function seedUsers(): Promise<Record<string, string>> {
   }
 
   // Players (46)
-  for (let i = 1; i <= 46; i++) {
+  const TOTAL_PLAYERS = 46;
+  for (let i = 1; i <= TOTAL_PLAYERS; i++) {
     const email = `seed-player-${i}@brandblitz.test`;
     const league = rngChoice(["bronze", "silver", "gold", null, null, null]);
     const [row] = await sql<{ id: string }>(
@@ -153,7 +187,11 @@ async function seedUsers(): Promise<Record<string, string>> {
       [email, `Player ${i}`, `seed_player_${i}`, league]
     );
     ids[`player_${i}`] = row.id;
+    if (i % 10 === 0 || i === TOTAL_PLAYERS) {
+      progress(i, TOTAL_PLAYERS, "players");
+    }
   }
+  progressEnd();
 
   console.log(`    Created/found ${Object.keys(ids).length} users.`);
   return ids;
@@ -200,11 +238,12 @@ async function seedChallenges(brandIds: Record<string, string>): Promise<string[
     const poolUsdc = rngChoice([50, 100, 200, 500]);
     const poolStroops = BigInt(poolUsdc) * BigInt(10_000_000);
     const startsAt = i < 4 ? pastDate(rngInt(3, 30)) : futureDate(rngInt(1, 14));
-    const endsAt = i < 2
-      ? futureDate(rngInt(7, 21))    // active: ends in future
-      : i < 4
-      ? pastDate(rngInt(1, 7))       // completed: ended recently
-      : futureDate(rngInt(30, 60));  // draft: far future
+    const endsAt =
+      i < 2
+        ? futureDate(rngInt(7, 21)) // active: ends in future
+        : i < 4
+          ? pastDate(rngInt(1, 7)) // completed: ended recently
+          : futureDate(rngInt(30, 60)); // draft: far future
 
     const [row] = await sql<{ id: string }>(
       `INSERT INTO challenges
@@ -264,8 +303,9 @@ async function seedSessions(
     .map(([, v]) => v);
 
   let inserted = 0;
+  const TOTAL_SESSIONS = 200;
 
-  for (let i = 0; i < 200; i++) {
+  for (let i = 0; i < TOTAL_SESSIONS; i++) {
     const userId = rngChoice(playerIds);
     const challengeId = rngChoice(challengeIds);
     const isFlagged = rng() < 0.1; // ~10% flagged
@@ -320,7 +360,12 @@ async function seedSessions(
         );
       }
     }
+
+    if ((i + 1) % 25 === 0 || i === TOTAL_SESSIONS - 1) {
+      progress(i + 1, TOTAL_SESSIONS, "sessions");
+    }
   }
+  progressEnd();
 
   console.log(`    Inserted ${inserted} sessions (target 200, deduped by user+challenge).`);
 }

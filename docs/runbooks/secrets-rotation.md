@@ -6,16 +6,16 @@ This runbook provides step-by-step procedures for rotating long-lived secrets ac
 
 Secrets are rotated on a schedule to limit the blast radius of a potential compromise:
 
-| Secret | Interval | Service(s) | Restart Required |
-|--------|----------|-----------|------------------|
-| `JWT_SECRET` | 90 days | `apps/api` | Yes |
-| `STELLAR_HOT_WALLET_SECRET` | 60 days | `packages/stellar` (payout.ts) | Yes (migration required) |
-| `GOOGLE_CLIENT_SECRET` | 180 days | `apps/api`, `apps/web` | Yes |
-| `WEBHOOK_SECRET` | 90 days | `apps/api`, webhooks, revalidation | Yes |
-| `DATABASE_URL` (password) | 90 days | `apps/api` | Yes |
-| `SESSION_INTEGRITY_KEY` | 90 days | `apps/api` | Yes |
-| `PHONE_HASH_SALT` | 180 days | `apps/api` | Yes (breaks existing hashes) |
-| `TWILIO_AUTH_TOKEN` | 180 days | `apps/api`, phone service | Yes |
+| Secret                      | Interval | Service(s)                         | Restart Required             |
+| --------------------------- | -------- | ---------------------------------- | ---------------------------- |
+| `JWT_SECRET`                | 90 days  | `apps/api`                         | Yes                          |
+| `STELLAR_HOT_WALLET_SECRET` | 60 days  | `packages/stellar` (payout.ts)     | Yes (migration required)     |
+| `GOOGLE_CLIENT_SECRET`      | 180 days | `apps/api`, `apps/web`             | Yes                          |
+| `WEBHOOK_SECRET`            | 90 days  | `apps/api`, webhooks, revalidation | Yes                          |
+| `DATABASE_URL` (password)   | 90 days  | `apps/api`                         | Yes                          |
+| `SESSION_INTEGRITY_KEY`     | 90 days  | `apps/api`                         | Yes                          |
+| `PHONE_HASH_SALT`           | 180 days | `apps/api`                         | Yes (breaks existing hashes) |
+| `TWILIO_AUTH_TOKEN`         | 180 days | `apps/api`, phone service          | Yes                          |
 
 ## Pre-Rotation Checklist
 
@@ -38,6 +38,7 @@ Used by `apps/api` to sign session tokens. Rotating invalidates all outstanding 
 **Steps:**
 
 1. Generate a new secret:
+
    ```bash
    openssl rand -hex 32
    ```
@@ -45,12 +46,14 @@ Used by `apps/api` to sign session tokens. Rotating invalidates all outstanding 
 2. Update `JWT_SECRET` in your secret manager (GitHub Secrets, Vault, etc.)
 
 3. Trigger a deployment of `apps/api`:
+
    ```bash
    # For Vercel/GitHub Actions:
    # Push a commit or use the deployment UI to redeploy apps/api
    ```
 
 4. Monitor logs for errors:
+
    ```bash
    # Check API logs for JWT validation failures
    tail -f logs/api.log | grep -i jwt
@@ -73,12 +76,14 @@ The Ed25519 private key used to sign Stellar payouts. Rotating this requires coo
 **Steps:**
 
 1. Generate a new Stellar keypair on testnet:
+
    ```bash
    stellar-cli keys generate
    # Outputs: Public Key: GXXXXX, Secret Key: SAXXXX
    ```
 
 2. Fund the new public key with sufficient XLM for transaction fees:
+
    ```bash
    # On testnet, use FriendBot: https://laboratory.stellar.org/#account-creator
    ```
@@ -91,11 +96,13 @@ The Ed25519 private key used to sign Stellar payouts. Rotating this requires coo
 4. Update `STELLAR_HOT_WALLET_SECRET` and `HOT_WALLET_PUBLIC_KEY` in your secret manager
 
 5. Update the payout worker configuration to use the new keys and restart:
+
    ```bash
    # Deploy apps/deposit-monitor and any payout background jobs
    ```
 
 6. Run a test payout to verify the new key works:
+
    ```bash
    # Trigger a small manual payout and verify it broadcasts to Stellar
    ```
@@ -126,6 +133,7 @@ OAuth 2.0 client secret issued by Google Cloud Console. Used for user authentica
 4. Update `GOOGLE_CLIENT_SECRET` in your secret manager
 
 5. Redeploy `apps/api` and `apps/web`:
+
    ```bash
    # Trigger a full deployment of both services
    ```
@@ -133,6 +141,7 @@ OAuth 2.0 client secret issued by Google Cloud Console. Used for user authentica
 6. Delete the old secret in Google Cloud Console (to prevent accidental reuse)
 
 7. Monitor authentication logs for errors:
+
    ```bash
    # Check for "invalid_client" or credential mismatch errors
    tail -f logs/api.log | grep -i google
@@ -151,6 +160,7 @@ Shared HMAC secret for authenticating incoming webhooks from the Stellar listene
 **Steps:**
 
 1. Generate a new secret:
+
    ```bash
    openssl rand -hex 32
    ```
@@ -158,6 +168,7 @@ Shared HMAC secret for authenticating incoming webhooks from the Stellar listene
 2. Update `WEBHOOK_SECRET` in your secret manager
 
 3. Redeploy `apps/api`:
+
    ```bash
    # API must recognize the new secret for revalidation and listener webhooks
    ```
@@ -165,6 +176,7 @@ Shared HMAC secret for authenticating incoming webhooks from the Stellar listene
 4. If you manage the Stellar listener or deposit monitor service, update its `WEBHOOK_SECRET` to match and redeploy
 
 5. Test a webhook manually:
+
    ```bash
    # Send a test webhook with the new secret HMAC-signed
    curl -X POST https://your-api.com/webhooks/deposits \
@@ -188,36 +200,43 @@ The password embedded in the PostgreSQL connection string. Rotating this require
 **Steps:**
 
 1. Connect to your PostgreSQL instance as a superuser:
+
    ```bash
    psql postgresql://postgres:current_pass@localhost:5432/postgres
    ```
 
 2. Create a new password and update the `brandblitz` role:
+
    ```sql
    ALTER ROLE brandblitz WITH PASSWORD 'new-secure-password';
    ```
 
 3. Test the connection with the new password from a local client:
+
    ```bash
    psql postgresql://brandblitz:new-secure-password@localhost:5432/brandblitz -c "SELECT 1"
    ```
 
 4. Update `DATABASE_URL` in your secret manager with the new password:
-   ```
+
+   ```text
    postgresql://brandblitz:new-secure-password@localhost:5432/brandblitz
    ```
 
 5. Redeploy `apps/api`:
+
    ```bash
    # API must use the new connection string
    ```
 
 6. Monitor for connection pool errors:
+
    ```bash
    tail -f logs/api.log | grep -i "connect\|pool"
    ```
 
 7. After 5-10 minutes of stable operation, revoke the old password:
+
    ```sql
    -- If your database doesn't support multiple passwords, the new one takes effect immediately
    ```
@@ -235,6 +254,7 @@ HMAC secret used to sign completed game sessions. Payouts verify this signature 
 **Steps:**
 
 1. Generate a new key:
+
    ```bash
    openssl rand -hex 32
    ```
@@ -242,16 +262,19 @@ HMAC secret used to sign completed game sessions. Payouts verify this signature 
 2. Update `SESSION_INTEGRITY_KEY` in your secret manager
 
 3. Redeploy `apps/api` and any payout worker services:
+
    ```bash
    # Both must use the same new key to maintain signature verification
    ```
 
 4. Play a test game session and verify the payout processes correctly:
+
    ```bash
    # Manually trigger a payout for the test session and confirm no "signature verification failed" errors
    ```
 
 5. Monitor payout logs for signature validation failures:
+
    ```bash
    tail -f logs/payout-worker.log | grep -i signature
    ```
@@ -273,6 +296,7 @@ Salt for hashing phone numbers in the user table. Rotating this breaks all exist
 1. Coordinate with the team to plan a database migration during a maintenance window
 
 2. Generate a new salt:
+
    ```bash
    openssl rand -hex 32
    ```
@@ -284,6 +308,7 @@ Salt for hashing phone numbers in the user table. Rotating this breaks all exist
    - Drop the old `phone_hash` column
 
    Example migration:
+
    ```sql
    BEGIN;
    ALTER TABLE users ADD COLUMN phone_hash_v2 VARCHAR(255);
@@ -324,11 +349,13 @@ Authentication token for Twilio SMS verification service. Obtained from Twilio C
 4. Update `TWILIO_AUTH_TOKEN` in your secret manager
 
 5. Redeploy `apps/api`:
+
    ```bash
    # API must authenticate with Twilio using the new token
    ```
 
 6. Test phone verification:
+
    ```bash
    # Trigger a phone verification flow and confirm the SMS is sent
    ```
@@ -336,6 +363,7 @@ Authentication token for Twilio SMS verification service. Obtained from Twilio C
 7. In Twilio Console, revoke the old API key after confirming the new one works
 
 8. Monitor for Twilio auth failures:
+
    ```bash
    tail -f logs/api.log | grep -i twilio
    ```

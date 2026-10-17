@@ -5,10 +5,10 @@ import { headers } from "next/headers";
  * The nonce is set by the middleware and should be used in inline scripts
  *
  * Usage in Server Components:
- * const nonce = getCspNonce();
+ * const nonce = await getCspNonce();
  * <script nonce={nonce}>...</script>
  */
-export function getCspNonce(): string {
-  const headersList = headers();
+export async function getCspNonce(): Promise<string> {
+  const headersList = await headers();
   return headersList.get("x-nonce") || "";
 }

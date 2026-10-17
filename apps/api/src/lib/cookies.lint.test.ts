@@ -17,13 +17,14 @@ function collectTsFiles(dir: string): string[] {
 
 const SRC_DIR = join(__dirname, "..");
 const HELPER_PATH = join(__dirname, "cookies.ts");
+const TEST_FILE_PATH = join(__dirname, "cookies.lint.test.ts");
 
 describe("cookie security lint", () => {
   it("no raw res.cookie() calls exist outside lib/cookies.ts", () => {
     const violations: string[] = [];
 
     for (const file of collectTsFiles(SRC_DIR)) {
-      if (file === HELPER_PATH) continue;
+      if (file === HELPER_PATH || file === TEST_FILE_PATH) continue;
 
       const src = readFileSync(file, "utf-8");
       if (/res\.cookie\s*\(/.test(src)) {

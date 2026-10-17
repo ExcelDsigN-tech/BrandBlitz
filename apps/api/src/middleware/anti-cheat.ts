@@ -34,10 +34,8 @@ async function getThresholds(): Promise<AntiCheatThresholds> {
 
     const config = await getConfig(THRESHOLDS_CONFIG_KEY);
     const thresholds: AntiCheatThresholds = {
-      min_human_reaction_ms:
-        (config?.min_human_reaction_ms as number) ?? MIN_HUMAN_REACTION_MS,
-      max_human_reaction_ms:
-        (config?.max_human_reaction_ms as number) ?? MAX_HUMAN_REACTION_MS,
+      min_human_reaction_ms: (config?.min_human_reaction_ms as number) ?? MIN_HUMAN_REACTION_MS,
+      max_human_reaction_ms: (config?.max_human_reaction_ms as number) ?? MAX_HUMAN_REACTION_MS,
     };
 
     await redis.set(THRESHOLDS_CACHE_KEY, JSON.stringify(thresholds), "EX", CACHE_TTL_SECONDS);
@@ -80,6 +78,22 @@ async function recordFraudFlag(
   metrics.inc("antiCheat.flags_total", { severity, type: flagType });
 }
 
+async function recordFraudFlagBestEffort(
+  req: Request,
+  flagType: string,
+  details?: Record<string, unknown>
+): Promise<void> {
+  try {
+    await recordFraudFlag(req, flagType, details);
+  } catch (error) {
+    logger.warn("Failed to record anti-cheat fraud flag; continuing request handling", {
+      flagType,
+      userId: req.user?.sub,
+      error: (error as Error).message,
+    });
+  }
+}
+
 /**
  * Anti-cheat Layer 4 — client clock skew detection.
  * Validates client-supplied timestamps are within ±5 seconds of server time.
@@ -98,10 +112,10 @@ export async function detectClockSkew(
   }
 
   if (!Number.isFinite(clientTimestamp) || clientTimestamp <= 0) {
-    await recordFraudFlag(req, "invalid_client_timestamp", {
+    await recordFraudFlagBestEffort(req, "invalid_client_timestamp", {
       clientTimestamp,
       severity: "warning",
-    }).catch(() => {});
+    });
     throw createError("Invalid client timestamp", 400, "INVALID_TIMESTAMP");
   }
 
@@ -109,12 +123,12 @@ export async function detectClockSkew(
   const clockSkewMs = Math.abs(serverTime - clientTimestamp);
 
   if (clockSkewMs > MAX_CLOCK_SKEW_MS) {
-    await recordFraudFlag(req, "clock_skew", {
+    await recordFraudFlagBestEffort(req, "clock_skew", {
       clientTimestamp,
       serverTime,
       clockSkewMs,
       severity: "warning",
-    }).catch(() => {});
+    });
     throw createError("Client clock skew too large", 400, "CLOCK_SKEW");
   }
 
@@ -139,27 +153,27 @@ export async function validateReactionTime(
   }
 
   if (reactionTimeMs < BOT_REACTION_THRESHOLD_MS) {
-    await recordFraudFlag(req, "reaction_time_bot_threshold", {
+    await recordFraudFlagBestEffort(req, "reaction_time_bot_threshold", {
       reactionTimeMs,
       severity: "critical",
-    }).catch(() => {});
+    });
     throw createError("Reaction time impossible for humans", 403, "REACTION_IMPOSSIBLE");
   }
 
   const thresholds = await getThresholds();
 
   if (reactionTimeMs < thresholds.min_human_reaction_ms) {
-    await recordFraudFlag(req, "reaction_time_below_minimum", {
+    await recordFraudFlagBestEffort(req, "reaction_time_below_minimum", {
       reactionTimeMs,
       severity: "warning",
-    }).catch(() => {});
+    });
   }
 
   if (reactionTimeMs > thresholds.max_human_reaction_ms) {
-    await recordFraudFlag(req, "reaction_time_above_maximum", {
+    await recordFraudFlagBestEffort(req, "reaction_time_above_maximum", {
       reactionTimeMs,
       severity: "info",
-    }).catch(() => {});
+    });
   }
 
   next();
@@ -182,12 +196,23 @@ export async function enforceOneSessionPerChallenge(
     (req.headers["x-device-id"] as string | undefined) ??
     (req.headers["x-visitor-id"] as string | undefined);
   const isPractice = req.body.isPractice === true;
+  const options = await query<{ variant_id: string | null; tier_id: string | null }>(
+    `SELECT
+       (SELECT id FROM challenge_variants WHERE challenge_id = $1 AND status = 'active' ORDER BY random() LIMIT 1) AS variant_id,
+       (SELECT id FROM challenge_tiers WHERE challenge_id = $1 AND ($2::uuid IS NULL OR id = $2::uuid) LIMIT 1) AS tier_id`,
+    [challengeId, req.body.tierId ?? null]
+  );
+  if (req.body.tierId && !options.rows[0]?.tier_id) {
+    throw createError("Invalid challenge tier", 422, "INVALID_TIER");
+  }
 
   const session = await claimSession({
     userId,
     challengeId,
     deviceId,
     isPractice,
+    variantId: options.rows[0]?.variant_id,
+    tierId: options.rows[0]?.tier_id,
   });
 
   if (session) {
@@ -213,12 +238,19 @@ export async function enforceOneSessionPerChallenge(
          WHERE user_id = $1 AND challenge_id = $2 AND status = 'abandoned'
          RETURNING id
        )
-       INSERT INTO game_sessions (user_id, challenge_id, device_id, is_practice)
-       SELECT $1, $2, $3, $4
+      INSERT INTO game_sessions (user_id, challenge_id, device_id, is_practice, variant_id, tier_id)
+      SELECT $1, $2, $3, $4, $5, $6
        WHERE EXISTS (SELECT 1 FROM del)
        ON CONFLICT (user_id, challenge_id) DO NOTHING
        RETURNING *`,
-      [userId, challengeId, deviceId ?? null, isPractice]
+      [
+        userId,
+        challengeId,
+        deviceId ?? null,
+        isPractice,
+        options.rows[0]?.variant_id,
+        options.rows[0]?.tier_id,
+      ]
     );
     const fresh = result.rows[0] ?? null;
     if (!fresh) {
@@ -281,12 +313,12 @@ export async function validateDeviceFingerprint(
       metrics.inc("antiCheat.fingerprint_collision_total", {
         fingerprint: fingerprint.slice(0, 8),
       });
-      await recordFraudFlag(req, "multi_account_fingerprint", {
+      await recordFraudFlagBestEffort(req, "multi_account_fingerprint", {
         fingerprint: fingerprint.slice(0, 8),
         accountCount: count,
         windowSeconds: 86400,
         severity: "critical",
-      }).catch(() => {});
+      });
       throw createError(
         "Session rejected due to fingerprint collision",
         403,
@@ -324,11 +356,11 @@ export async function validateRoundScore(
   }
 
   if (!Number.isFinite(roundScore) || roundScore < 0 || roundScore > MAX_ROUND_SCORE) {
-    await recordFraudFlag(req, "round_score_out_of_range", {
+    await recordFraudFlagBestEffort(req, "round_score_out_of_range", {
       roundScore,
       maxAllowed: MAX_ROUND_SCORE,
       severity: "critical",
-    }).catch(() => {});
+    });
     throw createError(
       `Round score ${roundScore} exceeds per-round maximum of ${MAX_ROUND_SCORE}`,
       422,

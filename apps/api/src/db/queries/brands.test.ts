@@ -112,7 +112,13 @@ describeIntegration("brands db queries", () => {
       const b1 = await brands.createBrand({
         owner_user_id: owner1,
         name: "B1",
-        logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+        logo_url: null,
+        primary_color: null,
+        secondary_color: null,
+        tagline: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
 
       // Provide order spacing
@@ -121,17 +127,29 @@ describeIntegration("brands db queries", () => {
       const b2 = await brands.createBrand({
         owner_user_id: owner1,
         name: "B2",
-        logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+        logo_url: null,
+        primary_color: null,
+        secondary_color: null,
+        tagline: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
 
       await brands.createBrand({
         owner_user_id: owner2,
         name: "B3",
-        logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+        logo_url: null,
+        primary_color: null,
+        secondary_color: null,
+        tagline: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
 
       const o1Brands = await brands.getBrandsByOwner(owner1);
-      
+
       expect(o1Brands).toHaveLength(2);
       expect(o1Brands[0].id).toBe(b2.id); // Descending
       expect(o1Brands[1].id).toBe(b1.id);
@@ -144,7 +162,13 @@ describeIntegration("brands db queries", () => {
       const brand = await brands.createBrand({
         owner_user_id: ownerId,
         name: "Test Brand 4",
-        logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+        logo_url: null,
+        primary_color: null,
+        secondary_color: null,
+        tagline: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
 
       const found = await brands.getBrandById(brand.id);
@@ -164,12 +188,16 @@ describeIntegration("brands db queries", () => {
         name: "Old Name",
         tagline: "Old Tagline",
         logo_url: "old.png",
-        primary_color: null, secondary_color: null, brand_story: null, usp: null, product_image_keys: []
+        primary_color: null,
+        secondary_color: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
 
       const updated = await brands.updateBrand(brand.id, ownerId, {
         name: "New Name",
-        tagline: null
+        tagline: null,
       });
 
       expect(updated).not.toBeNull();
@@ -178,13 +206,19 @@ describeIntegration("brands db queries", () => {
       expect(updated?.logo_url).toBe("old.png");
       expect(updated?.id).toBe(brand.id);
     });
-    
+
     it("returns unmodified brand if empty updates", async () => {
       const ownerId = await createUser("update-empty");
       const brand = await brands.createBrand({
         owner_user_id: ownerId,
         name: "Name",
-        logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+        logo_url: null,
+        primary_color: null,
+        secondary_color: null,
+        tagline: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
       const updated = await brands.updateBrand(brand.id, ownerId, {});
       expect(updated?.id).toBe(brand.id);
@@ -199,20 +233,27 @@ describeIntegration("brands db queries", () => {
       const brand = await brands.createBrand({
         owner_user_id: owner1,
         name: "To Delete",
-        logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+        logo_url: null,
+        primary_color: null,
+        secondary_color: null,
+        tagline: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
 
       // Wrong owner
       const deletedWrong = await brands.deleteBrand(brand.id, owner2);
-      expect(deletedWrong).toBe(false);
+      expect(deletedWrong).toBeNull();
 
       const found = await brands.getBrandById(brand.id);
       expect(found).not.toBeNull();
 
       // Right owner
       const deletedRight = await brands.deleteBrand(brand.id, owner1);
-      expect(deletedRight).toBe(true);
-      
+      expect(deletedRight).toMatchObject({ cancelledChallenges: 0 });
+      expect(deletedRight?.deletedAt).toBeTruthy();
+
       const foundAfter = await brands.getBrandById(brand.id);
       expect(foundAfter).toBeNull();
     });
@@ -221,25 +262,37 @@ describeIntegration("brands db queries", () => {
   describe("getActiveDistractorBrands", () => {
     it("excludes the target brand and caps out at 20 returned", async () => {
       const ownerId = await createUser("distractor-owner");
-      
-      for(let i=0; i<25; i++) {
+
+      for (let i = 0; i < 25; i++) {
         await brands.createBrand({
           owner_user_id: ownerId,
           name: `DBrand ${i}`,
-          logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+          logo_url: null,
+          primary_color: null,
+          secondary_color: null,
+          tagline: null,
+          brand_story: null,
+          usp: null,
+          product_image_keys: [],
         });
       }
-      
+
       const distractor = await brands.createBrand({
         owner_user_id: ownerId,
         name: `Excluded brand`,
-        logo_url: null, primary_color: null, secondary_color: null, tagline: null, brand_story: null, usp: null, product_image_keys: []
+        logo_url: null,
+        primary_color: null,
+        secondary_color: null,
+        tagline: null,
+        brand_story: null,
+        usp: null,
+        product_image_keys: [],
       });
 
       const result = await brands.getActiveDistractorBrands(distractor.id);
       expect(result.length).toBeLessThanOrEqual(20);
       expect(result.length).toBeGreaterThan(0);
-      expect(result.find(r => r.id === distractor.id)).toBeUndefined();
+      expect(result.find((r) => r.id === distractor.id)).toBeUndefined();
     });
   });
 });

@@ -44,7 +44,7 @@ re-litigate the decision.
 - **No drift channel**: the schema lives in SQL files, not in a
   TypeScript model that has to be kept in lock-step. The runtime
   query layer ([sql-template-strings](https://www.npmjs.com/package/sql-template-strings)
-  + a thin type generator) reads from the live schema.
+  - a thin type generator) reads from the live schema.
 - **Operational simplicity**: zero new third-party tools in the
   production runbook. `pnpm migrate` is just a thin wrapper around
   `psql`.
@@ -53,7 +53,7 @@ Considered alternatives:
 
 - **Prisma migrate**: tempting because of the model-first DX, but
   adoption would force us to express our existing schema in
-  `schema.prisma` then *generate* migrations from it. Net loss in
+  `schema.prisma` then _generate_ migrations from it. Net loss in
   reviewability for non-trivial migrations.
 - **Drizzle migrate**: similar trade-off; the generator is
   cleaner than Prisma's, but we still pay the model-first cost.
@@ -67,9 +67,15 @@ Considered alternatives:
   burden.
 - `migrate.ts` is now load-bearing — bugs in the runner can corrupt
   prod. Tested via `pnpm migrate:dryrun` in CI on every PR that
-  touches `migrations/`.
-- Down migrations remain rare; when they exist they're explicit and
-  reviewed alongside their up counterpart.
+  touches `apps/api/migrations/` (see `ci.yml` `test-api` job).
+- Down migrations remain explicit and reviewed alongside their up
+  counterpart. They are now additionally exercised in CI: the
+  `exercise-down-migrations` job in `db-dual-path.yml` applies all
+  forward migrations, rolls back each `.down.sql` file in reverse
+  version order, re-applies the up migration, and asserts the schema
+  matches the pre-rollback baseline (round-trip check). This
+  validates every rollback code path before it is ever needed during
+  a live incident.
 - New contributors learn one tool (`pnpm migrate`) instead of two
   (an ORM model API + an ORM CLI).
 

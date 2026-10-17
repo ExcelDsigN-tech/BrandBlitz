@@ -62,7 +62,9 @@ describe("payout worker graceful shutdown", () => {
   });
 
   it("calls worker.close() when SIGTERM is received", async () => {
-    const MockWorkerClass = vi.fn().mockImplementation(() => mockWorker);
+    const MockWorkerClass = vi.fn(function () {
+      return mockWorker;
+    });
     createPayoutWorker(MockWorkerClass as any);
 
     const sigtermHandler = signalHandlers.get("SIGTERM");
@@ -80,7 +82,9 @@ describe("payout worker graceful shutdown", () => {
   });
 
   it("calls worker.close() when SIGINT is received", async () => {
-    const MockWorkerClass = vi.fn().mockImplementation(() => mockWorker);
+    const MockWorkerClass = vi.fn(function () {
+      return mockWorker;
+    });
     createPayoutWorker(MockWorkerClass as any);
 
     const sigintHandler = signalHandlers.get("SIGINT");
@@ -104,7 +108,9 @@ describe("payout worker graceful shutdown", () => {
       () => new Promise(() => {}) // Never resolves
     );
 
-    const MockWorkerClass = vi.fn().mockImplementation(() => mockWorker);
+    const MockWorkerClass = vi.fn(function () {
+      return mockWorker;
+    });
     createPayoutWorker(MockWorkerClass as any);
 
     const sigtermHandler = signalHandlers.get("SIGTERM");
@@ -124,7 +130,9 @@ describe("payout worker graceful shutdown", () => {
   });
 
   it("does not call worker.close() twice on multiple signals", async () => {
-    const MockWorkerClass = vi.fn().mockImplementation(() => mockWorker);
+    const MockWorkerClass = vi.fn(function () {
+      return mockWorker;
+    });
     createPayoutWorker(MockWorkerClass as any);
 
     const sigtermHandler = signalHandlers.get("SIGTERM");

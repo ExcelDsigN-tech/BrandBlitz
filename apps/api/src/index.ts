@@ -1,4 +1,3 @@
-import "dotenv/config";
 // Sentry must be initialised before any other imports that use it.
 import { initSentry } from "./lib/sentry";
 void initSentry();
@@ -8,6 +7,7 @@ import cors from "cors";
 import compression from "compression";
 import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
+import healthRoutes from "./routes/health";
 import { errorHandler } from "./middleware/error";
 import { referralAttributionMiddleware } from "./middleware/referral-attribution";
 import { apiLimiter } from "./middleware/rate-limit";
@@ -22,6 +22,7 @@ import { leaderboardRefreshQueue } from "./queues/leaderboard-refresh.queue";
 import { logger } from "./lib/logger";
 import { config } from "./lib/config";
 import { PERMISSIONS_POLICY_HEADER } from "@brandblitz/config";
+import { handleChatUpgrade, resetChatRooms } from "./routes/challenges.chat";
 
 const app = express();
 const PORT = config.PORT;
@@ -36,11 +37,7 @@ app.use(
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'"], // Allow inline styles for error pages
         imgSrc: ["'self'", "data:", "https:"],
-        connectSrc: [
-          "'self'",
-          "https://api.stellar.expert",
-          config.S3_PUBLIC_URL,
-        ],
+        connectSrc: ["'self'", "https://api.stellar.expert", config.S3_PUBLIC_URL],
         fontSrc: ["'self'"],
         objectSrc: ["'none'"],
         mediaSrc: ["'self'"],
@@ -73,7 +70,7 @@ app.use(
     xPermittedCrossDomainPolicies: {
       permittedPolicies: "none",
     },
-  }),
+  })
 );
 // Helmet 8 does not set Permissions-Policy; add it explicitly after Helmet.
 app.use((_req, res, next) => {
@@ -86,17 +83,14 @@ app.use((_req, res, next) => {
 // re-asserts that invariant at the middleware layer.
 const allowedOrigins = config.ALLOWED_ORIGINS;
 if (allowedOrigins.length === 0 || allowedOrigins.includes("*")) {
-  throw new Error(
-    "ALLOWED_ORIGINS must be an explicit, non-wildcard list of origins",
-  );
+  throw new Error("ALLOWED_ORIGINS must be an explicit, non-wildcard list of origins");
 }
 
 // ALLOWED_ORIGINS entries may be full URLs ("http://localhost:3000") or
 // host[:port] ("localhost:3000") — the latter form is shared with the web
 // app's Next.js Server Actions config. Browser Origin headers always carry a
 // scheme, so we compare on a scheme-stripped host to accept either form.
-const stripScheme = (value: string): string =>
-  value.replace(/^https?:\/\//, "");
+const stripScheme = (value: string): string => value.replace(/^https?:\/\//, "");
 const allowedOriginHosts = new Set(allowedOrigins.map(stripScheme));
 const isOriginAllowed = (origin: string): boolean =>
   allowedOrigins.includes(origin) || allowedOriginHosts.has(stripScheme(origin));
@@ -127,7 +121,7 @@ app.use(
       callback(null, false);
     },
     credentials: true,
-  }),
+  })
 );
 app.use(cookieParser());
 app.use(requireHttps);
@@ -143,14 +137,11 @@ app.use(
   express.json({
     limit: "1mb",
     verify: (req, _res, buf) => {
-      if (
-        req.headers["x-webhook-signature"] ||
-        req.path.startsWith("/webhooks")
-      ) {
+      if (req.headers["x-webhook-signature"] || req.path.startsWith("/webhooks")) {
         (req as any).rawBody = buf;
       }
     },
-  }),
+  })
 );
 app.use(express.urlencoded({ extended: true }));
 
@@ -158,17 +149,17 @@ app.use(express.urlencoded({ extended: true }));
 app.use(apiLimiter);
 
 // ── Health check (before auth middleware) ──────────────────────────────────
-app.get("/health", (_req, res) => {
-  if (isShuttingDown) {
-    res.status(503).json({ status: "shutting_down" });
-    return;
-  }
-  res.json({
-    status: "ok",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
-});
+app.use(
+  "/health",
+  (_req, res, next) => {
+    if (isShuttingDown) {
+      res.status(503).json({ status: "shutting_down" });
+      return;
+    }
+    next();
+  },
+  healthRoutes
+);
 
 // ── API Routes ─────────────────────────────────────────────────────────────
 registerRoutes(app);
@@ -200,6 +191,15 @@ async function start(): Promise<void> {
     logger.info(`API running on port ${PORT}`, { env: config.NODE_ENV });
   });
 
+  server.on("upgrade", (req, socket, head) => {
+    void handleChatUpgrade(req, socket, head).catch((err) => {
+      logger.error("Error during WebSocket upgrade", { err });
+      if (socket.writable) {
+        socket.destroy();
+      }
+    });
+  });
+
   // ── Graceful shutdown ──────────────────────────────────────────────────
   const shutdown = async (signal: string) => {
     logger.info(`${signal} received — starting graceful shutdown`);
@@ -210,6 +210,7 @@ async function start(): Promise<void> {
         await payoutQueue.close();
         await leagueQueue.close();
         await leaderboardRefreshQueue.close();
+        resetChatRooms();
         await closeDb();
         await redis.disconnect();
         logger.info("Shutdown complete");

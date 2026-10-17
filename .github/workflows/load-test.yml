@@ -1,0 +1,147 @@
+name: Load test
+
+# k6 load test of the challenge-play → session-submit path (issue #958).
+# Runs weekly and on demand, never on pull requests: it takes several minutes
+# and its numbers are only comparable run-to-run on the same runner class.
+# See docs/perf/load-testing.md.
+
+on:
+  workflow_dispatch:
+    inputs:
+      rate:
+        description: "New players per second (k6 constant-arrival-rate)"
+        required: false
+        default: "5"
+      duration:
+        description: "Arrival window, e.g. 60s or 5m"
+        required: false
+        default: "60s"
+  schedule:
+    # Mondays 04:17 UTC
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: load-test
+  cancel-in-progress: false
+
+jobs:
+  k6:
+    name: k6 challenge-play
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: brandblitz
+          POSTGRES_PASSWORD: brandblitz_dev
+          POSTGRES_DB: brandblitz_loadtest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      # Throwaway values for an isolated, single-run environment. Nothing here
+      # is a real credential.
+      NODE_ENV: production
+      PORT: "3001"
+      LOG_LEVEL: warn
+      DATABASE_URL: postgresql://brandblitz:brandblitz_dev@localhost:5432/brandblitz_loadtest
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: loadtest-jwt-secret-at-least-32-characters-long
+      GOOGLE_CLIENT_ID: loadtest
+      GOOGLE_CLIENT_SECRET: loadtest
+      ALLOWED_ORIGINS: http://localhost:3000
+      HOT_WALLET_SECRET: loadtest-placeholder
+      HOT_WALLET_PUBLIC_KEY: GAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAWHF
+      WEBHOOK_SECRET: loadtest-webhook-secret
+      S3_ENDPOINT: http://localhost:9000
+      S3_ACCESS_KEY_ID: loadtest
+      S3_SECRET_ACCESS_KEY: loadtest
+      S3_PUBLIC_URL: http://localhost:9000
+      LOADTEST_RATE: ${{ github.event.inputs.rate || '5' }}
+      LOADTEST_DURATION: ${{ github.event.inputs.duration || '60s' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Prepare database schema
+        run: scripts/perf/prepare-loadtest-db.sh
+
+      - name: Start API
+        run: |
+          nohup pnpm --filter @brandblitz/api exec tsx src/index.ts > api.log 2>&1 &
+          for i in $(seq 1 60); do
+            if curl -sf -H 'X-Forwarded-Proto: https' http://localhost:3001/health -o /dev/null \
+              || curl -s -H 'X-Forwarded-Proto: https' http://localhost:3001/health | grep -q '"db":"ok"'; then
+              echo "API is up"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::API did not become ready"
+          cat api.log
+          exit 1
+
+      - name: Seed players
+        run: |
+          USERS=$(node -e "
+            const [, n, u] = /^(\d+(?:\.\d+)?)(s|m|h)$/.exec(process.env.LOADTEST_DURATION);
+            console.log(Math.ceil(Number(process.env.LOADTEST_RATE) * n * { s: 1, m: 60, h: 3600 }[u] * 1.1));
+          ")
+          pnpm loadtest:seed -- --users "$USERS" --lift-ip-rate-limit
+          # The API caches the rate-limit value for up to 10 s.
+          sleep 11
+
+      - uses: grafana/setup-k6-action@v1
+
+      - name: Run k6
+        run: pnpm loadtest
+
+      - name: Publish summary
+        if: always()
+        run: |
+          if [ -f tests/load/.data/summary.json ]; then
+            node -e "
+              const d = require('./tests/load/.data/summary.json');
+              const rows = ['warmup_start','warmup_complete','session_start','answer','session_submit'].map((e) => {
+                const m = d.metrics['http_req_duration{endpoint:' + e + '}'];
+                if (!m) return null;
+                const v = m.values, f = (x) => x.toFixed(1) + ' ms';
+                return '| ' + e + ' | ' + f(v['p(50)']) + ' | ' + f(v['p(95)']) + ' | ' + f(v['p(99)']) + ' |';
+              }).filter(Boolean);
+              const err = d.metrics.http_req_failed ? (d.metrics.http_req_failed.values.rate * 100).toFixed(2) : 'n/a';
+              console.log(['### k6 load test', '', 'rate ' + process.env.LOADTEST_RATE + '/s for ' + process.env.LOADTEST_DURATION + ', error rate ' + err + '%', '', '| endpoint | p50 | p95 | p99 |', '| --- | --- | --- | --- |', ...rows].join('\n'));
+            " >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-load-test-${{ github.run_id }}
+          path: |
+            tests/load/.data/summary.json
+            api.log
+          if-no-files-found: ignore
+          retention-days: 30

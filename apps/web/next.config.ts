@@ -9,7 +9,10 @@ const withAnalyzer = withBundleAnalyzer({
 function getAllowedOrigins() {
   const envOrigins = process.env.ALLOWED_ORIGINS;
   if (envOrigins) {
-    return envOrigins.split(",").map((o) => o.trim()).filter(Boolean);
+    return envOrigins
+      .split(",")
+      .map((o) => o.trim())
+      .filter(Boolean);
   }
 
   // Fallbacks

@@ -47,7 +47,7 @@ describeIntegration("brands soft-delete challenge cascade", () => {
 
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
     await query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
-    
+
     const fs = await import("fs");
     const path = await import("path");
     const initSqlPath = path.resolve(__dirname, "../../../../../init.sql");
@@ -61,7 +61,10 @@ describeIntegration("brands soft-delete challenge cascade", () => {
     app.use(errorHandler);
 
     const adminId = randomUUID();
-    await query(`INSERT INTO users (id, email, role) VALUES ($1, $2, 'admin')`, [adminId, "admin@test.com"]);
+    await query(`INSERT INTO users (id, email, role) VALUES ($1, $2, 'admin')`, [
+      adminId,
+      "admin@test.com",
+    ]);
     adminToken = signToken(adminId, "admin@test.com", "admin");
   });
 
@@ -77,38 +80,53 @@ describeIntegration("brands soft-delete challenge cascade", () => {
 
   it("cascades brand soft-delete to challenges for non-admins", async () => {
     const brandOwnerId = randomUUID();
-    await query(`INSERT INTO users (id, email, role) VALUES ($1, $2, 'brand')`, [brandOwnerId, "owner@test.com"]);
+    await query(`INSERT INTO users (id, email, role) VALUES ($1, $2, 'brand')`, [
+      brandOwnerId,
+      "owner@test.com",
+    ]);
     const ownerToken = signToken(brandOwnerId, "owner@test.com", "brand");
 
     // 1. Seed a brand
-    const brandRes = await query(`
+    const brandRes = await query(
+      `
       INSERT INTO brands (owner_user_id, name, tagline, usp) 
       VALUES ($1, 'To be deleted', 'Tagline', 'USP') 
       RETURNING id
-    `, [brandOwnerId]);
+    `,
+      [brandOwnerId]
+    );
     const brandId = brandRes.rows[0].id;
 
     // 2. Seed 2 published challenges and 1 draft challenge
-    const c1Res = await query(`
+    const c1Res = await query(
+      `
       INSERT INTO challenges (brand_id, status, pool_amount_stroops)
       VALUES ($1, 'active', 10000000)
       RETURNING id
-    `, [brandId]);
-    
-    const c2Res = await query(`
+    `,
+      [brandId]
+    );
+
+    const c2Res = await query(
+      `
       INSERT INTO challenges (brand_id, status, pool_amount_stroops)
       VALUES ($1, 'ended', 5000000)
       RETURNING id
-    `, [brandId]);
+    `,
+      [brandId]
+    );
 
-    const c3Res = await query(`
+    const c3Res = await query(
+      `
       INSERT INTO challenges (brand_id, status, pool_amount_stroops)
       VALUES ($1, 'draft', 1000000)
       RETURNING id
-    `, [brandId]);
+    `,
+      [brandId]
+    );
 
     const publishedIds = [c1Res.rows[0].id, c2Res.rows[0].id];
-    
+
     // Verify pre-delete state: public can see active/ended challenges
     const preDeleteRes = await request(app).get("/challenges");
     expect(preDeleteRes.status).toBe(200);
@@ -125,20 +143,21 @@ describeIntegration("brands soft-delete challenge cascade", () => {
     let deleteRes = await request(app)
       .delete(`/brands/${brandId}`)
       .set("Authorization", `Bearer ${ownerToken}`);
-      
+
     if (deleteRes.status === 404) {
       // Maybe it's a POST endpoint
       deleteRes = await request(app)
         .post(`/brands/${brandId}/soft-delete`)
         .set("Authorization", `Bearer ${ownerToken}`);
     }
-    
-    expect(deleteRes.status).toBe(204);
+
+    expect(deleteRes.status).toBe(200);
+    expect(deleteRes.body.cancelledChallenges).toBe(1);
 
     // Wait, what if the endpoint is DELETE /brands/:id or POST /brands/:id/delete?
     // Let's check if deleteRes is 200, if not, we'll try again with the right path later.
     // Assuming DELETE /brands/:id for now based on standard REST
-    
+
     // 4. Verify post-delete state for unauthenticated player
     const postDeletePublicRes = await request(app).get("/challenges");
     expect(postDeletePublicRes.status).toBe(200);
@@ -150,10 +169,15 @@ describeIntegration("brands soft-delete challenge cascade", () => {
     const postDeleteAdminRes = await request(app)
       .get("/challenges?include_deleted=true")
       .set("Authorization", `Bearer ${adminToken}`);
-    
+
     // Admin list might have different query params to see deleted ones, or just sees them by default if using admin endpoints.
     // We'll just verify the brand is soft-deleted.
     const verifyBrandRes = await query(`SELECT deleted_at FROM brands WHERE id = $1`, [brandId]);
     expect(verifyBrandRes.rows[0].deleted_at).not.toBeNull();
+
+    const verifyChallengeRes = await query(`SELECT status FROM challenges WHERE id = $1`, [
+      c1Res.rows[0].id,
+    ]);
+    expect(verifyChallengeRes.rows[0].status).toBe("cancelled");
   });
 });

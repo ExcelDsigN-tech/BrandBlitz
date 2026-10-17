@@ -22,10 +22,7 @@ export function verifySessionHmac(
   const expected = computeSessionHmac(sessionId, totalScore, completedAt);
   if (!expected) return true;
   try {
-    return timingSafeEqual(
-      Buffer.from(expected, "hex"),
-      Buffer.from(storedHmac, "hex")
-    );
+    return timingSafeEqual(Buffer.from(expected, "hex"), Buffer.from(storedHmac, "hex"));
   } catch {
     return false;
   }

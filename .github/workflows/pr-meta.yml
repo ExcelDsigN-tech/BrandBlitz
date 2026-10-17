@@ -23,6 +23,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/labeler@v5
+        continue-on-error: true
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           configuration-path: .github/labeler.yml
@@ -189,9 +190,10 @@ jobs:
                 repo: context.repo.repo,
                 issue_number: context.issue.number,
                 labels: [targetLabel],
+              }).catch(() => {
+                console.log(`Unable to add label ${targetLabel} (likely fork PR — skipping)`);
               });
             }
-
 
   # ── PR title lint (conventional commits) ─────────────────────────────────
   title-lint:

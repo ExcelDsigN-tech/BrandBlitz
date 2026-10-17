@@ -124,6 +124,7 @@ export interface Challenge {
     | "refunded";
   starts_at: string;
   ends_at: string | null;
+  participant_count?: number;
   // joined fields
   brand_name?: string;
   tagline?: string;
@@ -143,7 +144,7 @@ export interface ChallengeQuestion {
   option_b: string;
   option_c: string;
   option_d: string;
-  // correct_option and correct_answer are NOT returned by the API
+  // correct_option is NOT returned by the API
 }
 
 export interface LeaderboardEntry {
