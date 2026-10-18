@@ -1,4 +1,6 @@
 import { Router } from "express";
+import challengeCommentsRouter from "./challenge-comments";
+import challengeManagementRouter from "./challenge-management";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import {
@@ -46,6 +48,8 @@ import {
 } from "../db/queries/challenge-teams";
 
 const router = Router();
+router.use(challengeCommentsRouter);
+router.use(challengeManagementRouter);
 const CHALLENGE_DETAIL_CACHE_TTL_SECONDS = 60;
 
 type ChallengeDetailPayload = {

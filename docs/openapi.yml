@@ -111,14 +111,23 @@ components:
         status:
           type: string
           enum:
+            - draft
+            - pending_deposit
             - active
-            - paused
-            - completed
+            - ended
+            - settled
+            - payout_failed
+            - cancelled
+            - refunded
         starts_at:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
         ends_at:
-          type: string
+          type:
+            - string
+            - "null"
           format: date-time
         brand_name:
           type: string
@@ -198,6 +207,114 @@ components:
         - userId
         - displayName
         - totalScore
+    InviteCode:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        brand_id:
+          type: string
+          format: uuid
+        challenge_id:
+          type:
+            - string
+            - "null"
+          format: uuid
+        code:
+          type: string
+        expires_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        max_uses:
+          type:
+            - integer
+            - "null"
+        use_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - brand_id
+        - challenge_id
+        - code
+        - expires_at
+        - max_uses
+        - use_count
+        - created_at
+    ChallengeComment:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        challenge_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        body:
+          type: string
+        display_name:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+        - id
+        - challenge_id
+        - user_id
+        - body
+        - display_name
+        - created_at
+        - updated_at
+    ChallengeDraft:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        brand_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum:
+            - draft
+            - pending_deposit
+        starts_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        ends_at:
+          type:
+            - string
+            - "null"
+          format: date-time
+        deposit_memo:
+          type:
+            - string
+            - "null"
+        pool_amount_usdc:
+          type: string
+      required:
+        - id
+        - brand_id
+        - status
+        - starts_at
+        - ends_at
+        - deposit_memo
+        - pool_amount_usdc
+      additionalProperties: {}
   parameters: {}
 paths:
   /auth/google/callback:
@@ -550,4 +667,432 @@ paths:
                 required:
                   - rows
                   - generatedAt
+  /waitlist/redeem-code:
+    post:
+      tags:
+        - waitlist
+      summary: Redeem a brand invite for priority waitlist access
+      description: Requires an active account enrolled with its own email. Redemption
+        is atomic, idempotent per code/user, and audit logged. Suspension is
+        never cleared.
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code:
+                  type: string
+                  pattern: ^[A-Za-z0-9]{32}$
+              required:
+                - code
+      responses:
+        "200":
+          description: Access granted, including retries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - active
+                  brandId:
+                    type: string
+                    format: uuid
+                  challengeId:
+                    type:
+                      - string
+                      - "null"
+                    format: uuid
+                required:
+                  - status
+                  - brandId
+                  - challengeId
+        "400":
+          description: Invalid code format
+        "401":
+          description: Authentication required
+        "403":
+          description: Account suspended or account email not on waitlist
+        "404":
+          description: Unknown or deleted-scope code
+        "409":
+          description: Code exhausted
+        "410":
+          description: Code expired
+        "429":
+          description: Too many attempts
+  /waitlist/access:
+    get:
+      tags:
+        - waitlist
+      summary: Check the authenticated account's waitlist access
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current access
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - not_enrolled
+                      - waiting
+                      - active
+                required:
+                  - status
+        "401":
+          description: Authentication required
+  /brands/{id}/invite-codes:
+    post:
+      tags:
+        - brands
+      summary: Generate a brand or challenge invite (brand owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                challengeId:
+                  type: string
+                  format: uuid
+                expiresAt:
+                  type: string
+                  format: date-time
+                maxUses:
+                  type: integer
+                  minimum: 1
+                  maximum: 100000
+      responses:
+        "201":
+          description: Generated code
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  inviteCode:
+                    $ref: "#/components/schemas/InviteCode"
+                required:
+                  - inviteCode
+        "400":
+          description: Invalid expiry or limit
+        "403":
+          description: Not the brand owner
+        "404":
+          description: Challenge does not belong to brand
+    get:
+      tags:
+        - brands
+      summary: View codes and usage (brand owner only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Up to 100 codes, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/InviteCode"
+                  nextCursor:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - data
+                  - nextCursor
+        "400":
+          description: Invalid cursor
+        "403":
+          description: Not the brand owner
+  /brands/{id}/retention:
+    get:
+      tags:
+        - brands
+      summary: Weekly cross-challenge cohort retention (brand viewer or higher)
+      description: Monday UTC cohorts, based on first non-practice, non-flagged
+        live-session participation. Later weeks count distinct users returning
+        to a different challenge. Completed zero-return weeks are included;
+        future weeks are omitted. Week 0 and up to 12 later weeks are returned.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "200":
+          description: Empty cohorts when fewer than two challenges or no eligible
+            participants
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challengeCount:
+                    type: integer
+                  cohorts:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        cohort_week:
+                          type: string
+                        cohort_size:
+                          type: integer
+                        week_offset:
+                          type: integer
+                        retained_users:
+                          type: integer
+                        retention_pct:
+                          type: number
+                      required:
+                        - cohort_week
+                        - cohort_size
+                        - week_offset
+                        - retained_users
+                        - retention_pct
+                required:
+                  - challengeCount
+                  - cohorts
+        "403":
+          description: Not a brand member
+        "404":
+          description: Brand not found
+  /challenges/{id}/comments:
+    get:
+      tags:
+        - challenges
+      summary: Read a persistent challenge discussion
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+        - schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+          required: false
+          name: limit
+          in: query
+        - schema:
+            type: string
+          required: false
+          name: cursor
+          in: query
+      responses:
+        "200":
+          description: Comments newest first (default page size 20)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ChallengeComment"
+                  nextCursor:
+                    type:
+                      - string
+                      - "null"
+                required:
+                  - data
+                  - nextCursor
+        "400":
+          description: Invalid pagination
+        "404":
+          description: Challenge missing, draft or deleted
+    post:
+      tags:
+        - challenges
+      summary: Post a plain-text challenge comment
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                body:
+                  type: string
+                  minLength: 1
+                  maxLength: 2000
+              required:
+                - body
+      responses:
+        "201":
+          description: Comment created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comment:
+                    $ref: "#/components/schemas/ChallengeComment"
+                required:
+                  - comment
+        "400":
+          description: Invalid body
+        "403":
+          description: Suspended or fraud-flagged account
+        "404":
+          description: Challenge missing, draft or deleted
+        "422":
+          description: Profanity or spam
+        "429":
+          description: Duplicate body or more than five comments/minute
+  /challenges/{id}/duplicate:
+    post:
+      tags:
+        - challenges
+      summary: Duplicate a challenge's configuration into an unfunded draft (owner only)
+      description: Copies questions, limits, payout schedule, existing licensing
+        obligations, variants, tiers and tags. Dates, escrow state, sessions,
+        leaderboards and experiment results are reset.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      responses:
+        "201":
+          description: New draft
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge:
+                    $ref: "#/components/schemas/ChallengeDraft"
+                required:
+                  - challenge
+        "403":
+          description: Not the owner
+        "404":
+          description: Source missing or deleted
+  /challenges/{id}/publish-draft:
+    post:
+      tags:
+        - challenges
+      summary: Set new dates and receive fresh funding instructions for a draft
+      description: Requires ownership, current terms acceptance, a future start, an
+        end at least one hour later and a minimum 100 USDC pool. Changes status
+        to pending_deposit. Funding uses the existing deposit flow.
+      security:
+        - bearerAuth: []
+      parameters:
+        - schema:
+            type: string
+            format: uuid
+          required: true
+          name: id
+          in: path
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startsAt:
+                  type: string
+                  format: date-time
+                endsAt:
+                  type: string
+                  format: date-time
+              required:
+                - startsAt
+                - endsAt
+      responses:
+        "200":
+          description: Ready to fund
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challenge:
+                    $ref: "#/components/schemas/ChallengeDraft"
+                  depositInstructions:
+                    type: object
+                    properties:
+                      hotWalletAddress:
+                        type: string
+                      memo:
+                        type: string
+                      amount:
+                        type: string
+                      asset:
+                        type: string
+                        enum:
+                          - USDC
+                    required:
+                      - hotWalletAddress
+                      - memo
+                      - amount
+                      - asset
+                required:
+                  - challenge
+                  - depositInstructions
+        "403":
+          description: Not the owner or terms not accepted
+        "404":
+          description: Draft not found
+        "409":
+          description: Already scheduled
+        "422":
+          description: Invalid dates or pool
 webhooks: {}

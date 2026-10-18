@@ -36,7 +36,9 @@ async function listMigrations(): Promise<MigrationFile[]> {
       (entry) => entry.isFile() && entry.name.endsWith(".sql") && !entry.name.endsWith(".down.sql")
     )
     .map((entry) => entry.name)
-    .sort();
+    // Historical files mix four- and five-digit prefixes. Numeric ordering
+    // keeps new migrations after their dependencies without renaming history.
+    .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10) || a.localeCompare(b));
   const knownNames = new Set(
     dirEntries.filter((entry) => entry.isFile()).map((entry) => entry.name)
   );
@@ -156,7 +158,7 @@ async function runDown(count: number): Promise<void> {
 
   await withLockedTransaction(async (client) => {
     const applied = await client.query<{ version: string }>(
-      "SELECT version FROM schema_migrations ORDER BY applied_at DESC, version DESC"
+      "SELECT version FROM schema_migrations ORDER BY applied_at DESC, substring(version from '^[0-9]+')::integer DESC, version DESC"
     );
     const targets = applied.rows.slice(0, count);
 

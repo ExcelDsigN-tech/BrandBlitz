@@ -64,6 +64,19 @@ vi.mock("@/lib/api", async () => {
 describe("DashboardPage", () => {
   beforeEach(() => {
     apiGetMock.mockReset();
+    apiGetMock.mockResolvedValue({
+      data: {
+        leagues: [],
+        data: [],
+        nextCursor: null,
+        challengeCount: 0,
+        cohorts: [],
+        offers: [],
+        offered: [],
+        acquired: [],
+        issued: [],
+      },
+    });
     toastErrorMock.mockReset();
     pushMock.mockReset();
   });

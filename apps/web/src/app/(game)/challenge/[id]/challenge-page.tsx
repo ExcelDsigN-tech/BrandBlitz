@@ -23,6 +23,7 @@ import { FirstRunTutorial } from "@/components/game/first-run-tutorial";
 import { ChallengeTeamsPanel } from "@/components/challenge/challenge-teams-panel";
 import { ChallengeChatPanel } from "@/components/challenge/challenge-chat-panel";
 import { ChallengeRatingPrompt } from "@/components/game/challenge-rating-prompt";
+import { ChallengeComments } from "@/components/challenge/challenge-comments";
 
 const WarmupPhase = dynamic(
   () => import("@/components/game/warmup-phase").then((m) => m.WarmupPhase),
@@ -530,6 +531,7 @@ export function ChallengePage({ params }: Props) {
           onSkip={handlePreviewSkip}
         />
         <div className="mx-auto max-w-xl space-y-6 px-4">
+          <ChallengeComments challengeId={challenge.id} apiToken={apiToken} />
           <ChallengeTeamsPanel
             challengeId={challenge.id}
             apiToken={apiToken}
@@ -682,7 +684,8 @@ export function ChallengePage({ params }: Props) {
           primaryColor={challenge?.primary_color ?? undefined}
           secondaryColor={challenge?.secondary_color ?? undefined}
         />
-        <div className="mx-auto max-w-xl px-4">
+        <div className="mx-auto max-w-xl space-y-6 px-4">
+          <ChallengeComments challengeId={challengeId} apiToken={apiToken} />
           <ChallengeChatPanel
             challengeId={challengeId}
             apiToken={apiToken}
