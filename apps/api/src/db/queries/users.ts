@@ -515,3 +515,47 @@ export async function searchUsersByUsername(
   );
   return result.rows;
 }
+
+export interface NotificationPreference {
+  id: string;
+  user_id: string;
+  category: "payout" | "badge" | "streak" | "referral";
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getNotificationPreferences(userId: string): Promise<NotificationPreference[]> {
+  const result = await query<NotificationPreference>(
+    `SELECT * FROM notification_preferences WHERE user_id = $1 ORDER BY category ASC`,
+    [userId],
+  );
+  return result.rows;
+}
+
+export async function isNotificationCategoryEnabled(
+  userId: string,
+  category: string,
+): Promise<boolean> {
+  const result = await query<{ enabled: boolean }>(
+    `SELECT enabled FROM notification_preferences WHERE user_id = $1 AND category = $2`,
+    [userId, category],
+  );
+  return result.rows[0]?.enabled ?? true;
+}
+
+export async function updateNotificationPreference(
+  userId: string,
+  category: string,
+  enabled: boolean,
+): Promise<NotificationPreference | null> {
+  const result = await query<NotificationPreference>(
+    `INSERT INTO notification_preferences (user_id, category, enabled)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, category)
+     DO UPDATE SET enabled = $3, updated_at = NOW()
+     RETURNING *`,
+    [userId, category, enabled],
+  );
+  return result.rows[0] ?? null;
+}
