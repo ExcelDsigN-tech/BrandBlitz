@@ -27,6 +27,7 @@ import { queueReferralBonusForPayout } from "./referrals";
 import { query } from "../db";
 import { getLicensePayoutTerms } from "../db/queries/challenge-licenses";
 import { getChallengeTeamLeaderboard, splitTeamPayout } from "../db/queries/challenge-teams";
+import { dispatchNotification } from "./notifications";
 
 // Sentinel included in the PG trigger exception message (migration 018).
 export const FRAUD_BLOCK_SENTINEL = "FRAUD_BLOCKED_PAYOUT";
@@ -37,22 +38,16 @@ async function insertPayoutNotification(
   txHash: string | null | undefined,
   challengeId: string
 ): Promise<void> {
-  try {
-    await query(
-      `INSERT INTO notifications (user_id, type, payload)
-       VALUES ($1, 'payout_received', $2::jsonb)`,
-      [
-        userId,
-        JSON.stringify({
-          amount_usdc: amountUsdc,
-          tx_hash: txHash ?? null,
-          challenge_id: challengeId,
-        }),
-      ]
-    );
-  } catch (err) {
-    logger.warn("Failed to insert payout notification", { userId, err });
-  }
+  // Persists the in-app row and fans out a Web Push where configured (#1009).
+  await dispatchNotification({
+    userId,
+    type: "payout_received",
+    payload: {
+      amount_usdc: amountUsdc,
+      tx_hash: txHash ?? null,
+      challenge_id: challengeId,
+    },
+  });
 }
 
 export function isFraudBlockError(err: unknown): boolean {

@@ -27,6 +27,7 @@ const SECRET_KEYS = new Set<keyof Config>([
   "SESSION_INTEGRITY_KEY",
   "PHONE_HASH_SALT",
   "TWILIO_AUTH_TOKEN",
+  "WEB_PUSH_VAPID_PRIVATE_KEY",
 ]);
 
 function loadConfig(): Readonly<Config> {

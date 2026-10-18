@@ -102,5 +102,17 @@ export const configSchema = z.object({
   // Next.js revalidation — secret for on-demand ISR revalidation
   REVALIDATE_SECRET: z.string().min(16).optional(),
   NEXT_REVALIDATE_URL: z.string().url().optional(),
+
+  // Web Push (issue #1009) — optional. Push delivery stays disabled until the
+  // VAPID private key is configured; the public key is derived from it when
+  // omitted. Keys are base64url-encoded P-256 values (see .env.example).
+  WEB_PUSH_VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+  WEB_PUSH_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
+  WEB_PUSH_VAPID_SUBJECT: z
+    .string()
+    .refine((value) => value.startsWith("mailto:") || value.startsWith("https://"), {
+      message: "WEB_PUSH_VAPID_SUBJECT must be a mailto: or https:// URI",
+    })
+    .default("mailto:notifications@brandblitz.app"),
 });
 export type Config = z.infer<typeof configSchema>;

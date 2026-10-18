@@ -6,7 +6,8 @@ export type NotificationType =
   | "payout_received"
   | "badge_earned"
   | "streak_milestone"
-  | "rank_overtaken";
+  | "rank_overtaken"
+  | "challenge_reminder";
 
 export interface Notification {
   id: string;
@@ -26,6 +27,7 @@ const ICONS: Record<NotificationType, string> = {
   badge_earned: "🏅",
   streak_milestone: "🔥",
   rank_overtaken: "📉",
+  challenge_reminder: "🚀",
 };
 
 function toastSummary(n: Notification): string {
@@ -48,6 +50,11 @@ function toastSummary(n: Notification): string {
       if (rank && name) return `You dropped to #${rank} on ${name}`;
       if (rank) return `You dropped to rank #${rank}`;
       return "You've been overtaken on the leaderboard!";
+    }
+    case "challenge_reminder": {
+      const brand = n.payload.brand_name as string | undefined;
+      const lead = n.payload.lead_time_minutes as number | undefined;
+      return `${brand ?? "A challenge"} starts${lead ? ` in ${lead} minutes` : " soon"}!`;
     }
   }
 }

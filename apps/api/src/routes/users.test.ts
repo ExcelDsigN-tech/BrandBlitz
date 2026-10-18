@@ -24,9 +24,25 @@ var mockQuery = vi.fn();
 var mockGetUserBadges = vi.fn();
 var mockEnsureUserReferralCode = vi.fn();
 var mockMarkOnboardingCompleted = vi.fn();
+var mockRemovePushSubscription = vi.fn();
+var mockIsWebPushConfigured = vi.fn(() => true);
+var mockGetWebPushPublicKey = vi.fn((): string | null => "test-vapid-public-key");
 
 vi.mock("../db", () => ({
-  query: mockQuery,
+  // Delegate lazily: vitest hoists mock factories above the `var`
+  // initialisers in this file, so a direct reference would capture undefined.
+  query: (...args: unknown[]) => mockQuery(...args),
+}));
+
+vi.mock("../services/push", () => ({
+  removePushSubscription: (...args: unknown[]) => mockRemovePushSubscription(...args),
+}));
+
+vi.mock("../lib/web-push", () => ({
+  isWebPushConfigured: () => mockIsWebPushConfigured(),
+  getWebPushPublicKey: () => mockGetWebPushPublicKey(),
+  isSafePushEndpoint: (endpoint: string) => endpoint.startsWith("https://"),
+  sendWebPush: vi.fn(),
 }));
 
 vi.mock("../db/queries/badges", () => ({
@@ -756,6 +772,129 @@ describe("users routes integration", () => {
         .expect(200);
 
       expect(mockSearchUsersByUsername).toHaveBeenCalledWith("al", 1, 20);
+    });
+  });
+
+  describe("push subscription routes", () => {
+    const endpoint = "https://fcm.googleapis.com/fcm/send/abc123";
+
+    beforeEach(() => {
+      mockQuery.mockReset();
+      mockRemovePushSubscription.mockReset();
+      mockIsWebPushConfigured.mockReturnValue(true);
+      mockGetWebPushPublicKey.mockReturnValue("test-vapid-public-key");
+    });
+
+    it("GET /users/me/push/config exposes the VAPID public key", async () => {
+      const response = await request(app)
+        .get("/users/me/push/config")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .expect(200);
+
+      expect(response.body).toEqual({
+        configured: true,
+        public_key: "test-vapid-public-key",
+      });
+    });
+
+    it("GET /users/me/push/subscriptions returns the preference and registered devices", async () => {
+      mockQuery
+        .mockResolvedValueOnce({ rows: [{ push_notifications_enabled: false }] })
+        .mockResolvedValueOnce({
+          rows: [
+            {
+              id: "sub-1",
+              endpoint,
+              user_agent: "test-agent",
+              last_used_at: null,
+              created_at: "2026-10-01T00:00:00.000Z",
+            },
+          ],
+        });
+
+      const response = await request(app)
+        .get("/users/me/push/subscriptions")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .expect(200);
+
+      expect(response.body.enabled).toBe(false);
+      expect(response.body.subscriptions).toHaveLength(1);
+      expect(response.body.subscriptions[0].endpoint).toBe(endpoint);
+    });
+
+    it("POST /users/me/push/subscriptions upserts the device and opts the user back in", async () => {
+      mockQuery.mockResolvedValue({ rows: [{ id: "sub-1" }] });
+
+      const response = await request(app)
+        .post("/users/me/push/subscriptions")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .send({ endpoint, keys: { p256dh: "p256dh-key", auth: "auth-key" } })
+        .expect(201);
+
+      expect(response.body).toEqual({ success: true, id: "sub-1" });
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("ON CONFLICT (user_id, endpoint)"),
+        expect.arrayContaining([userId, endpoint, "p256dh-key", "auth-key"])
+      );
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("push_notifications_enabled = TRUE"),
+        [userId]
+      );
+    });
+
+    it("POST /users/me/push/subscriptions rejects unsafe endpoints", async () => {
+      await request(app)
+        .post("/users/me/push/subscriptions")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .send({ endpoint: "http://localhost/push", keys: { p256dh: "key", auth: "secret" } })
+        .expect(400);
+    });
+
+    it("POST /users/me/push/subscriptions returns 503 when VAPID is not configured", async () => {
+      mockIsWebPushConfigured.mockReturnValue(false);
+
+      await request(app)
+        .post("/users/me/push/subscriptions")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .send({ endpoint, keys: { p256dh: "p256dh-key", auth: "auth-key" } })
+        .expect(503);
+    });
+
+    it("DELETE /users/me/push/subscriptions removes the device", async () => {
+      mockRemovePushSubscription.mockResolvedValue(true);
+
+      const response = await request(app)
+        .delete("/users/me/push/subscriptions")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .send({ endpoint })
+        .expect(200);
+
+      expect(response.body).toEqual({ success: true, removed: true });
+      expect(mockRemovePushSubscription).toHaveBeenCalledWith(userId, endpoint);
+    });
+
+    it("PATCH /users/me/push/preferences toggles push independently of in-app", async () => {
+      mockQuery.mockResolvedValue({ rows: [] });
+
+      const response = await request(app)
+        .patch("/users/me/push/preferences")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .send({ enabled: false })
+        .expect(200);
+
+      expect(response.body).toEqual({ success: true, enabled: false });
+      expect(mockQuery).toHaveBeenCalledWith(
+        expect.stringContaining("push_notifications_enabled = $2"),
+        [userId, false]
+      );
+    });
+
+    it("PATCH /users/me/push/preferences rejects non-boolean values", async () => {
+      await request(app)
+        .patch("/users/me/push/preferences")
+        .set("Authorization", `Bearer ${authToken()}`)
+        .send({ enabled: "no" })
+        .expect(400);
     });
   });
 });

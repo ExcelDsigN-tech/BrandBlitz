@@ -14,6 +14,8 @@ import {
 import { getReferralStats, ensureUserReferralCode } from "../services/referrals";
 import { stroopsToUsdc } from "../lib/usdc";
 import { getStreak, repairStreak, getUserActivity, getStreakDetail } from "../services/streaks";
+import { removePushSubscription } from "../services/push";
+import { getWebPushPublicKey, isSafePushEndpoint, isWebPushConfigured } from "../lib/web-push";
 import { query } from "../db";
 import {
   sendVerificationCode,
@@ -972,6 +974,126 @@ router.patch("/me/notifications/read-all", authenticate, async (req, res) => {
   ]);
 
   res.json({ success: true });
+});
+
+const PushSubscriptionSchema = z
+  .object({
+    endpoint: z.string().url().max(2048),
+    keys: z
+      .object({
+        p256dh: z.string().min(1).max(255),
+        auth: z.string().min(1).max(255),
+      })
+      .strict(),
+    user_agent: z.string().max(512).optional(),
+  })
+  .strict();
+
+/**
+ * GET /users/me/push/config
+ * Exposes whether Web Push is configured and the VAPID public key used by
+ * `PushManager.subscribe()` in the browser.
+ */
+router.get("/me/push/config", authenticate, (_req, res) => {
+  res.json({
+    configured: isWebPushConfigured(),
+    public_key: getWebPushPublicKey(),
+  });
+});
+
+/**
+ * GET /users/me/push/subscriptions
+ * Lists the authenticated user's registered devices plus their push opt-in.
+ */
+router.get("/me/push/subscriptions", authenticate, async (req, res) => {
+  const preference = await query<{ push_notifications_enabled: boolean }>(
+    `SELECT push_notifications_enabled FROM users WHERE id = $1`,
+    [req.user!.sub]
+  );
+
+  const subscriptions = await query<{
+    id: string;
+    endpoint: string;
+    user_agent: string | null;
+    last_used_at: string | null;
+    created_at: string;
+  }>(
+    `SELECT id, endpoint, user_agent, last_used_at, created_at
+     FROM push_subscriptions
+     WHERE user_id = $1
+     ORDER BY created_at DESC`,
+    [req.user!.sub]
+  );
+
+  res.json({
+    enabled: preference.rows[0]?.push_notifications_enabled ?? true,
+    subscriptions: subscriptions.rows,
+  });
+});
+
+/**
+ * POST /users/me/push/subscriptions
+ * Registers (or refreshes) a browser push subscription. Registering a device
+ * also opts the user back in to push if they had disabled it earlier.
+ */
+router.post("/me/push/subscriptions", authenticate, async (req, res) => {
+  const body = PushSubscriptionSchema.parse(req.body);
+
+  if (!isSafePushEndpoint(body.endpoint)) {
+    throw createError("Invalid push endpoint", 400, "INVALID_PUSH_ENDPOINT");
+  }
+
+  if (!isWebPushConfigured()) {
+    throw createError("Web push is not configured", 503, "PUSH_NOT_CONFIGURED");
+  }
+
+  const userAgent = body.user_agent ?? req.headers["user-agent"] ?? null;
+
+  const result = await query<{ id: string }>(
+    `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (user_id, endpoint)
+     DO UPDATE SET
+       p256dh = EXCLUDED.p256dh,
+       auth = EXCLUDED.auth,
+       user_agent = EXCLUDED.user_agent,
+       failure_count = 0,
+       updated_at = NOW()
+     RETURNING id`,
+    [req.user!.sub, body.endpoint, body.keys.p256dh, body.keys.auth, userAgent]
+  );
+
+  await query(
+    `UPDATE users SET push_notifications_enabled = TRUE, updated_at = NOW() WHERE id = $1`,
+    [req.user!.sub]
+  );
+
+  res.status(201).json({ success: true, id: result.rows[0]?.id });
+});
+
+/**
+ * DELETE /users/me/push/subscriptions
+ * Removes a single device subscription (used on browser unsubscribes).
+ */
+router.delete("/me/push/subscriptions", authenticate, async (req, res) => {
+  const { endpoint } = z.object({ endpoint: z.string().url().max(2048) }).parse(req.body);
+  const removed = await removePushSubscription(req.user!.sub, endpoint);
+  res.json({ success: true, removed });
+});
+
+/**
+ * PATCH /users/me/push/preferences
+ * Toggles push delivery independently of in-app notifications.
+ */
+router.patch("/me/push/preferences", authenticate, async (req, res) => {
+  const { enabled } = z.object({ enabled: z.boolean() }).strict().parse(req.body);
+
+  await query(
+    `UPDATE users SET push_notifications_enabled = $2, updated_at = NOW() WHERE id = $1`,
+    [req.user!.sub, enabled]
+  );
+
+  res.json({ success: true, enabled });
 });
 
 /**

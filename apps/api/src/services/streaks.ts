@@ -1,6 +1,5 @@
 import { metrics } from "../lib/metrics";
-import { query } from "../db";
-import { logger } from "../lib/logger";
+import { dispatchNotification } from "./notifications";
 import {
   getUserStreak,
   repairUserStreak,
@@ -157,15 +156,11 @@ function dayDiff(from: string, to: string): number {
 }
 
 async function insertStreakMilestoneNotification(userId: string, milestone: number): Promise<void> {
-  try {
-    await query(
-      `INSERT INTO notifications (user_id, type, payload)
-       VALUES ($1, 'streak_milestone', $2::jsonb)`,
-      [userId, JSON.stringify({ milestone })]
-    );
-  } catch (err) {
-    logger.warn("Failed to insert streak milestone notification", { userId, milestone, err });
-  }
+  await dispatchNotification({
+    userId,
+    type: "streak_milestone",
+    payload: { milestone },
+  });
 }
 
 export interface ActivityRecord {
