@@ -13,7 +13,7 @@ import {
   getEndedBatchedChallenges,
 } from "../db/queries/challenges";
 import { createPayout, updatePayoutStatus } from "../db/queries/payouts";
-import { incrementUserEarnings } from "../db/queries/users";
+import { incrementUserEarnings, isNotificationCategoryEnabled } from "../db/queries/users";
 import { rankWinners } from "./scoring";
 import { calculatePayoutShareStroops, stroopsToUsdc } from "../lib/usdc";
 import { enqueuePayoutJob } from "../queues/payout.queue";
@@ -38,6 +38,12 @@ async function insertPayoutNotification(
   challengeId: string
 ): Promise<void> {
   try {
+    const enabled = await isNotificationCategoryEnabled(userId, "payout");
+    if (!enabled) {
+      logger.debug("Payout notification skipped - user has disabled payout notifications", { userId });
+      return;
+    }
+
     await query(
       `INSERT INTO notifications (user_id, type, payload)
        VALUES ($1, 'payout_received', $2::jsonb)`,

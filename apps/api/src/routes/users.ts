@@ -10,6 +10,8 @@ import {
   getUserPublicProfileByUsername,
   searchUsersByUsername,
   markOnboardingCompleted,
+  getNotificationPreferences,
+  updateNotificationPreference,
 } from "../db/queries/users";
 import { getReferralStats, ensureUserReferralCode } from "../services/referrals";
 import { stroopsToUsdc } from "../lib/usdc";
@@ -972,6 +974,41 @@ router.patch("/me/notifications/read-all", authenticate, async (req, res) => {
   ]);
 
   res.json({ success: true });
+});
+
+/**
+ * GET /users/me/notification-preferences
+ * Returns notification preferences for all categories (payout, badge, streak, referral).
+ */
+router.get("/me/notification-preferences", authenticate, async (req, res) => {
+  const prefs = await getNotificationPreferences(req.user!.sub);
+  res.json({ preferences: prefs });
+});
+
+/**
+ * PATCH /users/me/notification-preferences/:category
+ * Update a single notification preference category.
+ * Body: { enabled: boolean }
+ */
+router.patch("/me/notification-preferences/:category", authenticate, async (req, res) => {
+  const { category } = req.params;
+  const parsed = z.object({ enabled: z.boolean() }).safeParse(req.body);
+
+  if (!parsed.success) {
+    throw createError("Invalid request body", 400, "INVALID_BODY");
+  }
+
+  const validCategories = ["payout", "badge", "streak", "referral"];
+  if (!validCategories.includes(category)) {
+    throw createError(`Invalid category. Must be one of: ${validCategories.join(", ")}`, 400, "INVALID_CATEGORY");
+  }
+
+  const updated = await updateNotificationPreference(req.user!.sub, category, parsed.data.enabled);
+  if (!updated) {
+    throw createError("Failed to update notification preference", 500);
+  }
+
+  res.json({ preference: updated });
 });
 
 /**

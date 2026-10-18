@@ -71,6 +71,8 @@ pnpm --filter @brandblitz/web build
 pnpm check:bundle
 ```
 
+**Note:** This check is currently run **manually during code review**, not automatically in CI. Integrating it into the CI/CD pipeline is a future enhancement tracked separately.
+
 What it does:
 
 - Sums the `Gzip` column of every row in `docs/perf/bundle-baseline.txt` (after the 4 header lines).
