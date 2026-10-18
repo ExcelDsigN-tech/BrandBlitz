@@ -20,6 +20,8 @@ import {
   isJtiRevoked,
 } from "../lib/tokens";
 import { query } from "../db";
+import { hasTotpEnabled } from "../db/queries/totp";
+import totpRouter, { signPendingTotpToken } from "./auth.2fa";
 
 const router = Router();
 
@@ -81,6 +83,14 @@ router.post("/google/callback", authLimiter, async (req, res) => {
   // Session fixation prevention: revoke all existing refresh tokens before
   // issuing new credentials so any pre-login token is invalidated.
   await revokeAllUserRefreshTokens(user.id);
+
+  // If the user has confirmed TOTP 2FA, issue a short-lived pending token
+  // instead of full credentials.  The client must call POST /auth/2fa/verify
+  // to exchange it for a real access/refresh token pair.
+  if (await hasTotpEnabled(user.id)) {
+    const pendingToken = signPendingTotpToken(user);
+    return res.json({ requiresTwoFactor: true, pendingToken, user: serializeUser(user) });
+  }
 
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
@@ -152,5 +162,8 @@ router.post("/logout", async (req, res) => {
   }
   res.json({ ok: true });
 });
+
+// Mount TOTP 2FA sub-router at /auth/2fa/...
+router.use("/2fa", totpRouter);
 
 export default router;

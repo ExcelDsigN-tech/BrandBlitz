@@ -16,6 +16,16 @@ on:
       - "apps/api/**"
       - "e2e/**"
 
+# Cancel any in-progress run for the same branch/PR so rapid pushes don't
+# queue up redundant Playwright runs (each of which spins up a full Postgres
+# service container and installs browser binaries).
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   playwright:
     name: Playwright E2E
@@ -23,10 +33,13 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/checkout.git refs/tags/v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        # docker/setup-buildx-action v3 — pinned to commit SHA
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Start docker-compose services
         run: |
@@ -45,8 +58,12 @@ jobs:
         env:
           SEED_DEV: "1"
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      # pnpm/action-setup v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/pnpm/action-setup.git refs/tags/v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      # actions/setup-node v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/setup-node.git refs/tags/v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: pnpm
@@ -63,7 +80,9 @@ jobs:
           PLAYWRIGHT_TEST_BASE_URL: http://localhost:3000
 
       - name: Upload trace artifacts on failure
-        uses: actions/upload-artifact@v4
+        # actions/upload-artifact v4 — pinned to commit SHA
+        # To upgrade: git ls-remote https://github.com/actions/upload-artifact.git refs/tags/v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         if: failure()
         with:
           name: playwright-traces
