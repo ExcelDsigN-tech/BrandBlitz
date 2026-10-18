@@ -20,6 +20,9 @@ jobs:
   build-push:
     name: Build & push ${{ matrix.app }} image
     runs-on: ubuntu-latest
+    # Timeout covers: checkout + buildx setup + login + metadata + local build +
+    # Trivy scan + push + cosign sign for one matrix entry.
+    timeout-minutes: 30
     permissions:
       contents: read
       packages: write
@@ -32,13 +35,17 @@ jobs:
         app: [api, web, deposit-monitor]
 
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/checkout.git refs/tags/v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        # docker/setup-buildx-action v3 — pinned to commit SHA
+        uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3
 
       - name: Log in to GHCR
-        uses: docker/login-action@v3
+        # docker/login-action v3 — pinned to commit SHA
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -46,7 +53,8 @@ jobs:
 
       - name: Extract OCI metadata
         id: meta
-        uses: docker/metadata-action@v5
+        # docker/metadata-action v5 — pinned to commit SHA
+        uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.ORG }}/brandblitz-${{ matrix.app }}
           tags: |
@@ -63,7 +71,8 @@ jobs:
             org.opencontainers.image.created=${{ github.event.repository.updated_at }}
 
       - name: Build local image ${{ matrix.app }}
-        uses: docker/build-push-action@v6
+        # docker/build-push-action v6 — pinned to commit SHA
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
@@ -91,7 +100,11 @@ jobs:
       #   docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image brandblitz-${{ matrix.app }}:local
       - name: Run Trivy vulnerability scanner
         id: trivy
-        uses: aquasecurity/trivy-action@master
+        # aquasecurity/trivy-action — pinned to commit SHA instead of the
+        # mutable @master branch.  To upgrade:
+        #   git ls-remote https://github.com/aquasecurity/trivy-action.git refs/heads/master
+        # then replace the SHA below.
+        uses: aquasecurity/trivy-action@6abccf398f78b4c337599c0656f933d91efb91a0 # master as of 2026-10-17
         with:
           image-ref: brandblitz-${{ matrix.app }}:local
           format: sarif
@@ -100,7 +113,8 @@ jobs:
           severity: HIGH,CRITICAL
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
+        # github/codeql-action/upload-sarif v3 — pinned to commit SHA
+        uses: github/codeql-action/upload-sarif@ce5e7eeac396d720fe2d802714996c8ce561e311 # v3
         if: always() && (steps.trivy.outcome == 'success' || steps.trivy.outcome == 'failure')
         with:
           sarif_file: "trivy-results.sarif"
@@ -108,7 +122,8 @@ jobs:
 
       - name: Build and push ${{ matrix.app }}
         id: push
-        uses: docker/build-push-action@v6
+        # docker/build-push-action v6 — pinned to commit SHA (same as above)
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
@@ -126,7 +141,8 @@ jobs:
           sbom: true
 
       - name: Install cosign
-        uses: sigstore/cosign-installer@v3
+        # sigstore/cosign-installer v3 — pinned to commit SHA
+        uses: sigstore/cosign-installer@f713795cb21599bc4e5c4b58cbad1da852d7eeb9 # v3
 
       - name: Sign image with cosign (keyless OIDC)
         run: |
