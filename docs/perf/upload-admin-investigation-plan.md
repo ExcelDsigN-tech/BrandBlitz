@@ -80,15 +80,15 @@ counters asynchronously.
 
 For every endpoint and load level, attach JSON output plus:
 
-| Field | Value |
-| --- | --- |
-| Fixture and row counts | |
-| Cache state / TTL | |
-| p50 / p95 / p99 | |
-| 429 rate | |
-| DB / Redis / S3 timings | |
-| Production-query p95 delta | |
-| Recommendation and evidence | |
+| Field                       | Value |
+| --------------------------- | ----- |
+| Fixture and row counts      |       |
+| Cache state / TTL           |       |
+| p50 / p95 / p99             |       |
+| 429 rate                    |       |
+| DB / Redis / S3 timings     |       |
+| Production-query p95 delta  |       |
+| Recommendation and evidence |       |
 
 Do not run these tests against production or save bearer tokens in reports.
 

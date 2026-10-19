@@ -13,7 +13,9 @@ export function createRecurringChallengesWorker(
     "recurring-challenges",
     async (job: Job) => {
       if (job.name === "spawn-all-due") {
-        logger.info("Recurring challenges sweep: spawning due challenges from all active templates");
+        logger.info(
+          "Recurring challenges sweep: spawning due challenges from all active templates"
+        );
         const result = await spawnDueChallengesFromAllTemplates();
         logger.info("Recurring challenges sweep complete", {
           spawned: result.spawned,
@@ -30,9 +32,7 @@ export function createRecurringChallengesWorker(
           logger.warn("spawn-template job missing templateId", { jobId: job.id });
           return null;
         }
-        const { spawnChallengeFromTemplate } = await import(
-          "../../services/challenge-templates"
-        );
+        const { spawnChallengeFromTemplate } = await import("../../services/challenge-templates");
         const result = await spawnChallengeFromTemplate(templateId, {
           forcePeriod: job.data?.forcePeriod,
         });
@@ -65,9 +65,7 @@ function setupGracefulShutdown(worker: Worker, workerName: string): void {
     if (isShuttingDown) return;
     isShuttingDown = true;
 
-    logger.info(
-      `${signal} received, gracefully shutting down ${workerName} worker...`
-    );
+    logger.info(`${signal} received, gracefully shutting down ${workerName} worker...`);
 
     const shutdownTimer = setTimeout(() => {
       logger.warn(`${workerName} worker shutdown timeout exceeded, forcing exit`);

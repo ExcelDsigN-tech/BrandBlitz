@@ -16,10 +16,10 @@ The response is cached in Redis for **60 seconds** (`PUBLIC_CONFIG_CACHE_TTL_SEC
 
 HTTP headers returned on every response:
 
-| Header | Value |
-|--------|-------|
+| Header          | Value                |
+| --------------- | -------------------- |
 | `Cache-Control` | `public, max-age=60` |
-| `X-Cache` | `HIT` or `MISS` |
+| `X-Cache`       | `HIT` or `MISS`      |
 
 A `HIT` means the value was served from Redis. A `MISS` means it was read from the database and then written to the cache.
 
@@ -35,11 +35,11 @@ A `HIT` means the value was served from Redis. A `MISS` means it was read from t
 
 All fields are optional — if a key has not been set in `app_config` it is omitted from the response.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `game_round_duration_seconds` | `number` | How long each challenge round lasts in seconds. |
-| `max_rounds_per_session` | `number` | Maximum number of rounds a player can complete in a single session. |
-| `maintenance_mode` | `boolean` | When `true` the frontend should display a maintenance banner and disable challenge entry. |
+| Field                         | Type      | Description                                                                               |
+| ----------------------------- | --------- | ----------------------------------------------------------------------------------------- |
+| `game_round_duration_seconds` | `number`  | How long each challenge round lasts in seconds.                                           |
+| `max_rounds_per_session`      | `number`  | Maximum number of rounds a player can complete in a single session.                       |
+| `maintenance_mode`            | `boolean` | When `true` the frontend should display a maintenance banner and disable challenge entry. |
 
 ## Public vs internal keys
 

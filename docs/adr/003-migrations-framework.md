@@ -20,7 +20,7 @@ re-litigate the decision.
 ## Decision
 
 `apps/api/scripts/migrate.ts` runs versioned SQL files from
-`migrations/` against the configured database.
+`apps/api/migrations/` against the configured database.
 
 - Each migration is a numbered `.sql` file (`NNNN_<slug>.sql`).
 - Up-direction only by default — Postgres-shaped, write-only.
@@ -44,7 +44,7 @@ re-litigate the decision.
 - **No drift channel**: the schema lives in SQL files, not in a
   TypeScript model that has to be kept in lock-step. The runtime
   query layer ([sql-template-strings](https://www.npmjs.com/package/sql-template-strings)
-  + a thin type generator) reads from the live schema.
+  - a thin type generator) reads from the live schema.
 - **Operational simplicity**: zero new third-party tools in the
   production runbook. `pnpm migrate` is just a thin wrapper around
   `psql`.
@@ -53,7 +53,7 @@ Considered alternatives:
 
 - **Prisma migrate**: tempting because of the model-first DX, but
   adoption would force us to express our existing schema in
-  `schema.prisma` then *generate* migrations from it. Net loss in
+  `schema.prisma` then _generate_ migrations from it. Net loss in
   reviewability for non-trivial migrations.
 - **Drizzle migrate**: similar trade-off; the generator is
   cleaner than Prisma's, but we still pay the model-first cost.
@@ -82,5 +82,11 @@ Considered alternatives:
 ## References
 
 - `apps/api/scripts/migrate.ts`
-- `migrations/`
+- `apps/api/migrations/` — canonical migration directory read by the migration runner
 - Closes #68.
+
+## Migration Directory Clarification
+
+The migration runner reads **only** from `apps/api/migrations/`. A legacy `migrations/` directory exists at the repository root (39 files with 3-digit prefixes) but is **not used** by `pnpm migrate`, `pnpm migrate:dryrun`, or `pnpm migrate:down`. The root directory predates the current migration framework and is retained as a historical record.
+
+**For contributors**: Always add new migrations to `apps/api/migrations/`, not the root `migrations/` directory.

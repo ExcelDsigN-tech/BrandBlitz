@@ -2,7 +2,7 @@ import { test, expect } from "@playwright/test";
 
 /**
  * Playwright test to verify FingerprintJS visitorId is sent in warmup-start payload.
- * 
+ *
  * This test:
  * 1. Intercepts the POST /sessions/:id/warmup-start request
  * 2. Verifies the deviceId field is populated with a non-empty string
@@ -63,8 +63,6 @@ test("should render challenge page without FingerprintJS errors", async ({ page 
   await page.waitForTimeout(1000);
 
   // Should not have FingerprintJS-related errors
-  const fpErrors = errorMessages.filter((msg) =>
-    msg.toLowerCase().includes("fingerprint")
-  );
+  const fpErrors = errorMessages.filter((msg) => msg.toLowerCase().includes("fingerprint"));
   expect(fpErrors).toHaveLength(0);
 });

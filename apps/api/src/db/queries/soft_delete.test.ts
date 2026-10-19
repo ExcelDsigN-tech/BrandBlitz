@@ -1,5 +1,6 @@
 process.env.NODE_ENV = "test";
-process.env.DATABASE_URL = process.env.DATABASE_URL ?? "postgresql://brandblitz:brandblitz_dev@localhost:5432/brandblitz";
+process.env.DATABASE_URL =
+  process.env.DATABASE_URL ?? "postgresql://brandblitz:brandblitz_dev@localhost:5432/brandblitz";
 process.env.REDIS_URL = "redis://localhost:6379";
 process.env.JWT_SECRET = "test-secret-32-chars-long-minimal-requirement";
 process.env.GOOGLE_CLIENT_ID = "test-client-id";

@@ -71,13 +71,13 @@ describe("packages/storage/src/optimize.ts — image profiles unit tests", () =>
   it("unsupported MIME type (e.g. text/plain or invalid buffer): throws descriptive StorageError", async () => {
     const textBuffer = Buffer.from("Hello world, this is a plain text file", "utf-8");
 
-    await expect(
-      assertImageMatchesDeclaredType(textBuffer, "text/plain")
-    ).rejects.toThrow(StorageError);
+    await expect(assertImageMatchesDeclaredType(textBuffer, "text/plain")).rejects.toThrow(
+      StorageError
+    );
 
-    await expect(
-      optimizeBuffer(textBuffer, "brand-logo", "text/plain")
-    ).rejects.toThrow(StorageError);
+    await expect(optimizeBuffer(textBuffer, "brand-logo", "text/plain")).rejects.toThrow(
+      StorageError
+    );
   });
 
   it("already-optimized WebP input does not grow significantly in file size after processing", async () => {

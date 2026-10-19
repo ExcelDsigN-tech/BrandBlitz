@@ -11,6 +11,9 @@ importers:
       '@axe-core/playwright':
         specifier: 4.10.2
         version: 4.10.2(playwright-core@1.51.1)
+      '@brandblitz/config':
+        specifier: workspace:*
+        version: link:packages/config
       '@playwright/test':
         specifier: 1.51.1
         version: 1.51.1
@@ -23,6 +26,9 @@ importers:
       husky:
         specifier: 9.1.7
         version: 9.1.7
+      pg:
+        specifier: 8.20.0
+        version: 8.20.0
       prettier:
         specifier: 3.8.1
         version: 3.8.1

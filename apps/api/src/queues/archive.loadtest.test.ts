@@ -84,8 +84,7 @@ function simulateRun(multiplier: number): ArchiveMetrics {
   const drainPerRun = 0; // the worker drains whatever the predicate selects —
   // it keeps pace ONLY while jobDurationSec stays within the month window.
 
-  const backlogAfterWindow =
-    jobDurationSec > 3600 ? arrivalPerRun * (RUNS_IN_WINDOW - 1) : 0;
+  const backlogAfterWindow = jobDurationSec > 3600 ? arrivalPerRun * (RUNS_IN_WINDOW - 1) : 0;
 
   // Monthly window has ~2.6M seconds; utilization is computed against the
   // practical lock-holding budget instead (15 min statement timeout).
@@ -143,7 +142,8 @@ describe("Issue #1103: archive queue throughput", () => {
     // transaction, repeating until the predicate returns nothing.
     const CHUNK = 200;
     const chunks = Math.ceil(challenges / CHUNK);
-    const rowsPerChunk = CHUNK * (SESSIONS_PER_CHALLENGE + SESSIONS_PER_CHALLENGE * ROUND_SCORES_PER_SESSION + 1);
+    const rowsPerChunk =
+      CHUNK * (SESSIONS_PER_CHALLENGE + SESSIONS_PER_CHALLENGE * ROUND_SCORES_PER_SESSION + 1);
     const perChunkSec = rowsPerChunk / PG_ARCHIVE_WRITE_ROWS_PER_SEC;
 
     // No chunk holds the write lock longer than a minute.

@@ -9,15 +9,15 @@ signing/verification through `crypto.timingSafeEqual`, as called by
 `verifyWebhook`) and models the I/O pipeline with production-representative
 budgets:
 
-| Constant | Value | Source |
-| --- | --- | --- |
-| Postgres round-trip p50 | 2 ms | pooled local query budget |
-| Horizon REST call p50 | 300 ms | testnet REST call budget |
-| `REFRESH MATERIALIZED VIEW CONCURRENTLY` | 3 s | mid-size matview budget |
-| Redis SCAN+DEL sweep | 25 ms | per sweep, 100-key batches |
-| PG archive write throughput | 3,000 rows/s | sustained WAL-bound writes |
-| Soroban envelope limit | 100 KB | protocol cap |
-| Ledger close cadence | 5 s | Stellar consensus |
+| Constant                                 | Value        | Source                     |
+| ---------------------------------------- | ------------ | -------------------------- |
+| Postgres round-trip p50                  | 2 ms         | pooled local query budget  |
+| Horizon REST call p50                    | 300 ms       | testnet REST call budget   |
+| `REFRESH MATERIALIZED VIEW CONCURRENTLY` | 3 s          | mid-size matview budget    |
+| Redis SCAN+DEL sweep                     | 25 ms        | per sweep, 100-key batches |
+| PG archive write throughput              | 3,000 rows/s | sustained WAL-bound writes |
+| Soroban envelope limit                   | 100 KB       | protocol cap               |
+| Ledger close cadence                     | 5 s          | Stellar consensus          |
 
 The numbers below come from running the committed suites' models; the
 conclusions are anchored to the actual code in each handler. Rerun with:
@@ -36,14 +36,14 @@ npx vitest run --config apps/api/vitest.config.ts \
 
 **Measured (harness run):**
 
-| Burst | Per-event latency | Sustained drain | Backlog after 1 min |
-| --- | --- | --- | --- |
-| 100 events/min | ~308 ms | ~3.24 events/s | drains (−95/min) |
-| 500 events/min | ~308 ms | ~3.24 events/s | **+305 events/min backlog** |
-| 1000 events/min | ~308 ms | ~3.24 events/s | **+805 events/min backlog** |
+| Burst           | Per-event latency | Sustained drain | Backlog after 1 min         |
+| --------------- | ----------------- | --------------- | --------------------------- |
+| 100 events/min  | ~308 ms           | ~3.24 events/s  | drains (−95/min)            |
+| 500 events/min  | ~308 ms           | ~3.24 events/s  | **+305 events/min backlog** |
+| 1000 events/min | ~308 ms           | ~3.24 events/s  | **+805 events/min backlog** |
 
 - Signature verification (HMAC-SHA256 + `timingSafeEqual`) measured at
-  **~51,000 verifications/sec** — crypto is *never* the bottleneck; it is
+  **~51,000 verifications/sec** — crypto is _never_ the bottleneck; it is
   <0.1% of per-event latency.
 - The synchronous pipeline dominates: 4 Postgres round-trips (2 duplicate
   checks, memo lookup, status update) ≈ 8 ms, plus the **hot-wallet Horizon
@@ -55,6 +55,7 @@ npx vitest run --config apps/api/vitest.config.ts \
   rejecting bursts beyond 1000/hr before the handler does.
 
 **Recommendations (in priority order):**
+
 1. **Async offload (P0):** verify signature → enqueue a `deposit-processing`
    job → return `202`. Modeled enqueue cost 2 ms ⇒ ~30,000 events/min
    capacity; the worker owns balance-check + activation and can retry.
@@ -72,13 +73,14 @@ npx vitest run --config apps/api/vitest.config.ts \
 were modeled at 1x/2x/5x/10x baseline volume (100 jobs/hour baseline).
 
 | Volume | Arrival/min | Drain (any concurrency) | Backlog after 1 h |
-| --- | --- | --- | --- |
-| 1x | 1.67/min | 19 | 0 |
-| 2x | 3.33/min | 19 | 0 |
-| 5x | 8.33/min | 19 | 0 |
-| 10x | 16.67/min | 19 | 0 |
+| ------ | ----------- | ----------------------- | ----------------- |
+| 1x     | 1.67/min    | 19                      | 0                 |
+| 2x     | 3.33/min    | 19                      | 0                 |
+| 5x     | 8.33/min    | 19                      | 0                 |
+| 10x    | 16.67/min   | 19                      | 0                 |
 
 **Findings:**
+
 - `createLeaderboardRefreshWorker` currently runs at BullMQ's default
   concurrency **1** — and that is already optimal, because **Postgres
   serializes `REFRESH ... CONCURRENTLY` on the same matview**. Workers beyond
@@ -102,13 +104,14 @@ trigger matview lock contention.
 ~25 round-scores each. Rows touched per run = round-score deletes +
 session/challenge moves.
 
-| Volume | Challenges | Rows touched | Single-tx job duration | PG write share | Backlog (6 runs) |
-| --- | --- | --- | --- | --- | --- |
-| 2x | 1,000 | 209,000 | **101 s** | 7.7% | 0 |
-| 5x | 2,500 | 522,500 | **253 s** | 19.4% | 0 |
-| 10x | 5,000 | 1,045,000 | **505 s (~8.4 min)** | 38.7% | 0 (while job fits in the window) |
+| Volume | Challenges | Rows touched | Single-tx job duration | PG write share | Backlog (6 runs)                 |
+| ------ | ---------- | ------------ | ---------------------- | -------------- | -------------------------------- |
+| 2x     | 1,000      | 209,000      | **101 s**              | 7.7%           | 0                                |
+| 5x     | 2,500      | 522,500      | **253 s**              | 19.4%          | 0                                |
+| 10x    | 5,000      | 1,045,000    | **505 s (~8.4 min)**   | 38.7%          | 0 (while job fits in the window) |
 
 **Findings:**
+
 - The job archives EVERYTHING the predicate selects inside ONE transaction —
   duration scales linearly and the write lock/WAL pressure scales with it.
 - At 10x volume the single transaction holds the write lock for ~8 minutes;
@@ -130,6 +133,7 @@ safely.
 
 **Code-level constraints (from `apps/api/src/services/payout.ts` and
 `packages/stellar/src/escrow.ts`):**
+
 1. `getLeaderboard(challengeId, 1000)` — hard cap of 1000 sessions per
    challenge; a 5k/10k-recipient batch is **unreachable today** (data loss
    beyond 1000 winners).
@@ -143,13 +147,14 @@ safely.
 
 **Measured (model run):**
 
-| Batch | Settle txs required | Queue drain time | Bottleneck |
-| --- | --- | --- | --- |
-| 1,000 | 1 | ~5.4 s | fits one tx (barely) |
-| 5,000 | 5 | ~27 s | **Horizon ledger cadence** |
-| 10,000 | 9 | ~49 s | **Horizon ledger cadence** |
+| Batch  | Settle txs required | Queue drain time | Bottleneck                 |
+| ------ | ------------------- | ---------------- | -------------------------- |
+| 1,000  | 1                   | ~5.4 s           | fits one tx (barely)       |
+| 5,000  | 5                   | ~27 s            | **Horizon ledger cadence** |
+| 10,000 | 9                   | ~49 s            | **Horizon ledger cadence** |
 
 **Findings:**
+
 - Queue concurrency is never the bottleneck: raising
   `PAYOUT_WORKER_CONCURRENCY` cannot parallelize one hot wallet's sequence
   chain. Horizon/ledger cadence binds first — always.
@@ -159,6 +164,7 @@ safely.
   ledger cadence.
 
 **Recommendation:**
+
 1. Page `getLeaderboard` (or raise the cap) before anything else.
 2. Chunk settlements at **~200 recipients per settle tx** (~18 KB envelope —
    50x headroom): 1k → 5 txs, 5k → 25 txs, 10k → 50 txs.
@@ -171,11 +177,11 @@ safely.
 
 ## Recommended implementation priority
 
-| Priority | Item | Issue |
-| --- | --- | --- |
-| P0 | Async-offload the deposit webhook (verify → enqueue → 202) + cache hot-wallet balance | #1109 |
-| P0 | Page `getLeaderboard` past 1000 sessions | #1104 |
-| P1 | Chunk `EscrowClient.settle` at ~200 recipients | #1104 |
-| P1 | Chunk the archive transaction (200 challenges/tx) | #1103 |
-| P2 | Leaderboard refresh dedupe window (10 s coalescing) | #1102 |
-| P2 | Collapse the webhook duplicate-check queries | #1109 |
+| Priority | Item                                                                                  | Issue |
+| -------- | ------------------------------------------------------------------------------------- | ----- |
+| P0       | Async-offload the deposit webhook (verify → enqueue → 202) + cache hot-wallet balance | #1109 |
+| P0       | Page `getLeaderboard` past 1000 sessions                                              | #1104 |
+| P1       | Chunk `EscrowClient.settle` at ~200 recipients                                        | #1104 |
+| P1       | Chunk the archive transaction (200 challenges/tx)                                     | #1103 |
+| P2       | Leaderboard refresh dedupe window (10 s coalescing)                                   | #1102 |
+| P2       | Collapse the webhook duplicate-check queries                                          | #1109 |

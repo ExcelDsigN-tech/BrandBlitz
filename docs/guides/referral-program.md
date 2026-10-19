@@ -23,10 +23,10 @@ Every account automatically gets a unique code; you don't need to create one. If
 
 A referral becomes a conversion when the person who signed up with your link **wins a challenge payout**. At that moment two bonuses are created:
 
-| Who | Amount | When |
-|---|---|---|
-| **You (referrer)** | 10% of your friend's winning payout — capped at **5 USDC** | When their payout is processed |
-| **Your friend (referred)** | Flat **1 USDC** | Same moment |
+| Who                        | Amount                                                     | When                           |
+| -------------------------- | ---------------------------------------------------------- | ------------------------------ |
+| **You (referrer)**         | 10% of your friend's winning payout — capped at **5 USDC** | When their payout is processed |
+| **Your friend (referred)** | Flat **1 USDC**                                            | Same moment                    |
 
 Key rules:
 
@@ -52,7 +52,7 @@ Referral attribution is rejected when any of these apply:
 - **Self-referrals** — signing up with your own code is blocked.
 - **Referral cycles** — A referring B while B refers A is blocked.
 - **Device reuse** — if this device fingerprint is already attributed to another account, new attribution is refused (one device = one referrer).
-- **One referral per person** — the *first* valid code a person uses wins; later codes have no effect.
+- **One referral per person** — the _first_ valid code a person uses wins; later codes have no effect.
 - **Fraud-flagged sessions** — if the winning session carries a fraud flag, the bonus is skipped and the skip is written to the audit log. See [Fair Play for Players](./fair-play-for-players.md).
 - **Deleted accounts** — deleted referred users disappear from your list.
 
@@ -84,13 +84,13 @@ The Referral Hub shows your code, referred users, and bonus totals. The same dat
 }
 ```
 
-| Field | Description |
-|---|---|
-| `referralCode` | Your 6-character referral code |
-| `referredUsers[]` | People who signed up with your code, newest first |
-| `referredUsers[].bonusPaid` | `true` once the bonus payout has been sent |
-| `bonusStatus.pendingUsdc` | Total queued-but-unpaid referrer bonuses (7-decimal USDC) |
-| `bonusStatus.confirmedUsdc` | Total referrer bonuses already sent |
+| Field                       | Description                                               |
+| --------------------------- | --------------------------------------------------------- |
+| `referralCode`              | Your 6-character referral code                            |
+| `referredUsers[]`           | People who signed up with your code, newest first         |
+| `referredUsers[].bonusPaid` | `true` once the bonus payout has been sent                |
+| `bonusStatus.pendingUsdc`   | Total queued-but-unpaid referrer bonuses (7-decimal USDC) |
+| `bonusStatus.confirmedUsdc` | Total referrer bonuses already sent                       |
 
 ### `GET /users/me/referrals/stats`
 
@@ -104,10 +104,10 @@ The Referral Hub shows your code, referred users, and bonus totals. The same dat
 }
 ```
 
-| Field | Description |
-|---|---|
-| `invitesSent` | Tracked invite attempts |
-| `conversions` | Referrals that converted (count of referral relationships) |
+| Field                             | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| `invitesSent`                     | Tracked invite attempts                                      |
+| `conversions`                     | Referrals that converted (count of referral relationships)   |
 | `totalEarned` / `totalEarnedUsdc` | Combined referrer + referred bonuses earned (7-decimal USDC) |
 
 Amounts use Stellar's 7-decimal precision (1 USDC = 10,000,000 stroops).

@@ -2,7 +2,11 @@ import type { Request, Response, NextFunction } from "express";
 import { createError } from "./error";
 import { getCurrentLegalDocument, findUserLegalAcceptance } from "../db/queries/legal";
 
-export async function requireCurrentTosAccepted(req: Request, _res: Response, next: NextFunction): Promise<void> {
+export async function requireCurrentTosAccepted(
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> {
   if (!req.user) {
     throw createError("No token provided", 401);
   }

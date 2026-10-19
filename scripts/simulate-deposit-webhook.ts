@@ -51,7 +51,7 @@ function parseArgs(argv: string[]): Args {
 
   if (!flags.memo) {
     throw new Error(
-      "Missing required --memo <challenge-uuid> (see scripts/seed-e2e-challenge.ts to create a test challenge)",
+      "Missing required --memo <challenge-uuid> (see scripts/seed-e2e-challenge.ts to create a test challenge)"
     );
   }
 
@@ -78,7 +78,7 @@ async function main(): Promise<void> {
   if (!webhookSecret) {
     console.error(
       "❌ WEBHOOK_SECRET is not set. Set it to the same value the local API is configured with " +
-        "(APP_CONFIG.webhook_secret_current, or the WEBHOOK_SECRET env var it falls back to).",
+        "(APP_CONFIG.webhook_secret_current, or the WEBHOOK_SECRET env var it falls back to)."
     );
     process.exit(1);
   }

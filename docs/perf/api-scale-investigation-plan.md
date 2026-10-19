@@ -19,15 +19,15 @@ A dependency-free Node script is available at `scripts/perf/api-scale-probe.mjs`
 
 Configuration is controlled through environment variables:
 
-| Variable | Purpose | Default |
-| --- | --- | --- |
-| `BRANDBLITZ_API_BASE_URL` | API origin to probe | `http://localhost:3000` |
-| `BRANDBLITZ_AUTH_TOKEN` | Bearer token for authenticated endpoints | empty |
-| `BRANDBLITZ_REQUESTS_PER_STEP` | Total requests per concurrency step | `120` |
-| `BRANDBLITZ_CONCURRENCY_STEPS` | Comma-separated concurrency levels | `10,50,100` |
-| `BRANDBLITZ_PUBLIC_USERNAME` | Username used for the public profile scenario | `demo` |
-| `BRANDBLITZ_SEARCH_QUERY` | Search query used for the user search scenario | `brand` |
-| `BRANDBLITZ_BRAND_ID` | Brand id used for question preview generation | `demo` |
+| Variable                       | Purpose                                        | Default                 |
+| ------------------------------ | ---------------------------------------------- | ----------------------- |
+| `BRANDBLITZ_API_BASE_URL`      | API origin to probe                            | `http://localhost:3000` |
+| `BRANDBLITZ_AUTH_TOKEN`        | Bearer token for authenticated endpoints       | empty                   |
+| `BRANDBLITZ_REQUESTS_PER_STEP` | Total requests per concurrency step            | `120`                   |
+| `BRANDBLITZ_CONCURRENCY_STEPS` | Comma-separated concurrency levels             | `10,50,100`             |
+| `BRANDBLITZ_PUBLIC_USERNAME`   | Username used for the public profile scenario  | `demo`                  |
+| `BRANDBLITZ_SEARCH_QUERY`      | Search query used for the user search scenario | `brand`                 |
+| `BRANDBLITZ_BRAND_ID`          | Brand id used for question preview generation  | `demo`                  |
 
 Example local command for maintainers:
 

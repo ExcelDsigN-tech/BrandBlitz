@@ -66,6 +66,7 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
 
   const [logoKey, setLogoKey] = useState<string | null>(null);
   const [productImageKeys, setProductImageKeys] = useState<string[]>([]);
+  const [secondTier, setSecondTier] = useState({ entryFeeUsdc: "", prizePoolUsdc: "" });
 
   const hasRequiredFields = fields.name.trim() !== "" && fields.poolAmountUsdc.trim() !== "";
   const hasValidColors =
@@ -103,6 +104,14 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) {
+      return;
+    }
+
+    if (
+      secondTier.prizePoolUsdc &&
+      Number(secondTier.prizePoolUsdc) >= Number(fields.poolAmountUsdc)
+    ) {
+      setError("The higher-stakes prize pool must be smaller than the total pool.");
       return;
     }
 
@@ -387,6 +396,32 @@ export function BrandKitForm({ apiToken }: BrandKitFormProps) {
             <p className="text-xs text-[var(--muted-foreground)]">
               You will receive a Stellar deposit address to fund the prize pool after creation.
             </p>
+            <div className="grid gap-3 rounded-lg border border-[var(--border)] p-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="secondTierEntryFee">Optional higher-stakes entry fee (USDC)</Label>
+                <Input
+                  id="secondTierEntryFee"
+                  inputMode="decimal"
+                  value={secondTier.entryFeeUsdc}
+                  onChange={(event) =>
+                    setSecondTier((current) => ({ ...current, entryFeeUsdc: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="secondTierPrizePool">
+                  Optional higher-stakes prize pool (USDC)
+                </Label>
+                <Input
+                  id="secondTierPrizePool"
+                  inputMode="decimal"
+                  value={secondTier.prizePoolUsdc}
+                  onChange={(event) =>
+                    setSecondTier((current) => ({ ...current, prizePoolUsdc: event.target.value }))
+                  }
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">

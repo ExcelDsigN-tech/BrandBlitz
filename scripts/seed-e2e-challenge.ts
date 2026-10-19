@@ -1,6 +1,10 @@
 import { pool } from "../apps/api/src/db";
 import { createBrand } from "../apps/api/src/db/queries/brands";
-import { createChallenge, insertChallengeQuestions, updateChallengeStatus } from "../apps/api/src/db/queries/challenges";
+import {
+  createChallenge,
+  insertChallengeQuestions,
+  updateChallengeStatus,
+} from "../apps/api/src/db/queries/challenges";
 import { upsertUser } from "../apps/api/src/db/queries/users";
 
 async function seed() {

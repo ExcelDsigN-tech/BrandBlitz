@@ -35,8 +35,8 @@ not accept unauthenticated requests.
 
 ### Path Parameters
 
-| Parameter | Type          | Description                                    |
-| --------- | ------------- | ----------------------------------------------- |
+| Parameter | Type          | Description                                                     |
+| --------- | ------------- | --------------------------------------------------------------- |
 | `id`      | string (UUID) | The brand to fetch distractors for (excluded from the results). |
 
 ### Response
@@ -60,11 +60,11 @@ not accept unauthenticated requests.
 
 #### Response Fields
 
-| Field                | Type            | Description                                          |
-| --------------------- | --------------- | ----------------------------------------------------- |
-| `distractors`         | array            | Up to 3 distractor brands.                             |
-| `distractors[].id`    | string (UUID)    | Distractor brand's identifier.                          |
-| `distractors[].name`  | string           | Distractor brand's display name.                        |
+| Field                    | Type           | Description                                             |
+| ------------------------ | -------------- | ------------------------------------------------------- |
+| `distractors`            | array          | Up to 3 distractor brands.                              |
+| `distractors[].id`       | string (UUID)  | Distractor brand's identifier.                          |
+| `distractors[].name`     | string         | Distractor brand's display name.                        |
 | `distractors[].logo_url` | string \| null | URL to the distractor brand's logo, or `null` if unset. |
 
 Only `id`, `name`, and `logo_url` are exposed — no owner-only or internal brand fields,
@@ -79,8 +79,8 @@ brands the player has already seen as distractors in a prior round).
 
 ### Errors
 
-| Status | Condition               |
-| ------ | ------------------------ |
+| Status | Condition                            |
+| ------ | ------------------------------------ |
 | 404    | No brand exists with the given `id`. |
 
 ### Example

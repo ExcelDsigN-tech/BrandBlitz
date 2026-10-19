@@ -34,7 +34,7 @@ behind an explicit boundary rather than a plain lib import:
   **XML/markup injection via text-node interpolation** (an attacker
   supplying `</text><script>...` as a brand name, for example). It
   does **not** cover a fundamentally different threat — sanitizing an
-  arbitrary user-*uploaded* SVG file (external entity refs, embedded
+  arbitrary user-_uploaded_ SVG file (external entity refs, embedded
   `<script>`, `xlink:href` exfiltration) — because no such upload
   path exists yet.
 - If/when an actual SVG-file-upload feature is added, it needs a

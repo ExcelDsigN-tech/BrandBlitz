@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { createApiClient } from "@/lib/api";
+import { LeagueScoringPanel } from "./league-scoring-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +16,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { toast } from "@/lib/toast";
 import { BenchmarkPanel } from "./benchmark-panel";
 import { EscrowPanel } from "./escrow-panel";
+import { TeamPanel } from "./team-panel";
+import { RetentionPanel } from "./retention-panel";
+import { InviteCodesPanel } from "./invite-codes-panel";
+import { DuplicateChallengeAction } from "./duplicate-challenge-action";
+import { OgPreviewCard } from "@/components/brand/og-preview-card";
 
 interface ChallengeStats {
   total_sessions: number;
@@ -34,12 +40,15 @@ interface BrandWithChallenges {
   name: string;
   logoUrl?: string;
   primaryColor?: string;
+  owner_user_id?: string;
+  budget_threshold?: number | string | null;
+  budget_alert_sent?: boolean;
   challenges: {
     id: string;
     status: string;
     poolAmountUsdc: string;
     participantCount: number;
-    endsAt: string;
+    endsAt: string | null;
     stats?: ChallengeStats;
   }[];
 }
@@ -434,6 +443,19 @@ export default function DashboardPage() {
                   </div>
                 </div>
               </CardHeader>
+              <CardContent>
+                <LeagueScoringPanel brandId={brand.id} apiToken={apiToken} />
+              </CardContent>
+              <CardContent>
+                <RetentionPanel brandId={brand.id} apiToken={apiToken} />
+              </CardContent>
+              <CardContent>
+                <InviteCodesPanel
+                  brandId={brand.id}
+                  apiToken={apiToken}
+                  challenges={brand.challenges}
+                />
+              </CardContent>
               {brand.challenges.length === 0 ? (
                 <CardContent>
                   <EmptyState
@@ -478,6 +500,9 @@ export default function DashboardPage() {
                           </th>
                           <th className="py-2 text-right font-medium text-[var(--muted-foreground)]">
                             Ends
+                          </th>
+                          <th className="py-2 text-right font-medium text-[var(--muted-foreground)]">
+                            Actions
                           </th>
                         </tr>
                       </thead>
@@ -524,7 +549,17 @@ export default function DashboardPage() {
                                 {stats ? formatUsdc(stats.cost_per_completed_session_usdc) : "—"}
                               </td>
                               <td className="py-2 text-right text-[var(--muted-foreground)]">
-                                {new Date(c.endsAt).toLocaleDateString()}
+                                {c.endsAt ? new Date(c.endsAt).toLocaleDateString() : "Set dates"}
+                              </td>
+                              <td className="py-2 pl-3 text-right">
+                                <DuplicateChallengeAction
+                                  challengeId={c.id}
+                                  status={c.status}
+                                  apiToken={apiToken}
+                                  onUpdated={() => {
+                                    if (apiToken) void loadBrands(apiToken);
+                                  }}
+                                />
                               </td>
                             </tr>
                           );
@@ -557,10 +592,29 @@ export default function DashboardPage() {
                 brandId={brand.id}
                 challenges={brand.challenges ?? []}
                 apiToken={apiToken}
+                initialBudgetThreshold={brand.budget_threshold}
+                budgetAlertSent={brand.budget_alert_sent}
+              />
+
+              <TeamPanel
+                brandId={brand.id}
+                apiToken={apiToken}
+                isOwner={
+                  brand.owner_user_id ? brand.owner_user_id === (session?.user as any)?.id : true
+                }
               />
 
               <CardContent>
                 <BenchmarkPanel brandId={brand.id} apiToken={apiToken} />
+              </CardContent>
+
+              <CardContent>
+                <OgPreviewCard
+                  brandName={brand.name}
+                  brandLogoUrl={brand.logoUrl}
+                  primaryColor={brand.primaryColor}
+                  challenges={brand.challenges ?? []}
+                />
               </CardContent>
             </Card>
           ))}

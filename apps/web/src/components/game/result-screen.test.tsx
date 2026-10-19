@@ -70,12 +70,7 @@ describe("ResultScreen", () => {
 
   it("renders the total score, rank, and estimated earnings when provided", () => {
     render(
-      <ResultScreen
-        totalScore={12345}
-        rank={7}
-        estimatedUsdc="42.5"
-        challengeId="challenge-123"
-      />
+      <ResultScreen totalScore={12345} rank={7} estimatedUsdc="42.5" challengeId="challenge-123" />
     );
 
     expect(screen.getByText("Challenge Complete!")).toBeInTheDocument();
@@ -157,33 +152,25 @@ describe("ResultScreen", () => {
   });
 
   it("shows Congratulations heading for rank 1", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />);
 
     expect(screen.getByText("Congratulations #1!")).toBeInTheDocument();
   });
 
   it("shows standard heading for rank 2 or higher", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />);
 
     expect(screen.getByText("Challenge Complete!")).toBeInTheDocument();
   });
 
   it("fires confetti when rank is 1", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={1} challengeId="challenge-123" />);
 
     expect(confettiMock).toHaveBeenCalled();
   });
 
   it("does not fire confetti when rank is 2 or greater", () => {
-    render(
-      <ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />
-    );
+    render(<ResultScreen totalScore={5000} rank={2} challengeId="challenge-123" />);
 
     expect(confettiMock).not.toHaveBeenCalled();
   });

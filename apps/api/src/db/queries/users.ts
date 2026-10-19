@@ -42,6 +42,7 @@ export interface User {
 }
 
 export interface PublicUser {
+  id?: string;
   display_name: string;
   username: string;
   league: "bronze" | "silver" | "gold" | null;
@@ -49,6 +50,8 @@ export interface PublicUser {
   challenges_played: number;
   avatar_url: string | null;
   streak: number;
+  created_at?: string;
+  pinned_badges?: string[];
 }
 
 export async function findUserByEmail(email: string): Promise<User | null> {
@@ -169,7 +172,7 @@ async function allocateUsername(
 
 export async function getUserPublicProfileByUsername(username: string): Promise<PublicUser | null> {
   const result = await query<PublicUser>(
-    `SELECT display_name, username, league, total_earned_usdc, challenges_played, avatar_url, streak
+    `SELECT id, display_name, username, league, total_earned_usdc, challenges_played, avatar_url, streak, created_at, pinned_badges
      FROM users
      WHERE username = $1 AND deleted_at IS NULL`,
     [username]
@@ -537,4 +540,48 @@ export async function searchUsersByUsername(
     [`${prefix}%`, pageSize, (page - 1) * pageSize]
   );
   return result.rows;
+}
+
+export interface NotificationPreference {
+  id: string;
+  user_id: string;
+  category: "payout" | "badge" | "streak" | "referral";
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getNotificationPreferences(userId: string): Promise<NotificationPreference[]> {
+  const result = await query<NotificationPreference>(
+    `SELECT * FROM notification_preferences WHERE user_id = $1 ORDER BY category ASC`,
+    [userId],
+  );
+  return result.rows;
+}
+
+export async function isNotificationCategoryEnabled(
+  userId: string,
+  category: string,
+): Promise<boolean> {
+  const result = await query<{ enabled: boolean }>(
+    `SELECT enabled FROM notification_preferences WHERE user_id = $1 AND category = $2`,
+    [userId, category],
+  );
+  return result.rows[0]?.enabled ?? true;
+}
+
+export async function updateNotificationPreference(
+  userId: string,
+  category: string,
+  enabled: boolean,
+): Promise<NotificationPreference | null> {
+  const result = await query<NotificationPreference>(
+    `INSERT INTO notification_preferences (user_id, category, enabled)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, category)
+     DO UPDATE SET enabled = $3, updated_at = NOW()
+     RETURNING *`,
+    [userId, category, enabled],
+  );
+  return result.rows[0] ?? null;
 }

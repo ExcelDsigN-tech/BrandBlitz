@@ -6,6 +6,7 @@ import {
   repairUserStreak,
   setUserStreak,
   type StreakState,
+  isNotificationCategoryEnabled,
 } from "../db/queries/users";
 
 const STREAK_MILESTONES = [3, 7, 14, 30] as const;
@@ -71,7 +72,10 @@ export async function getStreak(userId: string, now = new Date()): Promise<Strea
   return formatStreak(current, now);
 }
 
-export async function getStreakDetail(userId: string, now = new Date()): Promise<StreakDetailResponse> {
+export async function getStreakDetail(
+  userId: string,
+  now = new Date()
+): Promise<StreakDetailResponse> {
   const current = await getUserStreak(userId);
   if (!current) throw new Error("User not found");
 
@@ -155,10 +159,16 @@ function dayDiff(from: string, to: string): number {
 
 async function insertStreakMilestoneNotification(userId: string, milestone: number): Promise<void> {
   try {
+    const enabled = await isNotificationCategoryEnabled(userId, "streak");
+    if (!enabled) {
+      logger.debug("Streak milestone notification skipped - user has disabled streak notifications", { userId });
+      return;
+    }
+
     await query(
       `INSERT INTO notifications (user_id, type, payload)
        VALUES ($1, 'streak_milestone', $2::jsonb)`,
-      [userId, JSON.stringify({ milestone })],
+      [userId, JSON.stringify({ milestone })]
     );
   } catch (err) {
     logger.warn("Failed to insert streak milestone notification", { userId, milestone, err });

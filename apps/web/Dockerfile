@@ -26,6 +26,8 @@ COPY apps/web/ ./apps/web/
 
 WORKDIR /app/apps/web
 
+# Keep these build-time public variables wired through docker-compose.yml and
+# .github/workflows/docker.yml whenever adding or changing a NEXT_PUBLIC_* ARG.
 ARG NEXT_PUBLIC_API_URL
 ARG NEXTAUTH_URL
 ARG NEXT_PUBLIC_CDN_HOST

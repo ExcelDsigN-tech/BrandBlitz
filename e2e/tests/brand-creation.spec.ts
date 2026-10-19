@@ -4,9 +4,7 @@ import { signInWithMockGoogle } from "./helpers";
 const BRAND_USER = { email: "brand-create@example.com", name: "Brand Creator" };
 
 test.describe("Brand creation with logo upload, product images, and tagline (#433)", () => {
-  test("shows validation messages when required fields are empty", async ({
-    page,
-  }) => {
+  test("shows validation messages when required fields are empty", async ({ page }) => {
     await signInWithMockGoogle(page, BRAND_USER, "/brand/new");
     await page.waitForURL("**/brand/new");
 
@@ -26,9 +24,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     await page.waitForURL("**/brand/new");
 
     await page.getByLabel("Brand Name *").fill("Nova Reach");
-    await page
-      .getByLabel("Tagline")
-      .fill("Earned attention, not empty impressions");
+    await page.getByLabel("Tagline").fill("Earned attention, not empty impressions");
     await page
       .getByLabel("Brand Story")
       .fill("Nova Reach helps web3 brands turn curiosity into measurable recall.");
@@ -36,9 +32,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     await page.getByLabel("Challenge Duration (hours)").fill("24");
 
     await expect(page.getByLabel("Brand Name *")).toHaveValue("Nova Reach");
-    await expect(page.getByLabel("Tagline")).toHaveValue(
-      "Earned attention, not empty impressions"
-    );
+    await expect(page.getByLabel("Tagline")).toHaveValue("Earned attention, not empty impressions");
   });
 
   test("uploads logo image and shows preview thumbnail", async ({ page }) => {
@@ -65,7 +59,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     await page.route("**/localhost:9000/**", async (route) => {
       await route.fulfill({
         status: 200,
-        headers: { "ETag": '"test-etag"' },
+        headers: { ETag: '"test-etag"' },
       });
     });
 
@@ -90,9 +84,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     await expect(page.getByAltText("Upload Brand Logo")).toBeVisible();
   });
 
-  test("uploads product images and shows them in gallery", async ({
-    page,
-  }) => {
+  test("uploads product images and shows them in gallery", async ({ page }) => {
     await signInWithMockGoogle(page, BRAND_USER, "/brand/new");
     await page.waitForURL("**/brand/new");
 
@@ -116,7 +108,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     await page.route("**/localhost:9000/**", async (route) => {
       await route.fulfill({
         status: 200,
-        headers: { "ETag": '"test-etag"' },
+        headers: { ETag: '"test-etag"' },
       });
     });
 
@@ -155,10 +147,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     });
   });
 
-  test("submits form and navigates to brand detail page", async ({
-    page,
-    request,
-  }) => {
+  test("submits form and navigates to brand detail page", async ({ page, request }) => {
     await signInWithMockGoogle(page, BRAND_USER, "/brand/new");
     await page.waitForURL("**/brand/new");
 
@@ -207,9 +196,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     expect(brandCreated).toBeTruthy();
   });
 
-  test("brand name, tagline, and details visible on brand detail page", async ({
-    page,
-  }) => {
+  test("brand name, tagline, and details visible on brand detail page", async ({ page }) => {
     const brandId = "22222222-2222-2222-2222-222222222222";
 
     await page.route("**/api/brands/public/**", async (route) => {
@@ -246,9 +233,7 @@ test.describe("Brand creation with logo upload, product images, and tagline (#43
     await expect(page.getByText("A brand story for testing visibility.")).toBeVisible();
   });
 
-  test("submits form and verifies API call returns correct metadata", async ({
-    page,
-  }) => {
+  test("submits form and verifies API call returns correct metadata", async ({ page }) => {
     await signInWithMockGoogle(page, BRAND_USER, "/brand/new");
     await page.waitForURL("**/brand/new");
 

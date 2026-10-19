@@ -27,12 +27,16 @@ async function deferWeekStartForActiveSessions(weekStart: string): Promise<boole
     return false;
   }
 
-  await leagueQueue.add("start-week", {}, {
-    jobId: `league:start-week:deferred:${weekStart}`,
-    delay: ACTIVE_SESSION_DEFER_MINUTES * 60 * 1000,
-    removeOnComplete: true,
-    removeOnFail: 10,
-  });
+  await leagueQueue.add(
+    "start-week",
+    {},
+    {
+      jobId: `league:start-week:deferred:${weekStart}`,
+      delay: ACTIVE_SESSION_DEFER_MINUTES * 60 * 1000,
+      removeOnComplete: true,
+      removeOnFail: 10,
+    }
+  );
 
   logger.info("Deferring league week seeding because active sessions are still running", {
     weekStart,
@@ -49,7 +53,10 @@ export function createLeagueWorker(WorkerCtor: typeof Worker = Worker, opts?: Wo
     async (job: Job) => {
       if (job.name === "finalize-week") {
         const weekStart = getUtcWeekStart(new Date());
-        logger.info("Finalizing league week", { weekStart, weekEndExclusive: addUtcDays(weekStart, 7) });
+        logger.info("Finalizing league week", {
+          weekStart,
+          weekEndExclusive: addUtcDays(weekStart, 7),
+        });
         await query("SELECT recalculate_league($1)", [weekStart]);
         return;
       }
@@ -107,4 +114,3 @@ function setupGracefulShutdown(worker: Worker, workerName: string): void {
   process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
   process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 }
-

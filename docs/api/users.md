@@ -78,10 +78,10 @@ Update display name and/or username. Triggers cache revalidation and token rotat
 }
 ```
 
-| Field | Required | Validation |
-|---|---|---|
-| `displayName` | no | 1–100 chars, trimmed |
-| `username` | no | 1–30 chars, lowercase alphanumeric + hyphens only (`/^[a-z0-9-]+$/`) |
+| Field         | Required | Validation                                                           |
+| ------------- | -------- | -------------------------------------------------------------------- |
+| `displayName` | no       | 1–100 chars, trimmed                                                 |
+| `username`    | no       | 1–30 chars, lowercase alphanumeric + hyphens only (`/^[a-z0-9-]+$/`) |
 
 At least one field must be provided. Returns `400` if body is empty.
 
@@ -190,9 +190,9 @@ Set or update the user's Stellar wallet address.
 }
 ```
 
-| Field | Required | Validation |
-|---|---|---|
-| `stellarAddress` | yes | 56–70 chars |
+| Field            | Required | Validation  |
+| ---------------- | -------- | ----------- |
+| `stellarAddress` | yes      | 56–70 chars |
 
 **Response `200`:**
 
@@ -239,10 +239,10 @@ Confirm the 6-digit code. Marks phone as verified.
 }
 ```
 
-| Field | Required | Validation |
-|---|---|---|
-| `phone` | yes | Phone number string |
-| `code` | yes | Exactly 6 characters |
+| Field   | Required | Validation           |
+| ------- | -------- | -------------------- |
+| `phone` | yes      | Phone number string  |
+| `code`  | yes      | Exactly 6 characters |
 
 **Response `200`:**
 
@@ -251,6 +251,7 @@ Confirm the 6-digit code. Marks phone as verified.
 ```
 
 **Errors:**
+
 - `400` — wrong code
 - `409` — phone number already associated with another account
 - `429` — too many attempts (brute-force lockout; `Retry-After` header set)
@@ -292,6 +293,7 @@ Mark a single notification as read.
 ```
 
 **Errors:**
+
 - `404` — notification not found (or already read, or belongs to another user)
 
 ---
@@ -316,8 +318,8 @@ Returns all badges earned by the authenticated user. Supports optional category 
 
 **Query params:**
 
-| Param | Type | Description |
-|---|---|---|
+| Param      | Type   | Description              |
+| ---------- | ------ | ------------------------ |
 | `category` | string | Filter by badge category |
 
 **Response `200`:**
@@ -377,11 +379,11 @@ Paginated USDC payout history. Supports status filtering and cursor-based pagina
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `status` | `pending` \| `settled` \| `failed` \| `all` | `all` | Filter by payout status |
-| `cursor` | string | — | Opaque continuation token |
-| `limit` | int (1–100) | 25 | Page size |
+| Param    | Type                                        | Default | Description               |
+| -------- | ------------------------------------------- | ------- | ------------------------- |
+| `status` | `pending` \| `settled` \| `failed` \| `all` | `all`   | Filter by payout status   |
+| `cursor` | string                                      | —       | Opaque continuation token |
+| `limit`  | int (1–100)                                 | 25      | Page size                 |
 
 **Response `200`:**
 
@@ -434,9 +436,9 @@ Detailed referral list with bonus status per referred user.
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `status` | `pending` \| `paid` \| `expired` \| `all` | `all` | Filter by bonus status |
+| Param    | Type                                      | Default | Description            |
+| -------- | ----------------------------------------- | ------- | ---------------------- |
+| `status` | `pending` \| `paid` \| `expired` \| `all` | `all`   | Filter by bonus status |
 
 **Response `200`:**
 
@@ -497,6 +499,7 @@ Repair a broken streak. One repair per calendar month.
 **Response `200`:** Repaired streak data.
 
 **Errors:**
+
 - `409` `STREAK_REPAIR_LIMIT` — monthly repair already used
 
 ---
@@ -509,12 +512,12 @@ Paginated session history with optional round breakdown.
 
 **Query params:**
 
-| Param | Type | Default | Description |
-|---|---|---|---|
-| `status` | `completed` \| `disqualified` \| `all` | `completed` | Filter by session outcome |
-| `include_rounds` | `true` \| `false` | `false` | Append per-round breakdown |
-| `limit` | int (1–100) | 20 | Page size |
-| `cursor` | string | — | Continuation token |
+| Param            | Type                                   | Default     | Description                |
+| ---------------- | -------------------------------------- | ----------- | -------------------------- |
+| `status`         | `completed` \| `disqualified` \| `all` | `completed` | Filter by session outcome  |
+| `include_rounds` | `true` \| `false`                      | `false`     | Append per-round breakdown |
+| `limit`          | int (1–100)                            | 20          | Page size                  |
+| `cursor`         | string                                 | —           | Continuation token         |
 
 **Response `200`:**
 
@@ -548,10 +551,10 @@ Case-insensitive prefix search against username. Authenticated to prevent enumer
 
 **Query params:**
 
-| Param | Type | Description |
-|---|---|---|
-| `q` | string (min 2 chars) | Search prefix |
-| `page` | int (min 1) | Page number (default 1) |
+| Param  | Type                 | Description             |
+| ------ | -------------------- | ----------------------- |
+| `q`    | string (min 2 chars) | Search prefix           |
+| `page` | int (min 1)          | Page number (default 1) |
 
 **Response `200`:**
 
@@ -570,10 +573,10 @@ Case-insensitive prefix search against username. Authenticated to prevent enumer
 
 ## Error Responses
 
-| Status | Code | Meaning |
-|---|---|---|
-| `400` | `INVALID_QUERY` | Invalid query parameters or empty update body |
-| `403` | `FORBIDDEN` | Attempting to access another user's private data |
-| `404` | — | User, notification, or resource not found |
-| `409` | — | Phone already in use / streak repair limit |
-| `429` | — | Phone rate limit exceeded (`Retry-After` header) |
+| Status | Code            | Meaning                                          |
+| ------ | --------------- | ------------------------------------------------ |
+| `400`  | `INVALID_QUERY` | Invalid query parameters or empty update body    |
+| `403`  | `FORBIDDEN`     | Attempting to access another user's private data |
+| `404`  | —               | User, notification, or resource not found        |
+| `409`  | —               | Phone already in use / streak repair limit       |
+| `429`  | —               | Phone rate limit exceeded (`Retry-After` header) |

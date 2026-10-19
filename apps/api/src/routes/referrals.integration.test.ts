@@ -117,12 +117,24 @@ describeIntegration("referral flow integration", () => {
       $$ LANGUAGE plpgsql
     `);
 
-    await query(`CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER referrals_updated_at BEFORE UPDATE ON referrals FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER referral_payouts_updated_at BEFORE UPDATE ON referral_payouts FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
+    await query(
+      `CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER referrals_updated_at BEFORE UPDATE ON referrals FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER referral_payouts_updated_at BEFORE UPDATE ON referral_payouts FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
   });
 
   afterAll(async () => {
@@ -152,7 +164,12 @@ describeIntegration("referral flow integration", () => {
     const refereeId = refereeResult.rows[0].id;
 
     // Record referral relationship
-    const referralResult = await query<{ id: string; referrer_id: string; referred_id: string; rewarded: boolean }>(
+    const referralResult = await query<{
+      id: string;
+      referrer_id: string;
+      referred_id: string;
+      rewarded: boolean;
+    }>(
       `INSERT INTO referrals (referrer_id, referred_id, rewarded)
        VALUES ($1, $2, false)
        RETURNING id, referrer_id, referred_id, rewarded`,
@@ -300,10 +317,9 @@ describeIntegration("referral flow integration", () => {
     );
 
     // Verify only one payout exists for this referral
-    const payouts = await query(
-      `SELECT * FROM referral_payouts WHERE referral_id = $1`,
-      [referralId]
-    );
+    const payouts = await query(`SELECT * FROM referral_payouts WHERE referral_id = $1`, [
+      referralId,
+    ]);
     expect(payouts.rows).toHaveLength(1);
   });
 
@@ -362,7 +378,7 @@ describeIntegration("referral flow integration", () => {
     const payoutResult = await query<{
       referrer_amount_stroops: number;
       referred_amount_stroops: number;
-      status: string
+      status: string;
     }>(
       `INSERT INTO referral_payouts (referral_id, challenge_id, referrer_id, referred_id,
          referrer_amount_stroops, referred_amount_stroops, status)
@@ -377,10 +393,7 @@ describeIntegration("referral flow integration", () => {
     expect(payout.status).toBe("pending");
 
     // Mark referral as rewarded
-    await query(
-      `UPDATE referrals SET rewarded = true WHERE id = $1`,
-      [referralId]
-    );
+    await query(`UPDATE referrals SET rewarded = true WHERE id = $1`, [referralId]);
 
     const updatedReferral = await query<{ rewarded: boolean }>(
       `SELECT rewarded FROM referrals WHERE id = $1`,

@@ -53,9 +53,7 @@ function isoWeek(d: Date): string {
   const dayNum = date.getUTCDay() || 7;
   date.setUTCDate(date.getUTCDate() + 4 - dayNum);
   const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
-  const weekNo = Math.ceil(
-    ((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7
-  );
+  const weekNo = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
   return String(weekNo).padStart(2, "0");
 }
 
@@ -209,15 +207,14 @@ export async function spawnChallengeFromTemplate(
       await client.query(
         `INSERT INTO challenge_questions
            (challenge_id, round, question_type, prompt_type, question_text,
-            correct_answer, option_a, option_b, option_c, option_d, correct_option)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+            option_a, option_b, option_c, option_d, correct_option)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
         [
           q.challenge_id,
           q.round,
           q.question_type,
           q.prompt_type,
           q.question_text,
-          q.correct_answer,
           q.option_a,
           q.option_b,
           q.option_c,

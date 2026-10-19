@@ -19,9 +19,11 @@ export default [
       "no-restricted-syntax": [
         "error",
         {
-          selector: "CallExpression[callee.name='query'][arguments.0.value=/FROM\\s+(users|challenges|brands)\\b/i]:not([arguments.0.value=/deleted_at\\s+IS\\s+NULL/i]):not([arguments.0.value=/include_deleted/i])",
-          message: "Queries on soft-deletable tables must include 'deleted_at IS NULL' or 'include_deleted' comment.",
-        }
+          selector:
+            "CallExpression[callee.name='query'][arguments.0.value=/FROM\\s+(users|challenges|brands)\\b/i]:not([arguments.0.value=/deleted_at\\s+IS\\s+NULL/i]):not([arguments.0.value=/include_deleted/i])",
+          message:
+            "Queries on soft-deletable tables must include 'deleted_at IS NULL' or 'include_deleted' comment.",
+        },
       ],
     },
   },

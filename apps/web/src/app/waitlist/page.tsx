@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { createApiClient } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import type { Metadata } from "next";
+import { RedeemInvite } from "./redeem-invite";
 
 function isValidEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -73,6 +74,8 @@ export default function WaitlistPage() {
   const [status, setStatus] = React.useState<"idle" | "submitting" | "success">("idle");
   const [position, setPosition] = React.useState<number | null>(null);
   const [ref, setRef] = React.useState<string>("");
+  const [hasAccess, setHasAccess] = React.useState(false);
+  const handleActivated = React.useCallback(() => setHasAccess(true), []);
 
   React.useEffect(() => {
     const joined = readJoinedWaitlist();
@@ -142,25 +145,25 @@ export default function WaitlistPage() {
       <div className="w-full max-w-lg">
         <div className="mb-10 text-center">
           <h1 className="mb-4 text-4xl font-extrabold leading-tight text-[var(--foreground)] md:text-5xl">
-            Coming Soon
+            {hasAccess ? "Early access unlocked" : "Coming Soon"}
           </h1>
           <p className="text-lg text-[var(--muted-foreground)]">
             Earn USDC by mastering brand challenges.
             <br />
-            Be the first to play when we launch.
+            {hasAccess
+              ? "Your invite has activated your access."
+              : "Be the first to play when we launch."}
           </p>
         </div>
 
-        {status === "success" ? (
+        {hasAccess ? null : status === "success" ? (
           <Card>
             <CardContent className="py-10 text-center">
               <p className="mb-2 text-lg font-semibold text-[var(--foreground)]">
                 You&apos;re on the list!
               </p>
               {position !== null && (
-                <p className="mb-6 text-3xl font-bold text-[var(--primary)]">
-                  #{position}
-                </p>
+                <p className="mb-6 text-3xl font-bold text-[var(--primary)]">#{position}</p>
               )}
               <p className="mb-6 text-sm text-[var(--muted-foreground)]">
                 Share with friends to move up the waitlist.
@@ -187,7 +190,10 @@ export default function WaitlistPage() {
             <CardContent className="py-8">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <label htmlFor="waitlist-email" className="mb-1 block text-sm font-medium text-[var(--foreground)]">
+                  <label
+                    htmlFor="waitlist-email"
+                    className="mb-1 block text-sm font-medium text-[var(--foreground)]"
+                  >
                     Email address
                   </label>
                   <Input
@@ -211,6 +217,8 @@ export default function WaitlistPage() {
             </CardContent>
           </Card>
         )}
+
+        <RedeemInvite onActivated={handleActivated} />
 
         <div className="mt-12 grid grid-cols-3 gap-6 text-center">
           {[

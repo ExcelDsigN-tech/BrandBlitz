@@ -9,8 +9,15 @@ export default defineConfig({
   reporter: process.env.CI
     ? [["html", { outputFolder: "./artifacts/html-report", open: "never" }], ["list"]]
     : [["list"]],
+  webServer: {
+    command:
+      "corepack pnpm --filter @brandblitz/config build && corepack pnpm --filter @brandblitz/web dev",
+    url: "http://localhost:3000",
+    reuseExistingServer: true,
+    timeout: 120_000,
+  },
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: process.env.PLAYWRIGHT_TEST_BASE_URL ?? "http://localhost:3000",
     trace: "retain-on-failure",
     video: "retain-on-failure",
     screenshot: "only-on-failure",

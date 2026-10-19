@@ -5,9 +5,11 @@ import { errorHandler } from "../middleware/error";
 import { getUtcWeekStart, addUtcDays } from "../lib/week";
 
 const mocks = vi.hoisted(() => ({
-  user: { sub: "user-1", email: "user@example.com", role: "user" } as
-    | { sub: string; email: string; role: string }
-    | null,
+  user: { sub: "user-1", email: "user@example.com", role: "user" } as {
+    sub: string;
+    email: string;
+    role: string;
+  } | null,
   ensureAssignmentForUserThisWeek: vi.fn(),
   getCurrentLeagueGroup: vi.fn(),
 }));
@@ -85,10 +87,7 @@ describe("GET /leagues/current", () => {
     await request(createApp()).get("/leagues/current");
 
     const expectedWeekStart = getUtcWeekStart(new Date());
-    expect(mocks.ensureAssignmentForUserThisWeek).toHaveBeenCalledWith(
-      "user-1",
-      expectedWeekStart
-    );
+    expect(mocks.ensureAssignmentForUserThisWeek).toHaveBeenCalledWith("user-1", expectedWeekStart);
     expect(mocks.getCurrentLeagueGroup).toHaveBeenCalledWith("user-1", expectedWeekStart);
     expect(mocks.ensureAssignmentForUserThisWeek.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.getCurrentLeagueGroup.mock.invocationCallOrder[0]
@@ -112,7 +111,9 @@ describe("GET /leagues/current", () => {
   it("returns competitors ordered by weekly score as provided by the query layer", async () => {
     const response = await request(createApp()).get("/leagues/current");
 
-    const points = response.body.group.map((entry: { weekly_points: number }) => entry.weekly_points);
+    const points = response.body.group.map(
+      (entry: { weekly_points: number }) => entry.weekly_points
+    );
     expect(points).toEqual([...points].sort((a, b) => b - a));
   });
 

@@ -13,6 +13,9 @@ export interface Brand {
   usp: string | null;
   product_image_keys: string[];
   question_template: Record<string, unknown> | null;
+  budget_threshold?: number | string | null;
+  budget_alert_sent?: boolean;
+  budget_alert_sent_at?: string | null;
   deleted_at?: string | null;
   created_at: string;
 }
@@ -80,14 +83,20 @@ export async function createBrand(data: Omit<Brand, "id" | "created_at">): Promi
 
 export async function getBrandsByOwner(ownerUserId: string): Promise<Brand[]> {
   const result = await query<Brand>(
-    "SELECT * FROM brands WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC",
+    `SELECT DISTINCT b.* FROM brands b
+     LEFT JOIN brand_members bm ON bm.brand_id = b.id
+     WHERE (b.owner_user_id = $1 OR bm.user_id = $1)
+       AND b.deleted_at IS NULL
+     ORDER BY b.created_at DESC`,
     [ownerUserId]
   );
   return result.rows;
 }
 
 export async function getBrandById(id: string): Promise<Brand | null> {
-  const result = await query<Brand>("SELECT * FROM brands WHERE id = $1 AND deleted_at IS NULL", [id]);
+  const result = await query<Brand>("SELECT * FROM brands WHERE id = $1 AND deleted_at IS NULL", [
+    id,
+  ]);
   return result.rows[0] ?? null;
 }
 
@@ -96,7 +105,7 @@ export async function getPublicBrandById(id: string): Promise<PublicBrand | null
     `SELECT id, name, logo_url, primary_color, secondary_color, tagline,
             brand_story, usp, product_image_keys, created_at
      FROM brands WHERE id = $1 AND deleted_at IS NULL`,
-    [id],
+    [id]
   );
   return result.rows[0] ?? null;
 }
@@ -115,9 +124,82 @@ export async function getPublicBrands(limit = 50): Promise<PublicBrand[]> {
        )
      ORDER BY created_at DESC
      LIMIT $1`,
-    [limit],
+    [limit]
   );
   return result.rows;
+}
+
+export interface PublicBrandChallenge {
+  id: string;
+  status: string;
+  pool_amount_usdc: string;
+  participant_count: number;
+  starts_at: string;
+  ends_at: string | null;
+}
+
+export interface PublicBrandStats {
+  total_challenges: number;
+  total_payout_usdc: number;
+  avg_rating: number | null;
+  rating_count: number;
+}
+
+/** Public challenge history for a brand's profile page. Excludes unpublished states. */
+export async function getPublicBrandChallenges(brandId: string): Promise<PublicBrandChallenge[]> {
+  const result = await query<PublicBrandChallenge>(
+    `SELECT id,
+            status,
+            (pool_amount_stroops / 10000000.0)::numeric(20,7)::text AS pool_amount_usdc,
+            participant_count,
+            starts_at,
+            ends_at
+     FROM challenges
+     WHERE brand_id = $1
+       AND deleted_at IS NULL
+       AND status IN ('active', 'ended', 'settled', 'payout_failed')
+     ORDER BY created_at DESC`,
+    [brandId]
+  );
+  return result.rows;
+}
+
+/**
+ * Aggregate public stats for a brand profile. Total payout counts only
+ * completed payouts; average rating excludes fraud-flagged raters.
+ */
+export async function getPublicBrandStats(brandId: string): Promise<PublicBrandStats> {
+  const result = await query<PublicBrandStats>(
+    `SELECT
+       (SELECT COUNT(*)::int FROM challenges c
+         WHERE c.brand_id = $1 AND c.deleted_at IS NULL) AS total_challenges,
+       (SELECT COALESCE(SUM(p.amount_stroops)::numeric / 10000000, 0)::float8
+          FROM payouts p
+          JOIN challenges c ON c.id = p.challenge_id
+         WHERE c.brand_id = $1
+           AND p.status = 'completed') AS total_payout_usdc,
+       (SELECT ROUND(AVG(cr.difficulty)::numeric, 2)::float8
+          FROM challenge_ratings cr
+          JOIN challenges c ON c.id = cr.challenge_id
+         WHERE c.brand_id = $1
+           AND NOT EXISTS (SELECT 1 FROM fraud_flags ff WHERE ff.user_id = cr.user_id))
+         AS avg_rating,
+       (SELECT COUNT(*)::int
+          FROM challenge_ratings cr
+          JOIN challenges c ON c.id = cr.challenge_id
+         WHERE c.brand_id = $1
+           AND NOT EXISTS (SELECT 1 FROM fraud_flags ff WHERE ff.user_id = cr.user_id))
+         AS rating_count`,
+    [brandId]
+  );
+  return (
+    result.rows[0] ?? {
+      total_challenges: 0,
+      total_payout_usdc: 0,
+      avg_rating: null,
+      rating_count: 0,
+    }
+  );
 }
 
 export async function getBrandMetaById(
@@ -166,14 +248,15 @@ const UPDATABLE_BRAND_COLUMNS = [
   "product_image_1_url",
   "product_image_2_url",
   "question_template",
+  "budget_threshold",
 ] as const;
 
 type UpdatableBrandColumn = (typeof UPDATABLE_BRAND_COLUMNS)[number];
 
 export async function updateBrand(
   id: string,
-  ownerUserId: string,
-  updates: Partial<Pick<Brand, UpdatableBrandColumn>>
+  ownerUserId?: string,
+  updates: Partial<Pick<Brand, UpdatableBrandColumn>> = {}
 ): Promise<Brand | null> {
   const fields = Object.keys(updates);
   if (fields.length === 0) return getBrandById(id);
@@ -190,17 +273,18 @@ export async function updateBrand(
 
   const setClause = fields.map((f, i) => `${f} = $${i + 3}`).join(", ");
   const values = fields.map((f) => (updates as Record<string, unknown>)[f]);
+  const resetAlertClause = fields.includes("budget_threshold") ? ", budget_alert_sent = FALSE" : "";
 
   const result = await query<Brand>(
-    `UPDATE brands SET ${setClause} WHERE id = $1 AND owner_user_id = $2 AND deleted_at IS NULL RETURNING *`,
-    [id, ownerUserId, ...values]
+    `UPDATE brands SET ${setClause}${resetAlertClause} WHERE id = $1 AND ($2::uuid IS NULL OR owner_user_id = $2) AND deleted_at IS NULL RETURNING *`,
+    [id, ownerUserId ?? null, ...values]
   );
   return result.rows[0] ?? null;
 }
 
 export async function deleteBrand(
   id: string,
-  ownerUserId?: string,
+  ownerUserId?: string
 ): Promise<{ deletedAt: string; cancelledChallenges: number } | null> {
   const result = await query<{ deleted_at: string; cancelled_count: number }>(
     `WITH deleted_brand AS (
@@ -223,7 +307,7 @@ export async function deleteBrand(
      FROM deleted_brand db
      LEFT JOIN cancelled c ON TRUE
      GROUP BY db.deleted_at`,
-    [id, ownerUserId ?? null],
+    [id, ownerUserId ?? null]
   );
   const row = result.rows[0];
   return row

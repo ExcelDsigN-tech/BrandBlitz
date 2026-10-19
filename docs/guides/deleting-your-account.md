@@ -43,10 +43,10 @@ period](#the-30-day-grace-period) below.
 
 ### If something goes wrong
 
-| Response | What it means |
-| --- | --- |
-| `403 Forbidden` | The email you entered doesn't match your account's email. |
-| `409 Conflict` | You already have a deletion request pending — see [Cancelling a request](#cancelling-a-request) if you want to stop it, or just wait for the existing one to complete. |
+| Response        | What it means                                                                                                                                                          |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `403 Forbidden` | The email you entered doesn't match your account's email.                                                                                                              |
+| `409 Conflict`  | You already have a deletion request pending — see [Cancelling a request](#cancelling-a-request) if you want to stop it, or just wait for the existing one to complete. |
 
 ## The 30-day grace period
 
@@ -111,7 +111,7 @@ A successful cancellation returns:
 If there's no pending request to cancel (e.g. it already completed, or you never
 requested one), this returns `404 Not Found`.
 
-> **Note:** this only cancels a request *you* started yourself. If your account is subject
+> **Note:** this only cancels a request _you_ started yourself. If your account is subject
 > to a legal erasure request initiated by an administrator, it won't show up here, and
 > can only be reversed through the admin process described in the [gdpr-erasure
 > runbook](../runbooks/gdpr-erasure.md).

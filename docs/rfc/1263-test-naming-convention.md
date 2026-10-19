@@ -8,13 +8,13 @@
 
 ### Naming Inconsistencies
 
-| File | Pattern | Actual Tier |
-|------|---------|-------------|
-| `brands.create.unit.test.ts` | explicit unit suffix | unit (no DB) |
-| `brands.test.ts` | no suffix | integration (uses DB) |
-| `payout.processor.test.ts` | no suffix | integration (uses BullMQ/Redis) |
-| `scoring.warmup.test.ts` | no suffix | integration |
-| `auth.test.ts` | no suffix | mixed (auth is stateless) |
+| File                         | Pattern              | Actual Tier                     |
+| ---------------------------- | -------------------- | ------------------------------- |
+| `brands.create.unit.test.ts` | explicit unit suffix | unit (no DB)                    |
+| `brands.test.ts`             | no suffix            | integration (uses DB)           |
+| `payout.processor.test.ts`   | no suffix            | integration (uses BullMQ/Redis) |
+| `scoring.warmup.test.ts`     | no suffix            | integration                     |
+| `auth.test.ts`               | no suffix            | mixed (auth is stateless)       |
 
 ### Problematic Patterns
 
@@ -28,6 +28,7 @@
 ### Test Tier Definitions
 
 #### Unit Tests (`.unit.test.ts`)
+
 - **Dependencies**: None (no DB, Redis, network, filesystem)
 - **Speed**: < 100ms typically
 - **Fixtures**: Pure functions, mocked/stubbed external dependencies
@@ -35,6 +36,7 @@
 - **Examples**: `scoring.engine.unit.test.ts`, `fingerprint.unit.test.ts`
 
 #### Integration Tests (`.integration.test.ts`)
+
 - **Dependencies**: Database (PostgreSQL), Redis, file storage (S3/MinIO)
 - **Speed**: 100ms-several seconds per test
 - **Fixtures**: Real Docker services via docker-compose, fixtures loaded per-test
@@ -42,20 +44,21 @@
 - **Examples**: `brands.deposit-info.integration.test.ts`, `session-timeout.integration.test.ts`
 
 #### No Suffix (`.test.ts`) — Deprecated Path
+
 - **Use only for**: Small, isolated tests that fit no tier (e.g. one-off middleware checks)
 - **Phasing**: Gradually rename to explicit suffixes over time; no new `.test.ts` files
 
 ### Allowed Dependencies by Tier
 
-| Dependency | Unit | Integration |
-|------------|------|-------------|
-| Database (PostgreSQL) | ❌ Mock/stub | ✅ Real DB |
-| Redis/BullMQ | ❌ Mock/stub | ✅ Real Redis |
-| File storage (S3/MinIO) | ❌ Mock/stub | ✅ Real S3/MinIO |
-| External HTTP API | ❌ Mock/stub | ✅ Real (if testnet/sandbox) |
-| Express middleware | ❌ Mock req/res | ✅ Real if part of route test |
-| Zod schemas/validators | ✅ Direct call | ✅ Direct call |
-| Pure utility functions | ✅ Direct call | ✅ Direct call |
+| Dependency              | Unit            | Integration                   |
+| ----------------------- | --------------- | ----------------------------- |
+| Database (PostgreSQL)   | ❌ Mock/stub    | ✅ Real DB                    |
+| Redis/BullMQ            | ❌ Mock/stub    | ✅ Real Redis                 |
+| File storage (S3/MinIO) | ❌ Mock/stub    | ✅ Real S3/MinIO              |
+| External HTTP API       | ❌ Mock/stub    | ✅ Real (if testnet/sandbox)  |
+| Express middleware      | ❌ Mock req/res | ✅ Real if part of route test |
+| Zod schemas/validators  | ✅ Direct call  | ✅ Direct call                |
+| Pure utility functions  | ✅ Direct call  | ✅ Direct call                |
 
 ## Implementation Guidance
 
@@ -137,16 +140,11 @@ describe("POST /brands (create)", () => {
   });
 
   it("creates brand and stores in DB", async () => {
-    const response = await request(app)
-      .post("/brands")
-      .send({ name: "Test Brand" });
+    const response = await request(app).post("/brands").send({ name: "Test Brand" });
 
     expect(response.status).toBe(201);
 
-    const brand = await pool.query(
-      "SELECT * FROM brands WHERE id = $1",
-      [response.body.id]
-    );
+    const brand = await pool.query("SELECT * FROM brands WHERE id = $1", [response.body.id]);
     expect(brand.rowCount).toBe(1);
   });
 });

@@ -6,11 +6,7 @@ import jwt from "jsonwebtoken";
 
 const JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-at-least-32-characters!!";
 
-function makeToken(
-  userId: string,
-  email: string,
-  role: string = "player"
-): string {
+function makeToken(userId: string, email: string, role: string = "player"): string {
   return jwt.sign({ sub: userId, email, role }, JWT_SECRET, {
     expiresIn: "15m",
     issuer: process.env.JWT_ISSUER ?? "brandblitz-api",
@@ -43,25 +39,19 @@ describe("TOS version update blocks existing sessions until new TOS accepted (#4
   });
 
   beforeEach(async () => {
-    await query(
-      `DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`,
-      [userId]
-    );
-    await query(
-      `DELETE FROM legal_documents WHERE type = 'tos' AND version IN ($1, $2)`,
-      [originalTosVersion, newTosVersion]
-    );
+    await query(`DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`, [userId]);
+    await query(`DELETE FROM legal_documents WHERE type = 'tos' AND version IN ($1, $2)`, [
+      originalTosVersion,
+      newTosVersion,
+    ]);
   });
 
   afterAll(async () => {
-    await query(
-      `DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`,
-      [userId]
-    );
-    await query(
-      `DELETE FROM legal_documents WHERE type = 'tos' AND version IN ($1, $2)`,
-      [originalTosVersion, newTosVersion]
-    );
+    await query(`DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`, [userId]);
+    await query(`DELETE FROM legal_documents WHERE type = 'tos' AND version IN ($1, $2)`, [
+      originalTosVersion,
+      newTosVersion,
+    ]);
   });
 
   it("blocks a user with stale TOS acceptance after version bump", async () => {
@@ -198,10 +188,9 @@ describe("TOS version update blocks existing sessions until new TOS accepted (#4
       [freshUserId, freshUserEmail]
     );
 
-    await query(
-      `DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`,
-      [freshUserId]
-    );
+    await query(`DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`, [
+      freshUserId,
+    ]);
 
     await query(
       `INSERT INTO legal_documents (version, type, body_markdown, effective_at)
@@ -219,10 +208,9 @@ describe("TOS version update blocks existing sessions until new TOS accepted (#4
     expect(res.status).toBe(403);
     expect(res.body.code).toBe("TOS_NOT_ACCEPTED");
 
-    await query(
-      `DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`,
-      [freshUserId]
-    );
+    await query(`DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`, [
+      freshUserId,
+    ]);
     await query(`DELETE FROM users WHERE id = $1`, [freshUserId]);
   });
 
@@ -257,15 +245,9 @@ describe("TOS version update blocks existing sessions until new TOS accepted (#4
   });
 
   it("resets cleanly — user with old acceptance is blocked by newer version", async () => {
-    await query(
-      `DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`,
-      [userId]
-    );
+    await query(`DELETE FROM user_legal_acceptances WHERE user_id = $1 AND type = 'tos'`, [userId]);
 
-    await query(
-      `DELETE FROM legal_documents WHERE type = 'tos' AND version = $1`,
-      [newTosVersion]
-    );
+    await query(`DELETE FROM legal_documents WHERE type = 'tos' AND version = $1`, [newTosVersion]);
 
     await query(
       `INSERT INTO legal_documents (version, type, body_markdown, effective_at)

@@ -29,11 +29,7 @@ const PKCE_STATE_BYTES = 32;
 const PKCE_VERIFIER_BYTES = 32;
 
 function base64Url(buffer: Buffer): string {
-  return buffer
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/g, "");
+  return buffer.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
 }
 
 export function createCodeChallenge(codeVerifier: string): string {
@@ -41,7 +37,9 @@ export function createCodeChallenge(codeVerifier: string): string {
 }
 
 function googleRedirectUri(): string {
-  return config.GOOGLE_REDIRECT_URI ?? `${config.WEB_URL.replace(/\/$/, "")}/api/auth/callback/google`;
+  return (
+    config.GOOGLE_REDIRECT_URI ?? `${config.WEB_URL.replace(/\/$/, "")}/api/auth/callback/google`
+  );
 }
 
 export async function createGooglePkceAuthorizationUrl(callbackUrl = "/"): Promise<{

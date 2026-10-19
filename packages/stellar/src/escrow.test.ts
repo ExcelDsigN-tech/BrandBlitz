@@ -3,7 +3,7 @@ import { EscrowClient, type EscrowRecipient } from "./escrow";
 
 /**
  * Integration tests for EscrowClient.
- * 
+ *
  * These tests verify the wrapper correctly constructs Soroban transactions.
  * Full end-to-end tests require a live testnet and are run separately.
  */
@@ -84,12 +84,16 @@ describe("EscrowClient", () => {
     it("should have isSettled method", () => {
       expect(typeof client.isSettled).toBe("function");
     });
+
+    it("should have getMemo method", () => {
+      expect(typeof client.getMemo).toBe("function");
+    });
   });
 });
 
 /**
  * Integration test for full escrow flow on testnet.
- * 
+ *
  * Run with: npm run test -- escrow.test.ts --grep "testnet"
  * Requires: STELLAR_ACCOUNT, STELLAR_SECRET env vars
  */

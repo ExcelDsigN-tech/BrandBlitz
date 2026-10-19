@@ -9,11 +9,16 @@ describe("SessionRecoveryModal", () => {
 
     render(
       <SessionRecoveryModal
-        session={{ status: "in_progress", currentRound: 2, remainingTimeMs: 17000, totalScore: 120 }}
+        session={{
+          status: "in_progress",
+          currentRound: 2,
+          remainingTimeMs: 17000,
+          totalScore: 120,
+        }}
         onResume={onResume}
         onForfeit={onForfeit}
         onStartNew={vi.fn()}
-      />,
+      />
     );
 
     expect(screen.getByRole("dialog", { name: /resume challenge/i })).toBeInTheDocument();
@@ -25,7 +30,11 @@ describe("SessionRecoveryModal", () => {
     // Initial click on forfeit shows confirmation step
     fireEvent.click(screen.getByRole("button", { name: /forfeit/i }));
     expect(onForfeit).not.toHaveBeenCalled();
-    expect(screen.getByText(/Are you sure you want to forfeit\? Your current score and progress will be lost\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Are you sure you want to forfeit\? Your current score and progress will be lost\./i
+      )
+    ).toBeInTheDocument();
 
     // Confirm forfeit executes onForfeit
     fireEvent.click(screen.getByRole("button", { name: /confirm forfeit/i }));
@@ -41,7 +50,7 @@ describe("SessionRecoveryModal", () => {
         onResume={vi.fn()}
         onForfeit={vi.fn()}
         onStartNew={onStartNew}
-      />,
+      />
     );
 
     expect(screen.getByRole("dialog", { name: /session expired/i })).toBeInTheDocument();

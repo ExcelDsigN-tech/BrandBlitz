@@ -67,10 +67,11 @@ ENV NODE_ENV=production
 # Switch to non-root user
 USER nodejs
 
-EXPOSE 3000
+EXPOSE 3001
 STOPSIGNAL SIGTERM
 
+# Healthcheck uses PORT env var (defaults to 3001 per docker-compose.yml)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:3000/health || exit 1
+  CMD wget -qO- http://localhost:${PORT:-3001}/health || exit 1
 
 CMD ["node", "dist/index.js"]

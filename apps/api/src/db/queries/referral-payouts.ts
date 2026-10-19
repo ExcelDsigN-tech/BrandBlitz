@@ -53,37 +53,33 @@ export async function createReferralPayout(data: {
       data.referredStellarAddress,
       data.referrerAmountStroops.toString(),
       data.referredAmountStroops.toString(),
-    ],
+    ]
   );
   return result.rows[0];
 }
 
 export async function findReferralPayoutByReferralId(
-  referralId: string,
+  referralId: string
 ): Promise<ReferralPayout | null> {
   const result = await query<ReferralPayout>(
     "SELECT * FROM referral_payouts WHERE referral_id = $1 LIMIT 1",
-    [referralId],
+    [referralId]
   );
   return result.rows[0] ?? null;
 }
 
-export async function findReferralPayoutById(
-  id: string,
-): Promise<ReferralPayout | null> {
+export async function findReferralPayoutById(id: string): Promise<ReferralPayout | null> {
   const result = await query<ReferralPayout>(
     "SELECT * FROM referral_payouts WHERE id = $1 LIMIT 1",
-    [id],
+    [id]
   );
   return result.rows[0] ?? null;
 }
 
-export async function findPendingReferralPayoutById(
-  id: string,
-): Promise<ReferralPayout | null> {
+export async function findPendingReferralPayoutById(id: string): Promise<ReferralPayout | null> {
   const result = await query<ReferralPayout>(
     "SELECT * FROM referral_payouts WHERE id = $1 AND status = 'pending' LIMIT 1",
-    [id],
+    [id]
   );
   return result.rows[0] ?? null;
 }
@@ -92,11 +88,11 @@ export async function updateReferralPayoutStatus(
   id: string,
   status: ReferralPayoutStatus,
   txHash?: string,
-  errorMessage?: string,
+  errorMessage?: string
 ): Promise<void> {
   await query(
     "UPDATE referral_payouts SET status = $1, tx_hash = $2, error_message = $3 WHERE id = $4",
-    [status, txHash ?? null, errorMessage ?? "", id],
+    [status, txHash ?? null, errorMessage ?? "", id]
   );
 }
 
@@ -113,7 +109,7 @@ export async function getReferralPayoutTotalsForUser(userId: string): Promise<{
        COALESCE(SUM(CASE WHEN referred_id = $1 THEN referred_amount_stroops ELSE 0 END), 0)::text AS referred_stroops
      FROM referral_payouts
      WHERE status IN ('pending', 'sent') AND (referrer_id = $1 OR referred_id = $1)`,
-    [userId],
+    [userId]
   );
 
   const row = result.rows[0];

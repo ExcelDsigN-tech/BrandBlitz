@@ -7,10 +7,10 @@ import { test as base } from "@playwright/test";
 export const test = base.extend({
   authenticatedPage: async ({ page }, use) => {
     // In a real app, you might want to sign a JWT or set a session cookie here.
-    // For this demo, we'll assume the app can be tricked by a mock cookie 
+    // For this demo, we'll assume the app can be tricked by a mock cookie
     // or we'll need a real session from a test user.
     // Since we're using NextAuth, we'd ideally set the 'next-auth.session-token' cookie.
-    
+
     // For now, let's just use a placeholder that tests can override or use.
     await page.context().addCookies([
       {
@@ -22,7 +22,7 @@ export const test = base.extend({
         sameSite: "Lax",
       },
     ]);
-    
+
     await use(page);
   },
 });

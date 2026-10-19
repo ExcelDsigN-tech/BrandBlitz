@@ -1,0 +1,84 @@
+# Unit tests for deposit-monitor.rules.yml.
+# Run: promtool test rules infra/prometheus/alerts/deposit-monitor.rules.test.yml
+rule_files:
+  - deposit-monitor.rules.yml
+
+evaluation_interval: 30s
+
+tests:
+  # Lag climbs 30s per minute from 0 and the SLO is 60s, so the breach
+  # starts after 2m and the 5m `for:` makes the alert fire at 7m.
+  - interval: 1m
+    input_series:
+      - series: 'deposit_monitor_indexer_lag_seconds{job="deposit-monitor",instance="dm:9464"}'
+        values: "0+30x15"
+      - series: 'deposit_monitor_indexer_lag_slo_seconds{job="deposit-monitor",instance="dm:9464"}'
+        values: "60x15"
+      - series: 'up{job="deposit-monitor",instance="dm:9464"}'
+        values: "1x15"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: DepositMonitorIndexerLagHigh
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: DepositMonitorIndexerLagHigh
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              service: deposit-monitor
+              job: deposit-monitor
+              instance: dm:9464
+            exp_annotations:
+              summary: "deposit-monitor indexer lag above SLO for 5m"
+              description: "Indexer lag is 4m 0s on dm:9464 (SLO 60s). New deposits are not being detected, so challenges cannot launch."
+              runbook_url: docs/runbooks/deposit-monitor-lag.md
+      - eval_time: 8m
+        alertname: DepositMonitorDown
+        exp_alerts: []
+    promql_expr_test:
+      - expr: deposit_monitor:lag_window_bad:5m
+        eval_time: 1m
+        exp_samples:
+          - labels: 'deposit_monitor:lag_window_bad:5m{job="deposit-monitor",instance="dm:9464"}'
+            value: 0
+      - expr: deposit_monitor:lag_window_bad:5m
+        eval_time: 4m
+        exp_samples:
+          - labels: 'deposit_monitor:lag_window_bad:5m{job="deposit-monitor",instance="dm:9464"}'
+            value: 1
+
+  # Healthy indexer: lag oscillates well under the SLO; nothing fires.
+  - interval: 1m
+    input_series:
+      - series: 'deposit_monitor_indexer_lag_seconds{job="deposit-monitor",instance="dm:9464"}'
+        values: "5 2 7 1 6 3 5 2 7 1 6 3 5 2 7 1"
+      - series: 'deposit_monitor_indexer_lag_slo_seconds{job="deposit-monitor",instance="dm:9464"}'
+        values: "60x15"
+      - series: 'up{job="deposit-monitor",instance="dm:9464"}'
+        values: "1x15"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: DepositMonitorIndexerLagHigh
+        exp_alerts: []
+      - eval_time: 15m
+        alertname: DepositMonitorDown
+        exp_alerts: []
+
+  # Scrape target down for longer than 2m.
+  - interval: 1m
+    input_series:
+      - series: 'up{job="deposit-monitor",instance="dm:9464"}'
+        values: "1 1 0 0 0 0 0"
+    alert_rule_test:
+      - eval_time: 6m
+        alertname: DepositMonitorDown
+        exp_alerts:
+          - exp_labels:
+              severity: page
+              service: deposit-monitor
+              job: deposit-monitor
+              instance: dm:9464
+            exp_annotations:
+              summary: "deposit-monitor is not being scraped"
+              description: "Prometheus cannot scrape dm:9464. Indexer lag cannot be measured and deposits are likely not being processed."
+              runbook_url: docs/runbooks/deposit-monitor-lag.md

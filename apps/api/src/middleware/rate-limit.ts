@@ -40,10 +40,7 @@ function parseIpv4Hextets(part: string): string[] | null {
   if (isIP(part) !== 4) return null;
 
   const octets = part.split(".").map((octet) => Number.parseInt(octet, 10));
-  return [
-    ((octets[0] << 8) | octets[1]).toString(16),
-    ((octets[2] << 8) | octets[3]).toString(16),
-  ];
+  return [((octets[0] << 8) | octets[1]).toString(16), ((octets[2] << 8) | octets[3]).toString(16)];
 }
 
 function expandIpv6(address: string): string[] | null {
@@ -109,9 +106,10 @@ function ipKey(req: Request): string {
 function makeRedisStore() {
   return new RedisStore({
     sendCommand: async (...args: string[]) => {
-      const command = typeof (redis as any).call === "function"
-        ? (redis as any).call
-        : (redis as any).sendCommand;
+      const command =
+        typeof (redis as any).call === "function"
+          ? (redis as any).call
+          : (redis as any).sendCommand;
       if (!command) throw new TypeError("Redis client does not support call/sendCommand");
       try {
         return await command.apply(redis, args);
@@ -144,7 +142,9 @@ async function getApiRateLimit(): Promise<number> {
         cachedRateLimit = configObj.limit;
       }
     } catch (err) {
-      logger.warn("Failed to fetch rate_limit_requests_per_minute", { error: (err as Error).message });
+      logger.warn("Failed to fetch rate_limit_requests_per_minute", {
+        error: (err as Error).message,
+      });
     }
     lastRateLimitFetch = now;
   }
@@ -204,6 +204,21 @@ export const challengeStartLimiter = rateLimit({
   handler: (req, res) => {
     record429("challengeStartLimiter", userAwareKey(req));
     res.status(429).json({ error: "Too many challenge attempts" });
+  },
+});
+
+/** User reports are deliberately much tighter than normal API traffic. */
+export const reportLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  keyGenerator: userAwareKey,
+  passOnStoreError: true,
+  store: redisStore,
+  handler: (req, res) => {
+    record429("reportLimiter", userAwareKey(req));
+    res.status(429).json({ error: "Too many reports, please try again later" });
   },
 });
 
@@ -321,20 +336,23 @@ export const questionPreviewLimiter = rateLimit({
 });
 
 /**
- * Challenge report: 5 req / 15 min per authenticated user.
- * Prevents report-spam across multiple challenges.
+ * Personal API key rate limit: 120 req / minute per API key.
+ * Independent of user session rate limits (#1027).
  */
-export const reportLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
+export const personalApiKeyLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
   standardHeaders: "draft-7",
   legacyHeaders: false,
-  keyGenerator: (req) => (req.user?.sub ? `user:${req.user.sub}` : `ip:${normalizeClientIp(req.ip)}`),
+  keyGenerator: (req) =>
+    req.user?.apiKeyId ? `apikey:${req.user.apiKeyId}` : `apikey:${ipKey(req)}`,
   passOnStoreError: true,
   store: redisStore,
   handler: (req, res) => {
-    const key = req.user?.sub ? `user:${req.user.sub}` : `ip:${normalizeClientIp(req.ip)}`;
-    record429("reportLimiter", key);
-    res.status(429).json({ error: "Too many report requests, please try again later" });
+    const key = req.user?.apiKeyId
+      ? `apikey:${req.user.apiKeyId}`
+      : `apikey:${normalizeClientIp(req.ip)}`;
+    record429("personalApiKeyLimiter", key);
+    res.status(429).json({ error: "API key rate limit exceeded", code: "RATE_LIMIT_EXCEEDED" });
   },
 });

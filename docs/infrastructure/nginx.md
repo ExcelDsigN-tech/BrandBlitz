@@ -27,9 +27,9 @@ nginx/templates/nginx.prod.conf.template
 
 ## Required environment variable
 
-| Variable   | Example            | Description                                                       |
-|------------|--------------------|-------------------------------------------------------------------|
-| `DOMAIN`   | `brandblitz.io`    | Public domain — substituted into `server_name` and TLS cert paths |
+| Variable | Example         | Description                                                       |
+| -------- | --------------- | ----------------------------------------------------------------- |
+| `DOMAIN` | `brandblitz.io` | Public domain — substituted into `server_name` and TLS cert paths |
 
 Set it in your deploy environment or `.env` file. The prod compose passes it through:
 
@@ -66,8 +66,8 @@ ensure the certs directory is volume-mounted in `docker-compose.yml`:
 
 ## Updating the config
 
-Edit `nginx/templates/nginx.prod.conf.template`. Do **not** edit `nginx/nginx.prod.conf`
-(kept only for reference; it is no longer mounted in prod).
+Edit `nginx/templates/nginx.prod.conf.template`. Production renders this template at
+startup; generated configuration files are not committed or edited manually.
 
 ## CI check
 

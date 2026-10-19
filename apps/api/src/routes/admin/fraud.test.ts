@@ -90,7 +90,11 @@ describe("GET /admin/fraud-flags", () => {
   });
 
   it("returns 403 for a non-admin user", async () => {
-    mocks.jwtVerify.mockReturnValue({ sub: PLAYER_USER.id, email: "player@example.com", role: "player" });
+    mocks.jwtVerify.mockReturnValue({
+      sub: PLAYER_USER.id,
+      email: "player@example.com",
+      role: "player",
+    });
     mocks.findUserById.mockResolvedValue(PLAYER_USER);
 
     const res = await request(createApp())
@@ -101,7 +105,11 @@ describe("GET /admin/fraud-flags", () => {
   });
 
   it("returns 200 with paginated flags for admin", async () => {
-    mocks.jwtVerify.mockReturnValue({ sub: ADMIN_USER.id, email: "admin@example.com", role: "admin" });
+    mocks.jwtVerify.mockReturnValue({
+      sub: ADMIN_USER.id,
+      email: "admin@example.com",
+      role: "admin",
+    });
     mocks.findUserById.mockResolvedValue(ADMIN_USER);
 
     const res = await request(createApp())
@@ -115,23 +123,29 @@ describe("GET /admin/fraud-flags", () => {
   });
 
   it("passes status filter to getFraudFlags", async () => {
-    mocks.jwtVerify.mockReturnValue({ sub: ADMIN_USER.id, email: "admin@example.com", role: "admin" });
+    mocks.jwtVerify.mockReturnValue({
+      sub: ADMIN_USER.id,
+      email: "admin@example.com",
+      role: "admin",
+    });
     mocks.findUserById.mockResolvedValue(ADMIN_USER);
 
     await request(createApp())
       .get("/admin/fraud-flags?status=open")
       .set("Authorization", ADMIN_TOKEN);
 
-    expect(mocks.getFraudFlags).toHaveBeenCalledWith(
-      expect.objectContaining({ status: "open" })
-    );
+    expect(mocks.getFraudFlags).toHaveBeenCalledWith(expect.objectContaining({ status: "open" }));
   });
 });
 
 describe("PATCH /admin/fraud-flags/:id", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.jwtVerify.mockReturnValue({ sub: ADMIN_USER.id, email: "admin@example.com", role: "admin" });
+    mocks.jwtVerify.mockReturnValue({
+      sub: ADMIN_USER.id,
+      email: "admin@example.com",
+      role: "admin",
+    });
     mocks.findUserById.mockResolvedValue(ADMIN_USER);
     mocks.getFraudFlagById.mockResolvedValue(SAMPLE_FLAG);
     mocks.updateFraudFlagStatus.mockResolvedValue({
@@ -144,7 +158,11 @@ describe("PATCH /admin/fraud-flags/:id", () => {
   });
 
   it("returns 403 for a non-admin user", async () => {
-    mocks.jwtVerify.mockReturnValue({ sub: PLAYER_USER.id, email: "player@example.com", role: "player" });
+    mocks.jwtVerify.mockReturnValue({
+      sub: PLAYER_USER.id,
+      email: "player@example.com",
+      role: "player",
+    });
     mocks.findUserById.mockResolvedValue(PLAYER_USER);
 
     const res = await request(createApp())

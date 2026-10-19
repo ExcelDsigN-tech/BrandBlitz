@@ -89,10 +89,9 @@ describe("useKeyboardAnswers", () => {
   it("calls the latest onAnswer callback when handler is captured by ref", () => {
     const onAnswer1 = vi.fn();
     const onAnswer2 = vi.fn();
-    const { rerender } = renderHook(
-      ({ onAnswer }) => useKeyboardAnswers({ onAnswer }),
-      { initialProps: { onAnswer: onAnswer1 } }
-    );
+    const { rerender } = renderHook(({ onAnswer }) => useKeyboardAnswers({ onAnswer }), {
+      initialProps: { onAnswer: onAnswer1 },
+    });
 
     rerender({ onAnswer: onAnswer2 });
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "a" }));

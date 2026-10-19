@@ -78,7 +78,7 @@ function buildBrand(params: {
     tagline: params.tagline,
     brand_story: null,
     usp: params.usp,
-    product_image_keys: params.hasProductImage ?? true ? ["product.webp"] : [],
+    product_image_keys: (params.hasProductImage ?? true) ? ["product.webp"] : [],
     created_at: "2026-04-24T00:00:00.000Z",
   };
 }

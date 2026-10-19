@@ -35,6 +35,7 @@ type AdminUserRow = {
   created_at: string;
   suspended_at: string | null;
   fraud_score: number;
+  fraud_score_overridden: boolean;
   total_payouts: number;
 };
 
@@ -90,7 +91,9 @@ router.get("/users", async (req, res) => {
               u.email,
               u.created_at,
               u.suspended_at,
-              COALESCE(ft.fraud_score, 0)::int AS fraud_score,
+              -- A manual override (#1010) takes precedence over the computed count.
+              COALESCE(u.fraud_score_override, ft.fraud_score, 0)::int AS fraud_score,
+              (u.fraud_score_override IS NOT NULL) AS fraud_score_overridden,
               COALESCE(pt.total_payouts, 0)::int AS total_payouts
        FROM users u
        LEFT JOIN fraud_totals ft ON ft.user_id = u.id
@@ -126,6 +129,7 @@ router.get("/users", async (req, res) => {
       createdAt: user.created_at,
       suspendedAt: user.suspended_at,
       fraudScore: user.fraud_score,
+      fraudScoreOverridden: user.fraud_score_overridden,
       totalPayouts: user.total_payouts,
     })),
     nextCursor,

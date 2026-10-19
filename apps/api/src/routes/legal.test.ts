@@ -10,7 +10,11 @@ const JWT_SECRET = process.env.JWT_SECRET ?? "test-secret-at-least-32-characters
 
 function signToken(overrides?: Partial<{ sub: string; email: string; role: string }>): string {
   return jwt.sign(
-    { sub: overrides?.sub ?? TEST_USER_ID, email: overrides?.email ?? TEST_EMAIL, role: overrides?.role ?? "player" },
+    {
+      sub: overrides?.sub ?? TEST_USER_ID,
+      email: overrides?.email ?? TEST_EMAIL,
+      role: overrides?.role ?? "player",
+    },
     JWT_SECRET,
     { expiresIn: "15m" }
   );
@@ -47,9 +51,7 @@ describe("Legal routes", () => {
 
   describe("POST /legal/accept", () => {
     it("returns 401 without auth", async () => {
-      const res = await request(app)
-        .post("/legal/accept")
-        .send({ type: "tos", version: "1.0" });
+      const res = await request(app).post("/legal/accept").send({ type: "tos", version: "1.0" });
       expect(res.status).toBe(401);
     });
 
@@ -113,7 +115,10 @@ describe("Legal routes", () => {
 
       await request(app)
         .post("/legal/accept")
-        .set("Authorization", `Bearer ${signToken({ sub: auditUserId, email: "legal-audit-test@example.com" })}`)
+        .set(
+          "Authorization",
+          `Bearer ${signToken({ sub: auditUserId, email: "legal-audit-test@example.com" })}`
+        )
         .send({ type: "tos", version: "1.0" });
 
       const rows = await query(

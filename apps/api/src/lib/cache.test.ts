@@ -52,8 +52,8 @@ describe("cached()", () => {
   });
 
   it("calls loader once on miss, writes to Redis, returns value", async () => {
-    mocks.redisGet.mockResolvedValue(null);            // cache miss
-    mocks.redisSet.mockResolvedValueOnce("OK");        // lock acquired
+    mocks.redisGet.mockResolvedValue(null); // cache miss
+    mocks.redisSet.mockResolvedValueOnce("OK"); // lock acquired
     const payload = { y: 2 };
     const loader = makeLoader(payload);
 
@@ -63,12 +63,7 @@ describe("cached()", () => {
     expect(loader).toHaveBeenCalledTimes(1);
     expect(mocks.metricsInc).toHaveBeenCalledWith("cache.miss_total", { key: KEY });
     // Writes cache entry with correct TTL
-    expect(mocks.redisSet).toHaveBeenCalledWith(
-      KEY,
-      JSON.stringify(payload),
-      "EX",
-      TTL,
-    );
+    expect(mocks.redisSet).toHaveBeenCalledWith(KEY, JSON.stringify(payload), "EX", TTL);
     // Releases lock
     expect(mocks.redisDel).toHaveBeenCalledWith(`lock:${KEY}`);
   });
@@ -135,7 +130,7 @@ describe("cached()", () => {
     mocks.redisGet.mockImplementation(async () => {
       getCallCount++;
       if (getCallCount === 1) return null; // initial miss
-      return JSON.stringify(payload);      // subsequent polls hit
+      return JSON.stringify(payload); // subsequent polls hit
     });
 
     // Lock not acquired (held by other)
@@ -167,12 +162,7 @@ describe("cached()", () => {
     await cached(KEY, ttl, loader);
 
     // Verify TTL was respected
-    expect(mocks.redisSet).toHaveBeenCalledWith(
-      KEY,
-      JSON.stringify(payload),
-      "EX",
-      ttl,
-    );
+    expect(mocks.redisSet).toHaveBeenCalledWith(KEY, JSON.stringify(payload), "EX", ttl);
   });
 
   it("invalidate removes the key", async () => {
@@ -194,7 +184,10 @@ describe("cached()", () => {
 
   it("serializes and deserializes nested objects correctly", async () => {
     const complexPayload = {
-      rounds: [{ score: 100, correct: true }, { score: 50, correct: false }],
+      rounds: [
+        { score: 100, correct: true },
+        { score: 50, correct: false },
+      ],
       metadata: { userId: "user1", timestamp: "2024-01-01T00:00:00Z" },
     };
 

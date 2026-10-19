@@ -46,7 +46,11 @@ export function CostPerSessionChart({ data, loading = false }: CostPerSessionCha
       </CardHeader>
       <CardContent>
         <div className="relative h-48">
-          <svg className="h-full w-full" preserveAspectRatio="none" viewBox={`0 0 ${data.length * 40} 100`}>
+          <svg
+            className="h-full w-full"
+            preserveAspectRatio="none"
+            viewBox={`0 0 ${data.length * 40} 100`}
+          >
             {data.map((d, i) => {
               const barHeight = (d.costPerSession / maxCost) * 80;
               const x = i * 40 + 8;
@@ -79,7 +83,10 @@ export function CostPerSessionChart({ data, loading = false }: CostPerSessionCha
                     fontSize={7}
                     className="fill-[var(--muted-foreground)]"
                   >
-                    {new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" })}
+                    {new Date(d.date).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
                   </text>
                 </g>
               );
@@ -87,12 +94,8 @@ export function CostPerSessionChart({ data, loading = false }: CostPerSessionCha
           </svg>
         </div>
         <div className="mt-4 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
-          <span>
-            Total spent: ${data.reduce((sum, d) => sum + d.totalCost, 0).toFixed(2)}
-          </span>
-          <span>
-            {data.reduce((sum, d) => sum + d.sessionCount, 0).toLocaleString()} sessions
-          </span>
+          <span>Total spent: ${data.reduce((sum, d) => sum + d.totalCost, 0).toFixed(2)}</span>
+          <span>{data.reduce((sum, d) => sum + d.sessionCount, 0).toLocaleString()} sessions</span>
         </div>
       </CardContent>
     </Card>

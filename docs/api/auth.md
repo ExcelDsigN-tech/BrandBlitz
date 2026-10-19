@@ -11,14 +11,15 @@ A short-lived JWT is issued at login and sent as an `Authorization: Bearer <toke
 The API enables `cors({ credentials: true })` and is scoped to the specific dashboard origin (`WEB_URL` env var — never a wildcard). The frontend axios client sets `withCredentials: true` so the browser attaches cookies automatically.
 
 This means:
+
 - An `httpOnly` session cookie set by a future `/auth/session` endpoint will travel with every cross-origin request.
 - The CORS policy rejects requests from unlisted origins even with credentials.
 
 ### Why both?
 
-| Mechanism | Benefit |
-|---|---|
-| Bearer token | Stateless; easy to use from native apps and CLIs |
+| Mechanism       | Benefit                                                    |
+| --------------- | ---------------------------------------------------------- |
+| Bearer token    | Stateless; easy to use from native apps and CLIs           |
 | httpOnly cookie | Not accessible to JavaScript; resistant to XSS token theft |
 
 ### Required API server config
@@ -28,6 +29,7 @@ WEB_URL=https://app.brandblitz.io   # must NOT be *
 ```
 
 The browser will refuse to send credentials to a wildcard origin, so `WEB_URL` must always be a specific origin.
+
 ## Related API docs
 
 - [Rate limits and error codes](./rate-limits-and-errors.md)
@@ -148,18 +150,18 @@ curl -X POST https://api.brandblitz.io/auth/refresh \
 
 **Token lifetime**
 
-| Token | Lifetime | Notes |
-|---|---|---|
-| Access token | ~15 minutes | Send as `Authorization: Bearer <token>` |
-| Refresh token | 30 days | Single-use; rotate on every call |
+| Token         | Lifetime    | Notes                                   |
+| ------------- | ----------- | --------------------------------------- |
+| Access token  | ~15 minutes | Send as `Authorization: Bearer <token>` |
+| Refresh token | 30 days     | Single-use; rotate on every call        |
 
 **Error codes**
 
-| Status | Code | Meaning |
-|---|---|---|
-| `401` | `INVALID_REFRESH_TOKEN` | Token is malformed, expired, or unknown |
-| `401` | `TOKEN_REVOKED` | Token was explicitly revoked (e.g. logout) |
-| `401` | `TOKEN_REUSE` | Token was already used — all sessions revoked |
+| Status | Code                    | Meaning                                       |
+| ------ | ----------------------- | --------------------------------------------- |
+| `401`  | `INVALID_REFRESH_TOKEN` | Token is malformed, expired, or unknown       |
+| `401`  | `TOKEN_REVOKED`         | Token was explicitly revoked (e.g. logout)    |
+| `401`  | `TOKEN_REUSE`           | Token was already used — all sessions revoked |
 
 ---
 

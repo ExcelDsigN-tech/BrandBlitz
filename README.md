@@ -60,7 +60,7 @@ Every "earn crypto" product pays fractions of a cent for passive attention. Watc
 
 **Active engagement generates 17x more purchase intent than passive ads** (YouGov / Neuro-Insight research). Interactive quiz formats produce **80–91% brand recall uplift**. Branded live trivia achieves **91% sponsor recall**.
 
-The research is clear: *learn-then-test* is categorically better than *see-and-forget*. But no one has wired it to real money payouts — until now.
+The research is clear: _learn-then-test_ is categorically better than _see-and-forget_. But no one has wired it to real money payouts — until now.
 
 ---
 
@@ -96,6 +96,7 @@ Any user who pays attention during warm-up has every answer they need. The chall
 BrandBlitz does not sell impressions, clicks, or views. It sells **verified attention seconds** — the emerging IAB/Adelaide AU measurement standard for 2025.
 
 When a brand deposits $100 USDC:
+
 - Every player completed the warm-up (minimum 20s, enforced server-side — not a client timer)
 - Every player attempted all 3 rounds testing recall of brand content they just saw
 - Scores objectively measure which parts of the brand message landed
@@ -105,14 +106,14 @@ When a brand deposits $100 USDC:
 
 ### Brand lift benchmarks (research-backed)
 
-| Format | Recall Uplift |
-|---|---|
-| Standard display ad | 4–8 percentage points |
-| Standard video | Baseline |
-| Interactive streaming ad | +36% vs standard video (BrightLine 2024) |
-| Branded live trivia | **91% sponsor recall** (West Coast Fever / Komo) |
-| Interactive quiz (YouGov FreeWall) | **80–86% brand recall uplift** |
-| BrandBlitz warm-up + challenge | Architecturally comparable to interactive formats |
+| Format                             | Recall Uplift                                     |
+| ---------------------------------- | ------------------------------------------------- |
+| Standard display ad                | 4–8 percentage points                             |
+| Standard video                     | Baseline                                          |
+| Interactive streaming ad           | +36% vs standard video (BrightLine 2024)          |
+| Branded live trivia                | **91% sponsor recall** (West Coast Fever / Komo)  |
+| Interactive quiz (YouGov FreeWall) | **80–86% brand recall uplift**                    |
+| BrandBlitz warm-up + challenge     | Architecturally comparable to interactive formats |
 
 ### What the brand dashboard shows
 
@@ -128,17 +129,17 @@ See the [Brands API](docs/api/brands.md) for the full endpoint reference includi
 
 ### Cost comparison
 
-| Ad format | Approx. CPM | What you get |
-|---|---|---|
-| Display | $2–10 | Passive view; ~50% bot traffic; no engagement proof |
-| Premium video | $20–50 | Passive viewing; 50% skip rate |
-| BrandBlitz | $20–50 equiv. | Verified engagement + first-party data + organic virality |
+| Ad format     | Approx. CPM   | What you get                                              |
+| ------------- | ------------- | --------------------------------------------------------- |
+| Display       | $2–10         | Passive view; ~50% bot traffic; no engagement proof       |
+| Premium video | $20–50        | Passive viewing; 50% skip rate                            |
+| BrandBlitz    | $20–50 equiv. | Verified engagement + first-party data + organic virality |
 
 ### First-party data and virality
 
 Top scorers are self-identified brand enthusiasts — they chose to engage, proved comprehension, and competed. That's a qualified lead list that can't be bought anywhere else. **Research shows first-party behavioral data drives 83% improvement in customer acquisition cost** (AppsFlyer).
 
-Every winner also generates a shareable result card: *"I earned $X knowing [Brand]."* That's organic brand reach through social proof, extending past the campaign end date at zero additional cost.
+Every winner also generates a shareable result card: _"I earned $X knowing [Brand]."_ That's organic brand reach through social proof, extending past the campaign end date at zero additional cost.
 
 ---
 
@@ -176,14 +177,14 @@ Top scorers earn exclusive access: brand Discord roles, early product access, in
 
 ## How It's Different
 
-| Platform | Model | Payout | Unknown Brand? | Active Learning? |
-|---|---|---|---|---|
-| Brave Ads | Passive attention | BAT | No — needs prior recognition | No |
-| Adsgram | Dev monetisation | TON | No | No |
-| Coinbase Earn | Educational | USDC | No — crypto only; discontinued 2025 | Yes |
-| HQ Trivia (2018) | Branded trivia | USD | Yes — showed brand content | Partial |
-| Pinterest Quiz Ads | Sponsored quiz | None | Yes | Yes |
-| **BrandBlitz** | **Warm-up + challenge** | **USDC instant** | **Yes — core mechanic** | **Yes — core mechanic** |
+| Platform           | Model                   | Payout           | Unknown Brand?                      | Active Learning?        |
+| ------------------ | ----------------------- | ---------------- | ----------------------------------- | ----------------------- |
+| Brave Ads          | Passive attention       | BAT              | No — needs prior recognition        | No                      |
+| Adsgram            | Dev monetisation        | TON              | No                                  | No                      |
+| Coinbase Earn      | Educational             | USDC             | No — crypto only; discontinued 2025 | Yes                     |
+| HQ Trivia (2018)   | Branded trivia          | USD              | Yes — showed brand content          | Partial                 |
+| Pinterest Quiz Ads | Sponsored quiz          | None             | Yes                                 | Yes                     |
+| **BrandBlitz**     | **Warm-up + challenge** | **USDC instant** | **Yes — core mechanic**             | **Yes — core mechanic** |
 
 The combination of warm-up → competition → instant USDC payout is unoccupied.
 
@@ -289,20 +290,20 @@ brandblitz/
 
 ## Tech Stack
 
-| Layer | Technology | Version |
-|---|---|---|
-| Frontend | Next.js App Router | 16.2.1 |
-| React | React | 19.2.4 |
-| Styling | Tailwind CSS v4 (CSS-first) | 4.2.2 |
-| Auth | next-auth (Google OAuth) | 4.24.13 |
-| Backend | Express | 5.2.1 |
-| Language | TypeScript | 6.0.2 |
-| Database | PostgreSQL | 17 |
-| Cache / queues | Redis + BullMQ | 7 / 5.71.1 |
-| Object storage | MinIO (dev) / S3-compatible (prod) | — |
-| Stellar SDK | @stellar/stellar-sdk | 14.6.1 |
-| Smart contracts | Soroban (Rust, soroban-sdk 25) | — |
-| Monorepo | Turborepo + pnpm workspaces | 2.8.21 / 10.33.0 |
+| Layer           | Technology                         | Version          |
+| --------------- | ---------------------------------- | ---------------- |
+| Frontend        | Next.js App Router                 | 16.2.1           |
+| React           | React                              | 19.2.4           |
+| Styling         | Tailwind CSS v4 (CSS-first)        | 4.2.2            |
+| Auth            | next-auth (Google OAuth)           | 4.24.13          |
+| Backend         | Express                            | 5.2.1            |
+| Language        | TypeScript                         | 6.0.2            |
+| Database        | PostgreSQL                         | 17               |
+| Cache / queues  | Redis + BullMQ                     | 7 / 5.71.1       |
+| Object storage  | MinIO (dev) / S3-compatible (prod) | —                |
+| Stellar SDK     | @stellar/stellar-sdk               | 14.6.1           |
+| Smart contracts | Soroban (Rust, soroban-sdk 25)     | —                |
+| Monorepo        | Turborepo + pnpm workspaces        | 2.8.21 / 10.33.0 |
 
 ---
 
@@ -408,13 +409,14 @@ pnpm dev                                      # or: make dev
 
 The project uses three Compose files for different environments:
 
-| File | Purpose | When applied |
-|------|---------|--------------|
-| `docker-compose.yml` | Base configuration — all services, health checks, and volumes | Always loaded |
-| `docker-compose.override.yml` | Development overrides — hot-reload bind mounts, exposed ports | **Auto-loaded** by `docker compose up` |
-| `docker-compose.prod.yml` | Production overrides — no bind mounts, HTTPS, replicas, secrets | Explicitly with `-f` flag |
+| File                          | Purpose                                                         | When applied                           |
+| ----------------------------- | --------------------------------------------------------------- | -------------------------------------- |
+| `docker-compose.yml`          | Base configuration — all services, health checks, and volumes   | Always loaded                          |
+| `docker-compose.override.yml` | Development overrides — hot-reload bind mounts, exposed ports   | **Auto-loaded** by `docker compose up` |
+| `docker-compose.prod.yml`     | Production overrides — no bind mounts, HTTPS, replicas, secrets | Explicitly with `-f` flag              |
 
 **Development** (default):
+
 ```bash
 docker compose up
 # Automatically merges docker-compose.yml + docker-compose.override.yml
@@ -422,6 +424,7 @@ docker compose up
 ```
 
 **Production:**
+
 ```bash
 docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 # Skips the override file — uses prod config only
@@ -461,6 +464,7 @@ pnpm --filter @brandblitz/api seed -- --reset
 ```
 
 What it creates:
+
 - **50 users** — 1 admin (`seed-admin@brandblitz.test`), 3 brand owners, 46 players with varied leagues
 - **3 brands** — Stellar Pay, NovaMint, AetherShop (with logo fixtures at `apps/api/scripts/fixtures/logos/`)
 - **6 challenges** — 2 active, 2 completed, 2 draft (2 per brand)
@@ -489,75 +493,75 @@ See [`apps/api/README.md`](./apps/api/README.md#operational-scripts) for other d
 
 Kept in sync with [`.env.example`](./.env.example), the source of truth (inline comments there have the full rationale/rotation notes). Vars marked **Critical secret** must never be committed with real values.
 
-| Name | Required | Default | Description |
-|---|---|---|---|
-| `PORT` | No | `3001` | API server port |
-| `NODE_ENV` | No | `development` | Node environment |
-| `DATABASE_URL` | Yes | — | PostgreSQL connection string. **Critical secret.** |
-| `REDIS_URL` | No | `redis://localhost:6379` | Redis connection string |
-| `POSTGRES_PASSWORD` | No | `brandblitz_dev` | PostgreSQL superuser password. **Critical secret.** |
-| `SESSION_START_LOCKOUT_THRESHOLD` | No | `10` | Failed session-start attempts before lockout |
-| `SESSION_START_LOCKOUT_WINDOW_SECONDS` | No | `3600` | Lockout window, in seconds |
-| `JWT_SECRET` | Yes | — | Signs API JWTs (32+ chars). **Critical secret.** |
-| `JWT_ISSUER` | No | `brandblitz-api` | JWT issuer claim |
-| `JWT_AUDIENCE` | No | `brandblitz-client` | JWT audience claim |
-| `GOOGLE_CLIENT_ID` | Yes | — | Google OAuth client ID |
-| `GOOGLE_CLIENT_SECRET` | Yes | — | Google OAuth client secret. **Critical secret.** |
-| `WEB_URL` | No | `http://localhost:3000` | Public URL of the web app |
-| `GOOGLE_REDIRECT_URI` | No | `http://localhost:3000/api/auth/callback/google` | OAuth redirect URI |
-| `GOOGLE_OAUTH_PKCE_TTL_SECONDS` | No | `300` | PKCE code verifier TTL |
-| `REFERRER_POLICY` | No | `strict-origin-when-cross-origin` | `Referrer-Policy` header value |
-| `NEXTAUTH_SECRET` | Yes | — | next-auth session encryption. **Critical secret.** |
-| `NEXTAUTH_URL` | Yes | — | Public URL of the web app (next-auth) |
-| `NEXT_PUBLIC_API_URL` | Yes | — | Browser-facing API base URL |
-| `NEXTAUTH_API_URL` | Yes | — | Internal URL next-auth uses to reach the API (e.g. `http://api:3001`) |
-| `NEXT_PUBLIC_CDN_HOST` | No | — | CDN host for the CSP `img-src` directive |
-| `CDN_BASE_URL` | No | — | CDN base URL, overrides `S3_PUBLIC_URL` when set |
-| `NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY` | No | — | FingerprintJS Pro public key; fingerprinting disabled if unset |
-| `ALLOWED_ORIGINS` | Yes | — | Comma-separated CORS allow-list; API refuses to boot without it |
-| `STELLAR_NETWORK` | No | `testnet` | `testnet` or `public` |
-| `STELLAR_HORIZON_URL` | No | `https://horizon-testnet.stellar.org` | Horizon server URL |
-| `STELLAR_RPC_URL` | No | `https://soroban-testnet.stellar.org` | Soroban RPC URL |
-| `STELLAR_HOT_WALLET_SECRET` | Yes | — | Hot wallet secret key (`S...`) used for payouts. **Critical secret.** |
-| `HOT_WALLET_PUBLIC_KEY` | Yes | — | Hot wallet public key (`G...`) used for deposit detection |
-| `SOROBAN_CONTRACT_ID` | No | — | Escrow contract ID; falls back to direct transfers if unset |
-| `USDC_ISSUER` | No | testnet USDC issuer | USDC asset issuer account |
-| `WEBHOOK_SECRET` | Yes | — | Authenticates `/webhooks/stellar` and revalidation calls. **Critical secret.** |
-| `S3_ENDPOINT` | Yes | — | S3-compatible storage endpoint |
-| `S3_REGION` | No | `us-east-1` | Storage region |
-| `S3_ACCESS_KEY_ID` | Yes | — | Storage access key. **Critical secret.** |
-| `S3_SECRET_ACCESS_KEY` | Yes | — | Storage secret key. **Critical secret.** |
-| `S3_BUCKET` | No | `brandblitz-assets` | Default bucket name |
-| `S3_BUCKET_BRAND_ASSETS` | No | `brand-assets` | Brand asset uploads bucket |
-| `S3_BUCKET_SHARE_CARDS` | No | `share-cards` | Share-card renders bucket |
-| `S3_PUBLIC_URL` | No | — | Public URL prefix for stored objects |
-| `S3_FORCE_PATH_STYLE` | No | `true` | Path-style addressing (required for MinIO) |
-| `MINIO_ROOT_USER` | No | `minioadmin` | MinIO root user (docker-compose only) |
-| `MINIO_ROOT_PASSWORD` | No | `minioadmin` | MinIO root password. **Critical secret.** |
-| `TWILIO_ACCOUNT_SID` | No | — | Twilio account SID for phone verification |
-| `TWILIO_AUTH_TOKEN` | No | — | Twilio auth token. **Critical secret.** |
-| `TWILIO_VERIFY_SERVICE_SID` | No | — | Twilio Verify service SID |
-| `PHONE_HASH_SALT` | Yes | — | HMAC salt for phone-number hashing (32-byte random). **Critical secret.** |
-| `SESSION_INTEGRITY_KEY` | Yes | — | HMAC key for session tamper-detection — generate with `openssl rand -hex 32`. **Critical secret.** |
-| `ADMIN_BOOTSTRAP_EMAIL` | No | — | Grants admin role to this email on boot, if set |
-| `REVALIDATE_SECRET` | No | — | Shared secret for on-demand ISR revalidation |
-| `NEXT_REVALIDATE_URL` | No | `http://localhost:3000` | Web app URL used for revalidation calls |
-| `LOG_LEVEL` | No | `info` | `error` \| `warn` \| `info` \| `http` \| `verbose` \| `debug` \| `silly` |
+| Name                                   | Required | Default                                          | Description                                                                                        |
+| -------------------------------------- | -------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------- |
+| `PORT`                                 | No       | `3001`                                           | API server port                                                                                    |
+| `NODE_ENV`                             | No       | `development`                                    | Node environment                                                                                   |
+| `DATABASE_URL`                         | Yes      | —                                                | PostgreSQL connection string. **Critical secret.**                                                 |
+| `REDIS_URL`                            | No       | `redis://localhost:6379`                         | Redis connection string                                                                            |
+| `POSTGRES_PASSWORD`                    | No       | `brandblitz_dev`                                 | PostgreSQL superuser password. **Critical secret.**                                                |
+| `SESSION_START_LOCKOUT_THRESHOLD`      | No       | `10`                                             | Failed session-start attempts before lockout                                                       |
+| `SESSION_START_LOCKOUT_WINDOW_SECONDS` | No       | `3600`                                           | Lockout window, in seconds                                                                         |
+| `JWT_SECRET`                           | Yes      | —                                                | Signs API JWTs (32+ chars). **Critical secret.**                                                   |
+| `JWT_ISSUER`                           | No       | `brandblitz-api`                                 | JWT issuer claim                                                                                   |
+| `JWT_AUDIENCE`                         | No       | `brandblitz-client`                              | JWT audience claim                                                                                 |
+| `GOOGLE_CLIENT_ID`                     | Yes      | —                                                | Google OAuth client ID                                                                             |
+| `GOOGLE_CLIENT_SECRET`                 | Yes      | —                                                | Google OAuth client secret. **Critical secret.**                                                   |
+| `WEB_URL`                              | No       | `http://localhost:3000`                          | Public URL of the web app                                                                          |
+| `GOOGLE_REDIRECT_URI`                  | No       | `http://localhost:3000/api/auth/callback/google` | OAuth redirect URI                                                                                 |
+| `GOOGLE_OAUTH_PKCE_TTL_SECONDS`        | No       | `300`                                            | PKCE code verifier TTL                                                                             |
+| `REFERRER_POLICY`                      | No       | `strict-origin-when-cross-origin`                | `Referrer-Policy` header value                                                                     |
+| `NEXTAUTH_SECRET`                      | Yes      | —                                                | next-auth session encryption. **Critical secret.**                                                 |
+| `NEXTAUTH_URL`                         | Yes      | —                                                | Public URL of the web app (next-auth)                                                              |
+| `NEXT_PUBLIC_API_URL`                  | Yes      | —                                                | Browser-facing API base URL                                                                        |
+| `NEXTAUTH_API_URL`                     | Yes      | —                                                | Internal URL next-auth uses to reach the API (e.g. `http://api:3001`)                              |
+| `NEXT_PUBLIC_CDN_HOST`                 | No       | —                                                | CDN host for the CSP `img-src` directive                                                           |
+| `CDN_BASE_URL`                         | No       | —                                                | CDN base URL, overrides `S3_PUBLIC_URL` when set                                                   |
+| `NEXT_PUBLIC_FINGERPRINT_PUBLIC_KEY`   | No       | —                                                | FingerprintJS Pro public key; fingerprinting disabled if unset                                     |
+| `ALLOWED_ORIGINS`                      | Yes      | —                                                | Comma-separated CORS allow-list; API refuses to boot without it                                    |
+| `STELLAR_NETWORK`                      | No       | `testnet`                                        | `testnet` or `public`                                                                              |
+| `STELLAR_HORIZON_URL`                  | No       | `https://horizon-testnet.stellar.org`            | Horizon server URL                                                                                 |
+| `STELLAR_RPC_URL`                      | No       | `https://soroban-testnet.stellar.org`            | Soroban RPC URL                                                                                    |
+| `STELLAR_HOT_WALLET_SECRET`            | Yes      | —                                                | Hot wallet secret key (`S...`) used for payouts. **Critical secret.**                              |
+| `HOT_WALLET_PUBLIC_KEY`                | Yes      | —                                                | Hot wallet public key (`G...`) used for deposit detection                                          |
+| `SOROBAN_CONTRACT_ID`                  | No       | —                                                | Escrow contract ID; falls back to direct transfers if unset                                        |
+| `USDC_ISSUER`                          | No       | testnet USDC issuer                              | USDC asset issuer account                                                                          |
+| `WEBHOOK_SECRET`                       | Yes      | —                                                | Authenticates `/webhooks/stellar` and revalidation calls. **Critical secret.**                     |
+| `S3_ENDPOINT`                          | Yes      | —                                                | S3-compatible storage endpoint                                                                     |
+| `S3_REGION`                            | No       | `us-east-1`                                      | Storage region                                                                                     |
+| `S3_ACCESS_KEY_ID`                     | Yes      | —                                                | Storage access key. **Critical secret.**                                                           |
+| `S3_SECRET_ACCESS_KEY`                 | Yes      | —                                                | Storage secret key. **Critical secret.**                                                           |
+| `S3_BUCKET`                            | No       | `brandblitz-assets`                              | Default bucket name                                                                                |
+| `S3_BUCKET_BRAND_ASSETS`               | No       | `brand-assets`                                   | Brand asset uploads bucket                                                                         |
+| `S3_BUCKET_SHARE_CARDS`                | No       | `share-cards`                                    | Share-card renders bucket                                                                          |
+| `S3_PUBLIC_URL`                        | No       | —                                                | Public URL prefix for stored objects                                                               |
+| `S3_FORCE_PATH_STYLE`                  | No       | `true`                                           | Path-style addressing (required for MinIO)                                                         |
+| `MINIO_ROOT_USER`                      | No       | `minioadmin`                                     | MinIO root user (docker-compose only)                                                              |
+| `MINIO_ROOT_PASSWORD`                  | No       | `minioadmin`                                     | MinIO root password. **Critical secret.**                                                          |
+| `TWILIO_ACCOUNT_SID`                   | No       | —                                                | Twilio account SID for phone verification                                                          |
+| `TWILIO_AUTH_TOKEN`                    | No       | —                                                | Twilio auth token. **Critical secret.**                                                            |
+| `TWILIO_VERIFY_SERVICE_SID`            | No       | —                                                | Twilio Verify service SID                                                                          |
+| `PHONE_HASH_SALT`                      | Yes      | —                                                | HMAC salt for phone-number hashing (32-byte random). **Critical secret.**                          |
+| `SESSION_INTEGRITY_KEY`                | Yes      | —                                                | HMAC key for session tamper-detection — generate with `openssl rand -hex 32`. **Critical secret.** |
+| `ADMIN_BOOTSTRAP_EMAIL`                | No       | —                                                | Grants admin role to this email on boot, if set                                                    |
+| `REVALIDATE_SECRET`                    | No       | —                                                | Shared secret for on-demand ISR revalidation                                                       |
+| `NEXT_REVALIDATE_URL`                  | No       | `http://localhost:3000`                          | Web app URL used for revalidation calls                                                            |
+| `LOG_LEVEL`                            | No       | `info`                                           | `error` \| `warn` \| `info` \| `http` \| `verbose` \| `debug` \| `silly`                           |
 
 ---
 
 ## Services & Ports
 
-| Service | Port | Description |
-|---|---|---|
-| nginx | **80** | Reverse proxy; routes `/api/*` → Express |
-| web | 3000 | Next.js frontend |
-| api | 3001 | Express REST API |
-| worker | — | BullMQ payout processor (no HTTP) |
-| postgres | 5432 | PostgreSQL 17 |
-| redis | 6379 | Redis 7 |
-| minio | 9000 | MinIO S3 API |
-| minio-console | 9001 | MinIO admin UI |
+| Service       | Port   | Description                              |
+| ------------- | ------ | ---------------------------------------- |
+| nginx         | **80** | Reverse proxy; routes `/api/*` → Express |
+| web           | 3000   | Next.js frontend                         |
+| api           | 3001   | Express REST API                         |
+| worker        | —      | BullMQ payout processor (no HTTP)        |
+| postgres      | 5432   | PostgreSQL 17                            |
+| redis         | 6379   | Redis 7                                  |
+| minio         | 9000   | MinIO S3 API                             |
+| minio-console | 9001   | MinIO admin UI                           |
 
 Only port 80 (and 443 in prod) is exposed externally in the Docker stack.
 
@@ -628,12 +632,15 @@ Correct answers **never leave the server**. The client only receives round score
 ## Stellar Integration
 
 ### Deposits
+
 Brand sends USDC to the hot wallet with a unique memo (e.g. `BLITZ-A1B2C3`). The Stellar webhook endpoint or background polling detects the deposit via `getEvents` on the Soroban RPC. Challenge transitions `pending_deposit → active`.
 
 ### Payouts
+
 Single hot wallet + muxed accounts. No per-user Stellar accounts (no 2 XLM minimum reserve per user). Payout job chunks winners into batches of ≤50 Payment ops, each batch submitted as one atomic transaction.
 
 ### Soroban Escrow (on-chain alternative)
+
 For brands wanting full on-chain transparency, the escrow contract holds USDC trustlessly. `settle(recipients)` distributes to winners; `refund()` returns the pool to the brand. See [`contracts/README.md`](./contracts/README.md).
 
 To build the contract, deploy it to testnet, and set `SOROBAN_CONTRACT_ID` so payout code runs through the contract locally, follow [`docs/stellar/local-escrow-setup.md`](./docs/stellar/local-escrow-setup.md). If `SOROBAN_CONTRACT_ID` is unset, payouts fall back to direct hot-wallet transfers.
@@ -644,13 +651,13 @@ To build the contract, deploy it to testnet, and set `SOROBAN_CONTRACT_ID` so pa
 
 Five independent layers:
 
-| Layer | Mechanism |
-|---|---|
-| Server authority | Correct answers and scores never sent to client |
-| Warmup enforcement | Server rejects challenge start if < 20s since warmup began |
-| Reaction time bounds | Answers < 150ms (physically impossible) or > 30s flagged |
+| Layer                 | Mechanism                                                          |
+| --------------------- | ------------------------------------------------------------------ |
+| Server authority      | Correct answers and scores never sent to client                    |
+| Warmup enforcement    | Server rejects challenge start if < 20s since warmup began         |
+| Reaction time bounds  | Answers < 150ms (physically impossible) or > 30s flagged           |
 | Device fingerprinting | FingerprintJS visitor ID; multi-account device detection via Redis |
-| Rate limiting | Redis-backed: 5 challenge starts/hr, 100 API calls/15min per IP |
+| Rate limiting         | Redis-backed: 5 challenge starts/hr, 100 API calls/15min per IP    |
 
 ---
 
@@ -715,12 +722,13 @@ NEXT_PUBLIC_API_URL=https://yourdomain.com/api
 ### 3. Configure Google OAuth for production
 
 In the [Google Cloud Console](https://console.cloud.google.com/):
+
 - Add `https://yourdomain.com/api/auth/callback/google` as an authorised redirect URI
 - Add `https://yourdomain.com` as an authorised JavaScript origin
 
 ### 4. Configure Nginx for your domain
 
-Edit `nginx/nginx.prod.conf` and replace `${DOMAIN}` with your domain, or set it as a shell variable before starting:
+Edit `nginx/templates/nginx.prod.conf.template` and set the deployment variables for your domain, or export `DOMAIN` before starting:
 
 ```bash
 export DOMAIN=yourdomain.com
@@ -742,6 +750,7 @@ docker compose logs -f web
 ```
 
 Production differences from dev:
+
 - No bind mounts — fully built images
 - `restart: unless-stopped` on all services
 - Nginx serves HTTPS with HSTS, X-Frame-Options, rate limiting
@@ -791,13 +800,13 @@ pnpm clean        # Remove all build artifacts and node_modules
 
 The repo root [`Makefile`](./Makefile) wraps the most common sequences as short `make` targets — an alternative to the raw `pnpm` / `docker compose` commands above. Each target is commented in the Makefile itself.
 
-| Target | What it runs |
-|---|---|
-| `make dev` | Start infra containers (health-checked), apply migrations via `migrate.ts`, then `pnpm dev` |
-| `make reset-db` | `pnpm db:reset` — drop + recreate the schema and re-apply migrations (`reset-db.ts` → `migrate.ts`) |
-| `make seed` | `pnpm --filter @brandblitz/api seed` — idempotent fixture seed (`seed.ts`); add `SEED_FLAGS="-- --reset"` to truncate first |
-| `make test` | `pnpm test` |
-| `make clean` | `pnpm clean` — build artifacts + `node_modules` |
+| Target          | What it runs                                                                                                                |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `make dev`      | Start infra containers (health-checked), apply migrations via `migrate.ts`, then `pnpm dev`                                 |
+| `make reset-db` | `pnpm db:reset` — drop + recreate the schema and re-apply migrations (`reset-db.ts` → `migrate.ts`)                         |
+| `make seed`     | `pnpm --filter @brandblitz/api seed` — idempotent fixture seed (`seed.ts`); add `SEED_FLAGS="-- --reset"` to truncate first |
+| `make test`     | `pnpm test`                                                                                                                 |
+| `make clean`    | `pnpm clean` — build artifacts + `node_modules`                                                                             |
 
 ```bash
 make dev        # infra + migrate + dev servers
@@ -813,24 +822,24 @@ make seed       # re-seed fixtures
 
 Typed helpers for all Stellar network interactions. Imported by `apps/api`.
 
-| File | What it does |
-|---|---|
-| `src/client.ts` | Factory for Horizon `Server` and Soroban `RPC.Server` instances; `getUsdcAsset()` |
-| `src/deposit.ts` | Polls Soroban RPC `getEvents` to detect USDC deposits by memo; returns `DepositEvent[]` |
-| `src/payout.ts` | `submitBatchPayout(recipients)` — builds a `TransactionBuilder` with up to 50 Payment ops and submits it atomically |
-| `src/accounts.ts` | `createMuxedAddress(baseAddress, muxedId)` — virtual sub-accounts per user at zero reserve cost; `sponsorNewAccount()` for CAP-0033 sponsored reserves |
-| `src/constants.ts` | Network configs, `MAX_OPS_PER_TX=50`, `WARMUP_MIN_SECONDS=20`, poll intervals |
-| `src/index.ts` | Re-exports everything |
+| File               | What it does                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/client.ts`    | Factory for Horizon `Server` and Soroban `RPC.Server` instances; `getUsdcAsset()`                                                                      |
+| `src/deposit.ts`   | Polls Soroban RPC `getEvents` to detect USDC deposits by memo; returns `DepositEvent[]`                                                                |
+| `src/payout.ts`    | `submitBatchPayout(recipients)` — builds a `TransactionBuilder` with up to 50 Payment ops and submits it atomically                                    |
+| `src/accounts.ts`  | `createMuxedAddress(baseAddress, muxedId)` — virtual sub-accounts per user at zero reserve cost; `sponsorNewAccount()` for CAP-0033 sponsored reserves |
+| `src/constants.ts` | Network configs, `MAX_OPS_PER_TX=50`, `WARMUP_MIN_SECONDS=20`, poll intervals                                                                          |
+| `src/index.ts`     | Re-exports everything                                                                                                                                  |
 
 ### `packages/storage`
 
 S3-compatible object storage with image optimisation. Imported by `apps/api`. Works with MinIO in dev and Cloudflare R2 / AWS S3 in prod — same code, different env vars.
 
-| File | What it does |
-|---|---|
-| `src/client.ts` | `S3Client` configured from env; `BUCKETS` constant; `getPublicUrl(key)` |
+| File              | What it does                                                                                                                                                    |
+| ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/client.ts`   | `S3Client` configured from env; `BUCKETS` constant; `getPublicUrl(key)`                                                                                         |
 | `src/optimize.ts` | `optimizeImage(key, type)` — fetches from S3, runs `sharp` WebP resize, overwrites: logos → 400×400 contain, products → 800×600 inside, avatars → 200×200 cover |
-| `src/index.ts` | Re-exports everything |
+| `src/index.ts`    | Re-exports everything                                                                                                                                           |
 
 ---
 
@@ -856,13 +865,13 @@ S3-compatible object storage with image optimisation. Imported by `apps/api`. Wo
 
 Incident-response playbooks for on-call engineers live in [`docs/runbooks/`](./docs/runbooks/README.md).
 
-| Runbook | Summary |
-|---|---|
-| [horizon-outage](./docs/runbooks/horizon-outage.md) | Stellar Horizon degraded — payout queue paused |
-| [hot-wallet-low-balance](./docs/runbooks/hot-wallet-low-balance.md) | USDC balance too low to process payouts |
-| [payout-stuck-in-queue](./docs/runbooks/payout-stuck-in-queue.md) | BullMQ payout jobs not progressing |
-| [leaked-secret](./docs/runbooks/leaked-secret.md) | Secret exposed in git or logs |
-| [cdn-purge](./docs/runbooks/cdn-purge.md) | Force-invalidate a cached asset |
-| [rotate-secrets](./docs/runbooks/rotate-secrets.md) | General secret rotation |
+| Runbook                                                             | Summary                                        |
+| ------------------------------------------------------------------- | ---------------------------------------------- |
+| [horizon-outage](./docs/runbooks/horizon-outage.md)                 | Stellar Horizon degraded — payout queue paused |
+| [hot-wallet-low-balance](./docs/runbooks/hot-wallet-low-balance.md) | USDC balance too low to process payouts        |
+| [payout-stuck-in-queue](./docs/runbooks/payout-stuck-in-queue.md)   | BullMQ payout jobs not progressing             |
+| [leaked-secret](./docs/runbooks/leaked-secret.md)                   | Secret exposed in git or logs                  |
+| [cdn-purge](./docs/runbooks/cdn-purge.md)                           | Force-invalidate a cached asset                |
+| [rotate-secrets](./docs/runbooks/rotate-secrets.md)                 | General secret rotation                        |
 
 See [docs/runbooks/README.md](./docs/runbooks/README.md) for the full index.

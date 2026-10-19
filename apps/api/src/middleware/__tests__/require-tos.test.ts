@@ -69,7 +69,11 @@ describe("requireCurrentTosAccepted", () => {
     await requireCurrentTosAccepted({ user: TEST_USER } as any, {} as any, next);
 
     expect(next).toHaveBeenCalledTimes(1);
-    expect(mocks.findUserLegalAcceptance).toHaveBeenCalledWith(TEST_USER.sub, "tos", CURRENT_TOS.version);
+    expect(mocks.findUserLegalAcceptance).toHaveBeenCalledWith(
+      TEST_USER.sub,
+      "tos",
+      CURRENT_TOS.version
+    );
   });
 
   it("returns 403 when the user has only accepted an older ToS version", async () => {

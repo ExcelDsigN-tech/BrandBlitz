@@ -195,7 +195,6 @@ jobs:
               });
             }
 
-
   # ── PR title lint (conventional commits) ─────────────────────────────────
   title-lint:
     name: PR title lint

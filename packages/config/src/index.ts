@@ -1,9 +1,4 @@
-const DISABLED_PERMISSIONS = [
-  "camera",
-  "microphone",
-  "geolocation",
-  "payment",
-] as const;
+const DISABLED_PERMISSIONS = ["camera", "microphone", "geolocation", "payment"] as const;
 
 /**
  * Permissions-Policy header value that disables camera, microphone,
@@ -11,6 +6,4 @@ const DISABLED_PERMISSIONS = [
  * (apps/api) and the web app (apps/web) so the feature list is defined
  * once and can be audited or extended in a single file.
  */
-export const PERMISSIONS_POLICY_HEADER = DISABLED_PERMISSIONS.map(
-  (f) => `${f}=()`
-).join(", ");
+export const PERMISSIONS_POLICY_HEADER = DISABLED_PERMISSIONS.map((f) => `${f}=()`).join(", ");

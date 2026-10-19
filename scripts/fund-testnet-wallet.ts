@@ -46,15 +46,21 @@ async function main(): Promise<void> {
 
   if (!horizonResponse.ok) {
     const body = await horizonResponse.text();
-    console.error(`Funding submitted, but Horizon lookup failed (${horizonResponse.status}): ${body}`);
+    console.error(
+      `Funding submitted, but Horizon lookup failed (${horizonResponse.status}): ${body}`
+    );
     process.exit(1);
   }
 
-  const account = (await horizonResponse.json()) as { balances?: Array<{ asset_type: string; balance: string }> };
+  const account = (await horizonResponse.json()) as {
+    balances?: Array<{ asset_type: string; balance: string }>;
+  };
   const nativeBalance = account.balances?.find((b) => b.asset_type === "native")?.balance;
 
   console.log(`Funded. Confirmed via Horizon — native balance: ${nativeBalance ?? "unknown"} XLM`);
-  console.log(`\nAdd to your .env for local testing:\nSTELLAR_HOT_WALLET_SECRET=${secretKey}\nHOT_WALLET_PUBLIC_KEY=${publicKey}`);
+  console.log(
+    `\nAdd to your .env for local testing:\nSTELLAR_HOT_WALLET_SECRET=${secretKey}\nHOT_WALLET_PUBLIC_KEY=${publicKey}`
+  );
 }
 
 main().catch((error) => {

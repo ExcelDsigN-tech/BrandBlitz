@@ -8,13 +8,13 @@
 
 ### Inconsistent throw sites in `packages/stellar`
 
-| File | Pattern |
-|------|---------|
-| `constants.ts` | `TypeError` for bad input shape, `RangeError` for out-of-bounds amounts |
-| `escrow.ts` | Plain `Error` with a templated message pulled from the contract's `error_details` |
-| `payout.ts` | Plain `Error` wrapping a lower-level SDK error's `.message` |
-| `accounts.ts` | Plain `Error` for malformed envelopes/transactions |
-| `client.ts` | Plain `Error` for invalid network names |
+| File           | Pattern                                                                           |
+| -------------- | --------------------------------------------------------------------------------- |
+| `constants.ts` | `TypeError` for bad input shape, `RangeError` for out-of-bounds amounts           |
+| `escrow.ts`    | Plain `Error` with a templated message pulled from the contract's `error_details` |
+| `payout.ts`    | Plain `Error` wrapping a lower-level SDK error's `.message`                       |
+| `accounts.ts`  | Plain `Error` for malformed envelopes/transactions                                |
+| `client.ts`    | Plain `Error` for invalid network names                                           |
 
 None of these carry a machine-readable `code`, a `retryable` flag, or a consistent `cause`/context payload. Consumers in `apps/api` (`services/payout.ts`, `services/refund.ts`, `routes/admin/escrow.ts`, `routes/webhooks.ts`, `queues/processors/referral-bonus.processor.ts`) each currently either:
 
@@ -31,9 +31,9 @@ Introduce a single exported error type from `packages/stellar`:
 
 ```ts
 export type StellarErrorCode =
-  | "INVALID_INPUT"       // bad argument shape/range — never retryable
-  | "NETWORK_UNAVAILABLE"  // Horizon/RPC unreachable or timed out — retryable
-  | "CONTRACT_REJECTED"    // Soroban invocation returned an error_details — not retryable without a new tx
+  | "INVALID_INPUT" // bad argument shape/range — never retryable
+  | "NETWORK_UNAVAILABLE" // Horizon/RPC unreachable or timed out — retryable
+  | "CONTRACT_REJECTED" // Soroban invocation returned an error_details — not retryable without a new tx
   | "TRANSACTION_NOT_FOUND"
   | "UNKNOWN";
 
@@ -42,7 +42,11 @@ export class StellarError extends Error {
   readonly retryable: boolean;
   override readonly cause?: unknown;
 
-  constructor(message: string, code: StellarErrorCode, opts?: { retryable?: boolean; cause?: unknown }) {
+  constructor(
+    message: string,
+    code: StellarErrorCode,
+    opts?: { retryable?: boolean; cause?: unknown }
+  ) {
     super(message);
     this.name = "StellarError";
     this.code = code;

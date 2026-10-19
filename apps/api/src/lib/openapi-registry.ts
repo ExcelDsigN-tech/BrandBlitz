@@ -81,7 +81,9 @@ export function registerEndpoint(options: EndpointOptions): void {
           [shape.contentType ?? "application/json"]: { schema: shape.schema },
         }
       : undefined;
-    responses[status] = content ? { description: shape.description, content } : { description: shape.description };
+    responses[status] = content
+      ? { description: shape.description, content }
+      : { description: shape.description };
   }
   registry.registerPath({
     method: options.method,
@@ -126,4 +128,5 @@ export async function loadAllRouteSchemas(): Promise<void> {
   await import("../routes/openapi/sessions.openapi");
   await import("../routes/openapi/challenges.openapi");
   await import("../routes/openapi/leaderboard.openapi");
+  await import("../routes/openapi/engagement.openapi");
 }

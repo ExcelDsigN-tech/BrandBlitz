@@ -11,12 +11,13 @@ import { api, createApiClient } from "@/lib/api";
 import { formatScore, formatUsdc } from "@/lib/format";
 import { useInfiniteScroll } from "@/hooks/use-infinite-scroll";
 import type { LeaderboardEntry } from "@/lib/api";
+import { triggerMilestoneCelebration } from "@/components/gamification/milestone-celebration";
 
 const MEDAL: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 const PAGE_SIZE = 50;
 const STORAGE_KEY = "brandblitz:leaderboard:global";
 
-export type LeaderboardScope = "global" | "friends";
+export type LeaderboardScope = "global" | "friends" | "teams";
 
 async function fetchLeaderboardPage(
   cursor?: string,
@@ -108,6 +109,77 @@ export function LiveGlobalLeaderboard({
     prevRankByUserRef.current.clear();
     setChangedUsers(new Set());
   }, [initial, initialHasMore, challengeId, scope]);
+
+  // Detect top-3 or new personal best milestone celebration (#1029)
+  const celebratedMilestonesRef = useRef<Set<string>>(new Set());
+  const userIdentifier =
+    (session?.user as { id?: string; email?: string } | null)?.id ?? session?.user?.email;
+
+  useEffect(() => {
+    if (!userIdentifier || rows.length === 0) return;
+
+    const myEntry = rows.find(
+      (r) =>
+        r.userId === userIdentifier ||
+        r.username === (session?.user as { username?: string } | null)?.username ||
+        r.displayName === session?.user?.name
+    );
+
+    if (!myEntry) return;
+
+    const boardKey = challengeId ?? "global";
+
+    // 1. Podium finish (rank <= 3)
+    if (myEntry.rank && myEntry.rank <= 3) {
+      const podiumEventKey = `podium:${boardKey}:${userIdentifier}:${myEntry.rank}`;
+      let alreadyTriggered = false;
+      try {
+        alreadyTriggered = sessionStorage.getItem(`milestone:${podiumEventKey}`) === "true";
+      } catch {
+        // ignore
+      }
+      if (!celebratedMilestonesRef.current.has(podiumEventKey) && !alreadyTriggered) {
+        celebratedMilestonesRef.current.add(podiumEventKey);
+        try {
+          sessionStorage.setItem(`milestone:${podiumEventKey}`, "true");
+        } catch {
+          // ignore
+        }
+        triggerMilestoneCelebration("podium", { rank: myEntry.rank });
+      }
+    }
+
+    // 2. Personal best score
+    const bestScoreKey = `pb:${boardKey}:${userIdentifier}`;
+    let storedBest: string | null = null;
+    try {
+      storedBest = sessionStorage.getItem(`milestone:${bestScoreKey}`);
+    } catch {
+      // ignore
+    }
+    const previousScore = storedBest ? Number(storedBest) : null;
+
+    if (myEntry.totalScore > 0) {
+      if (previousScore !== null && myEntry.totalScore > previousScore) {
+        const pbEventKey = `pb_event:${boardKey}:${userIdentifier}:${myEntry.totalScore}`;
+        if (!celebratedMilestonesRef.current.has(pbEventKey)) {
+          celebratedMilestonesRef.current.add(pbEventKey);
+          try {
+            sessionStorage.setItem(`milestone:${bestScoreKey}`, String(myEntry.totalScore));
+          } catch {
+            // ignore
+          }
+          triggerMilestoneCelebration("personal_best", { score: myEntry.totalScore });
+        }
+      } else if (previousScore === null) {
+        try {
+          sessionStorage.setItem(`milestone:${bestScoreKey}`, String(myEntry.totalScore));
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }, [rows, userIdentifier, challengeId, session?.user]);
 
   useEffect(() => {
     const saved = loadSavedState(challengeId, scope);
@@ -230,9 +302,7 @@ export function LiveGlobalLeaderboard({
         <EmptyState
           title="Connection lost"
           description="We couldn't connect to the live leaderboard. Please refresh the page to try again."
-          action={
-            <Button onClick={() => window.location.reload()}>Refresh to Retry</Button>
-          }
+          action={<Button onClick={() => window.location.reload()}>Refresh to Retry</Button>}
         />
       </div>
     );
@@ -281,9 +351,15 @@ export function LiveGlobalLeaderboard({
         <thead>
           <tr className="border-b border-[var(--border)]">
             <th className="px-6 py-3 text-left font-medium text-[var(--muted-foreground)]">Rank</th>
-            <th className="px-6 py-3 text-left font-medium text-[var(--muted-foreground)]">Player</th>
-            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">Score</th>
-            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">Earned</th>
+            <th className="px-6 py-3 text-left font-medium text-[var(--muted-foreground)]">
+              Player
+            </th>
+            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">
+              Score
+            </th>
+            <th className="px-6 py-3 text-right font-medium text-[var(--muted-foreground)]">
+              Earned
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -291,7 +367,7 @@ export function LiveGlobalLeaderboard({
             <tr
               key={entry._key}
               className={[
-                "border-b border-[var(--border)] last:border-0 hover:bg-[var(--muted)]/50 transition-colors",
+                "hover:bg-[var(--muted)]/50 border-b border-[var(--border)] transition-colors last:border-0",
                 changedUsers.has(entry._key) ? "bg-[var(--muted)]" : "",
               ].join(" ")}
             >
@@ -330,9 +406,7 @@ export function LiveGlobalLeaderboard({
       </table>
 
       <div className="flex items-center justify-between gap-4 px-6 pb-2">
-        <p className="text-sm text-[var(--muted-foreground)]">
-          Showing {rows.length} players
-        </p>
+        <p className="text-sm text-[var(--muted-foreground)]">Showing {rows.length} players</p>
         {!nextCursor && rows.length > 0 ? (
           <p className="text-sm text-[var(--muted-foreground)]">You&apos;ve seen everything</p>
         ) : null}

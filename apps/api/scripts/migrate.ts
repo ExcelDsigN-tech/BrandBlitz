@@ -32,10 +32,16 @@ const pool = new Pool({
 async function listMigrations(): Promise<MigrationFile[]> {
   const dirEntries = await readdir(migrationsDir, { withFileTypes: true });
   const names = dirEntries
-    .filter((entry) => entry.isFile() && entry.name.endsWith(".sql") && !entry.name.endsWith(".down.sql"))
+    .filter(
+      (entry) => entry.isFile() && entry.name.endsWith(".sql") && !entry.name.endsWith(".down.sql")
+    )
     .map((entry) => entry.name)
-    .sort();
-  const knownNames = new Set(dirEntries.filter((entry) => entry.isFile()).map((entry) => entry.name));
+    // Historical files mix four- and five-digit prefixes. Numeric ordering
+    // keeps new migrations after their dependencies without renaming history.
+    .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10) || a.localeCompare(b));
+  const knownNames = new Set(
+    dirEntries.filter((entry) => entry.isFile()).map((entry) => entry.name)
+  );
 
   return names.map((file) => {
     const downFile = file.replace(/\.sql$/, ".down.sql");
@@ -72,9 +78,7 @@ async function getAppliedVersions(client: PoolClient): Promise<Set<string>> {
   return new Set(result.rows.map((row) => row.version));
 }
 
-async function withLockedTransaction<T>(
-  handler: (client: PoolClient) => Promise<T>
-): Promise<T> {
+async function withLockedTransaction<T>(handler: (client: PoolClient) => Promise<T>): Promise<T> {
   const client = await pool.connect();
 
   try {
@@ -154,7 +158,7 @@ async function runDown(count: number): Promise<void> {
 
   await withLockedTransaction(async (client) => {
     const applied = await client.query<{ version: string }>(
-      "SELECT version FROM schema_migrations ORDER BY applied_at DESC, version DESC"
+      "SELECT version FROM schema_migrations ORDER BY applied_at DESC, substring(version from '^[0-9]+')::integer DESC, version DESC"
     );
     const targets = applied.rows.slice(0, count);
 
@@ -228,6 +232,18 @@ const LEGACY_EXEMPT_FILES = new Set([
   "0025-brand-webhooks.sql",
   "0026-challenge-templates.down.sql",
   "0026-challenge-templates.sql",
+  "0027-challenge-tags.down.sql",
+  "0027-challenge-tags.sql",
+  "0027-drop-correct-answer.down.sql",
+  "0027-drop-correct-answer.sql",
+  "0028-challenge-gallery.down.sql",
+  "0028-challenge-gallery.sql",
+  "0029-scheduled-config-changes.down.sql",
+  "0029-scheduled-config-changes.sql",
+  "0030-brand-digest-preferences.down.sql",
+  "0030-brand-digest-preferences.sql",
+  "0030-challenge-ratings.down.sql",
+  "0030-challenge-ratings.sql",
 ]);
 
 async function runLint(): Promise<void> {
@@ -242,7 +258,9 @@ async function runLint(): Promise<void> {
   );
 
   if (invalid.length > 0) {
-    console.error("New migration filenames must match <NNNNN>-<kebab-case-description>[.down].sql:");
+    console.error(
+      "New migration filenames must match <NNNNN>-<kebab-case-description>[.down].sql:"
+    );
     for (const file of invalid) {
       console.error(`  - ${file}`);
     }

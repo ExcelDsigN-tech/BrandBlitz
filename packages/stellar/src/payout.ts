@@ -8,7 +8,14 @@ import {
   FeeBumpTransaction,
   TransactionEnvelope,
 } from "@stellar/stellar-sdk";
-import { getHorizonServer, getUsdcAsset, getNetworkPassphrase, withRetry, type NetworkName, type RetryOptions } from "./client";
+import {
+  getHorizonServer,
+  getUsdcAsset,
+  getNetworkPassphrase,
+  withRetry,
+  type NetworkName,
+  type RetryOptions,
+} from "./client";
 import { MAX_OPS_PER_TX, PAYOUT_BATCH_DELAY_MS } from "./constants";
 import {
   buildSequenceKeyPrefix,
@@ -119,10 +126,11 @@ export async function submitBatchPayout(
         const builtTx = tx.build();
         builtTx.sign(hotKeypair);
 
-        const response = await withRetry(
-          () => horizon.submitTransaction(builtTx),
-          { maxAttempts: 5, baseDelayMs: 250, maxDelayMs: 30_000 }
-        );
+        const response = await withRetry(() => horizon.submitTransaction(builtTx), {
+          maxAttempts: 5,
+          baseDelayMs: 250,
+          maxDelayMs: 30_000,
+        });
 
         results.push({
           txHash: response.hash,
@@ -132,11 +140,7 @@ export async function submitBatchPayout(
 
         break;
       } catch (err: any) {
-        if (
-          options.sequenceStore &&
-          isBadSequenceError(err) &&
-          attempts < maxBadSeqRetries
-        ) {
+        if (options.sequenceStore && isBadSequenceError(err) && attempts < maxBadSeqRetries) {
           attempts += 1;
           await resetSequence({
             store: options.sequenceStore,
@@ -206,7 +210,10 @@ export function isInsufficientFeeError(err: unknown): boolean {
     (err as any)?.response?.data?.extras?.result_codes?.transaction ??
     (err as any)?.data?.extras?.result_codes?.transaction;
 
-  return txCode === "tx_insufficient_fee" || String((err as any)?.message ?? "").includes("tx_insufficient_fee");
+  return (
+    txCode === "tx_insufficient_fee" ||
+    String((err as any)?.message ?? "").includes("tx_insufficient_fee")
+  );
 }
 
 function getInvalidRecipientReason(recipient: PayoutRecipient): string | null {
@@ -263,12 +270,15 @@ export async function feeBumpTransaction(
   // Retrieve the original transaction from Stellar
   let originalTx: any;
   try {
-    originalTx = await withRetry(
-      () => horizon.transactionDetail(originalTxHash),
-      { maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 5_000 }
-    );
+    originalTx = await withRetry(() => horizon.transactionDetail(originalTxHash), {
+      maxAttempts: 3,
+      baseDelayMs: 100,
+      maxDelayMs: 5_000,
+    });
   } catch (err) {
-    throw new Error(`Failed to retrieve original transaction ${originalTxHash}: ${(err as Error).message}`);
+    throw new Error(
+      `Failed to retrieve original transaction ${originalTxHash}: ${(err as Error).message}`
+    );
   }
 
   if (!originalTx) {
@@ -286,7 +296,7 @@ export async function feeBumpTransaction(
   // Create fee bump transaction wrapping the original
   // Fee bump fee is total for the operation, not per operation
   const innerTx = originalEnvelope.v1()?.tx() ?? originalEnvelope.v0()?.tx();
-  
+
   if (!innerTx) {
     throw new Error("Could not extract inner transaction from envelope");
   }
@@ -304,10 +314,11 @@ export async function feeBumpTransaction(
   feeBumpEnvelope.sign(hotKeypair);
 
   // Submit fee bump to Stellar
-  const result = await withRetry(
-    () => horizon.submitTransaction(feeBumpEnvelope),
-    { maxAttempts: 5, baseDelayMs: 250, maxDelayMs: 30_000 }
-  );
+  const result = await withRetry(() => horizon.submitTransaction(feeBumpEnvelope), {
+    maxAttempts: 5,
+    baseDelayMs: 250,
+    maxDelayMs: 30_000,
+  });
 
   return {
     txHash: originalTxHash,

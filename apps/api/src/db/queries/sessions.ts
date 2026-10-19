@@ -24,6 +24,8 @@ export interface GameSession {
   flag_reasons: string[] | null;
   is_practice: boolean;
   integrity_hmac: string | null;
+  variant_id: string | null;
+  tier_id: string | null;
   abandon_reason: "timeout" | "error" | "explicit" | null;
   created_at: string;
 }
@@ -78,13 +80,22 @@ export async function claimSession(data: {
   challengeId: string;
   deviceId?: string;
   isPractice?: boolean;
+  variantId?: string | null;
+  tierId?: string | null;
 }): Promise<GameSession | null> {
   const result = await query<GameSession>(
-    `INSERT INTO game_sessions (user_id, challenge_id, device_id, is_practice)
-     VALUES ($1,$2,$3,$4)
+    `INSERT INTO game_sessions (user_id, challenge_id, device_id, is_practice, variant_id, tier_id)
+     VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (user_id, challenge_id) DO NOTHING
      RETURNING *`,
-    [data.userId, data.challengeId, data.deviceId ?? null, data.isPractice ?? false]
+    [
+      data.userId,
+      data.challengeId,
+      data.deviceId ?? null,
+      data.isPractice ?? false,
+      data.variantId ?? null,
+      data.tierId ?? null,
+    ]
   );
   return result.rows[0] ?? null;
 }
@@ -93,6 +104,53 @@ export async function getSession(userId: string, challengeId: string): Promise<G
   const result = await query<GameSession>(
     "SELECT * FROM game_sessions WHERE user_id = $1 AND challenge_id = $2",
     [userId, challengeId]
+  );
+  return result.rows[0] ?? null;
+}
+
+export interface SessionShareCard {
+  session_id: string;
+  challenge_id: string;
+  brand_name: string;
+  logo_url: string | null;
+  primary_color: string | null;
+  secondary_color: string | null;
+  total_score: number;
+  rank: number | null;
+  completed_at: string;
+  display_name: string | null;
+  username: string | null;
+  avatar_url: string | null;
+}
+
+/**
+ * Public, shareable summary of a completed session (#1011). Excludes
+ * practice runs and flagged sessions, and never exposes email -- this is
+ * meant to be rendered on a public share card/link.
+ */
+export async function getSessionShareCard(sessionId: string): Promise<SessionShareCard | null> {
+  const result = await query<SessionShareCard>(
+    `SELECT gs.id AS session_id,
+            gs.challenge_id,
+            b.name AS brand_name,
+            b.logo_url,
+            b.primary_color,
+            b.secondary_color,
+            gs.total_score,
+            gs.rank,
+            gs.completed_at,
+            u.display_name,
+            u.username,
+            u.avatar_url
+     FROM game_sessions gs
+     JOIN challenges c ON c.id = gs.challenge_id
+     JOIN brands b ON b.id = c.brand_id
+     JOIN users u ON u.id = gs.user_id
+     WHERE gs.id = $1
+       AND gs.completed_at IS NOT NULL
+       AND gs.is_practice = FALSE
+       AND gs.flagged = FALSE`,
+    [sessionId]
   );
   return result.rows[0] ?? null;
 }
@@ -298,12 +356,24 @@ export async function markAbandonedSessions(): Promise<number> {
   return result.rows[0]?.count ?? 0;
 }
 
+export const LEADERBOARD_WINDOWS = ["daily", "weekly", "all-time"] as const;
+export type LeaderboardWindow = (typeof LEADERBOARD_WINDOWS)[number];
+
+/** How far back `completed_at` must fall for each time-window filter (#1006). */
+const LEADERBOARD_WINDOW_INTERVALS: Record<Exclude<LeaderboardWindow, "all-time">, string> = {
+  daily: "1 day",
+  weekly: "7 days",
+};
+
 export async function getLeaderboard(
   challengeId: string,
   limit = 20,
   cursor?: string,
   sortBy: LeaderboardSort = "score",
-  friendUserIds?: string[]
+  friendUserIds?: string[],
+  window: LeaderboardWindow = "all-time",
+  tierId?: string,
+  viewerUserId?: string
 ): Promise<{ sessions: LeaderboardSession[]; nextCursor: string | null }> {
   const orderBy = leaderboardOrderBy[sortBy];
   const cursorValues = decodeCursorSafe(cursor, ["total_score", "completed_at", "id"]);
@@ -314,8 +384,26 @@ export async function getLeaderboard(
   const params: unknown[] = [challengeId];
 
   if (friendUserIds && friendUserIds.length > 0) {
-    whereExtra = `AND gs.user_id = ANY($${params.length + 1}::uuid[])`;
+    whereExtra += ` AND gs.user_id = ANY($${params.length + 1}::uuid[])`;
     params.push(friendUserIds);
+  }
+
+  if (window !== "all-time") {
+    whereExtra += ` AND gs.completed_at >= NOW() - INTERVAL '${LEADERBOARD_WINDOW_INTERVALS[window]}'`;
+  }
+
+  if (tierId) {
+    whereExtra += ` AND gs.tier_id = $${params.length + 1}`;
+    params.push(tierId);
+  }
+
+  if (viewerUserId) {
+    whereExtra += ` AND NOT EXISTS (
+      SELECT 1 FROM user_blocks ub
+      WHERE (ub.blocker_id = $${params.length + 1} AND ub.blocked_id = gs.user_id)
+         OR (ub.blocked_id = $${params.length + 1} AND ub.blocker_id = gs.user_id)
+    )`;
+    params.push(viewerUserId);
   }
 
   if (cursorValues) {
@@ -330,7 +418,7 @@ export async function getLeaderboard(
 
   const result = await query<LeaderboardSession>(
     `SELECT gs.*,
-            u.email AS username,
+            u.username AS username,
             u.avatar_url,
             u.display_name,
             u.league,
@@ -407,7 +495,7 @@ export async function getLeaderboardForCsvExport(
             gs.user_id,
             gs.total_score,
             gs.completed_at,
-            u.email AS username,
+            u.username AS username,
             u.display_name,
             COALESCE((p.amount_stroops::numeric / 10000000)::numeric(20,7)::text, '0') AS payout_amount_usdc
      FROM game_sessions gs
@@ -448,7 +536,7 @@ export async function getTopSessionsPerChallenge(
   const result = await query<LeaderboardSession & { challenge_rank: number }>(
     `WITH ranked AS (
        SELECT gs.*,
-              u.email AS username,
+              u.username AS username,
               u.avatar_url,
               u.display_name,
               u.league,
@@ -732,7 +820,7 @@ export async function getArchivedLeaderboard(
   params.push(limit);
 
   const result = await query<GameSession & { username: string; avatar_url: string }>(
-    `SELECT gs.*, u.email as username, u.avatar_url
+    `SELECT gs.*, u.username as username, u.avatar_url
      FROM game_sessions_archive gs
      JOIN users u ON gs.user_id = u.id
      WHERE gs.challenge_id = $1

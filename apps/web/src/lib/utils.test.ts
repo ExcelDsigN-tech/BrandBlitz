@@ -40,13 +40,10 @@ describe("formatUsdc", () => {
 
   it("property: always contains USDC suffix", () => {
     fc.assert(
-      fc.property(
-        fc.float({ min: Math.fround(-1e9), max: Math.fround(1e9), noNaN: true }),
-        (n) => {
-          const result = formatUsdc(n.toFixed(7));
-          expect(result).toMatch(/USDC$/);
-        }
-      ),
+      fc.property(fc.float({ min: Math.fround(-1e9), max: Math.fround(1e9), noNaN: true }), (n) => {
+        const result = formatUsdc(n.toFixed(7));
+        expect(result).toMatch(/USDC$/);
+      }),
       { numRuns: 1000 }
     );
   });
@@ -69,12 +66,9 @@ describe("formatUsdc", () => {
 
   it("property: non-negative inputs never start with minus", () => {
     fc.assert(
-      fc.property(
-        fc.float({ min: 0, max: Math.fround(1e9), noNaN: true }),
-        (n) => {
-          expect(formatUsdc(n.toFixed(7)).startsWith("-")).toBe(false);
-        }
-      ),
+      fc.property(fc.float({ min: 0, max: Math.fround(1e9), noNaN: true }), (n) => {
+        expect(formatUsdc(n.toFixed(7)).startsWith("-")).toBe(false);
+      }),
       { numRuns: 1000 }
     );
   });

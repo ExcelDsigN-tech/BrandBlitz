@@ -11,22 +11,26 @@ The `POST /webhooks/stellar/deposit` endpoint is called by the internal deposit 
 Every webhook request is signed using HMAC-SHA256. The signature is validated by the `verifyWebhook` middleware before the handler is invoked.
 
 **Headers:**
+
 - `x-webhook-signature` (required): Format is `sha256=<hex>` where `<hex>` is the HMAC-SHA256 digest.
 - `x-webhook-timestamp` (required): Unix seconds timestamp. Must be within 300 seconds (5 minutes) of the server's current time.
 - `x-webhook-id` (required): Unique identifier for this webhook delivery. Used for idempotency.
 
 **Signature Scheme:**
+
 ```
 HMAC_SHA256(secret_key, timestamp + "." + raw_body)
 ```
 
 The signature is computed over the concatenation of the timestamp and the raw request body, separated by a dot. The signature must match one of:
+
 1. The current webhook secret (stored in `app_config` or `WEBHOOK_SECRET` env var)
 2. A pending webhook secret (if one is configured with an unexpired `expiresAt` date)
 
 This dual-secret support allows for gradual secret rotation without downtime.
 
 **Example (Node.js):**
+
 ```typescript
 import crypto from "crypto";
 
@@ -39,11 +43,7 @@ function signWebhookRequest(payload, timestamp, secret) {
 // Validate an incoming request
 const timestamp = req.headers["x-webhook-timestamp"];
 const signature = req.headers["x-webhook-signature"].split("=")[1];
-const expectedSignature = signWebhookRequest(
-  req.rawBody,
-  timestamp,
-  YOUR_WEBHOOK_SECRET
-);
+const expectedSignature = signWebhookRequest(req.rawBody, timestamp, YOUR_WEBHOOK_SECRET);
 
 const valid = crypto.timingSafeEqual(
   Buffer.from(expectedSignature, "hex"),
@@ -62,27 +62,29 @@ const valid = crypto.timingSafeEqual(
 ```
 
 **Validation rules:**
+
 - `memo` must be a valid UUID (v4 or similar)
 - `txHash` must be exactly 64 hexadecimal characters
 - `amount` is optional but if provided must match `/^\d+(\.\d{1,7})?$/` (up to 7 decimals for stroops)
 
 ### Response Codes
 
-| Code | Meaning | Action |
-|---|---|---|
-| **200 OK** | Webhook processed or idempotent duplicate | No retry needed |
-| **400 Bad Request** | Invalid payload, missing timestamp, or stale timestamp | Do not retry; fix the request |
-| **401 Unauthorized** | Invalid or missing signature | Do not retry; verify the secret |
-| **404 Not Found** | No challenge found for this memo | Do not retry; the memo may be incorrect |
-| **422 Unprocessable Entity** | Insufficient funds in the escrow contract | Retry after delay; funds may be replenished |
-| **429 Too Many Requests** | Rate limit exceeded | Retry after `Retry-After` header (see below) |
-| **500 Internal Server Error** | Webhook verification or database error | Retry with exponential backoff |
+| Code                          | Meaning                                                | Action                                       |
+| ----------------------------- | ------------------------------------------------------ | -------------------------------------------- |
+| **200 OK**                    | Webhook processed or idempotent duplicate              | No retry needed                              |
+| **400 Bad Request**           | Invalid payload, missing timestamp, or stale timestamp | Do not retry; fix the request                |
+| **401 Unauthorized**          | Invalid or missing signature                           | Do not retry; verify the secret              |
+| **404 Not Found**             | No challenge found for this memo                       | Do not retry; the memo may be incorrect      |
+| **422 Unprocessable Entity**  | Insufficient funds in the escrow contract              | Retry after delay; funds may be replenished  |
+| **429 Too Many Requests**     | Rate limit exceeded                                    | Retry after `Retry-After` header (see below) |
+| **500 Internal Server Error** | Webhook verification or database error                 | Retry with exponential backoff               |
 
 ### Rate Limiting
 
 The `webhookLimiter` middleware enforces a rate limit of **1000 requests per hour** per IP address. This is keyed by IP (not user ID) because webhooks are internal-to-internal traffic.
 
 **On 429 response:**
+
 ```
 HTTP/1.1 429 Too Many Requests
 Retry-After: 120
@@ -98,6 +100,7 @@ The `Retry-After` header specifies the number of seconds to wait before retrying
 Webhooks are delivered at-least-once, meaning the same delivery may arrive multiple times (e.g., if the deposit monitor restarts). To detect and skip duplicates, the system uses the `x-webhook-id` header and a 10-minute Redis cache.
 
 **Duplicate handling (server-side):**
+
 ```
 1. Receive webhook with x-webhook-id = "abc123"
 2. Check Redis for key "webhook:id:abc123"
@@ -106,12 +109,14 @@ Webhooks are delivered at-least-once, meaning the same delivery may arrive multi
 ```
 
 This means:
+
 - If you receive a 200 response with `status: "duplicate_tx_ignored"`, the same transaction has already been processed.
 - If you receive a 200 response with `status: "activated"`, the challenge has been activated.
 - Within 10 minutes of a successful 200 response, sending the same webhook again will return `status: "duplicate"`.
 
 **Client retry strategy:**
 Callers should track delivery via the response status:
+
 - `status: "activated"` — challenge is now active; no further retry needed
 - `status: "duplicate_tx_ignored"` — transaction already processed by the API (idempotent)
 - `status: "duplicate"` — webhook ID was seen recently; you may have already processed this

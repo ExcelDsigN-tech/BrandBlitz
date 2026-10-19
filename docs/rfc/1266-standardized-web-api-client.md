@@ -8,12 +8,12 @@
 
 ### API Client Inventory
 
-| File | Type | Auth | Error Handling | Retry |
-|------|------|------|---|---|
-| `apps/web/src/lib/api.ts` | Axios-based | Via interceptor | Custom interceptor | Yes |
-| `apps/web/src/lib/auth.ts` | Fetch-based | Manual headers | Ad-hoc try-catch | No |
-| Component fetches | Mixed | Scattered | Inconsistent | Inconsistent |
-| Server actions | Mixed | Header-based | Try-catch | No |
+| File                       | Type        | Auth            | Error Handling     | Retry        |
+| -------------------------- | ----------- | --------------- | ------------------ | ------------ |
+| `apps/web/src/lib/api.ts`  | Axios-based | Via interceptor | Custom interceptor | Yes          |
+| `apps/web/src/lib/auth.ts` | Fetch-based | Manual headers  | Ad-hoc try-catch   | No           |
+| Component fetches          | Mixed       | Scattered       | Inconsistent       | Inconsistent |
+| Server actions             | Mixed       | Header-based    | Try-catch          | No           |
 
 ### Current Fetch Patterns
 
@@ -24,7 +24,7 @@ const response = await apiClient.get("/leaderboard");
 
 // Pattern 2: Raw fetch (lib/auth.ts)
 const response = await fetch(`${API_BASE}/users`, {
-  headers: { "Authorization": `Bearer ${token}` }
+  headers: { Authorization: `Bearer ${token}` },
 });
 
 // Pattern 3: Component fetch
@@ -42,13 +42,13 @@ const leaderboard = await fetch(`${baseUrl}/api/leaderboard`, {
 
 ### Existing Coverage
 
-| Domain | Client Usage |
-|--------|---|
-| Auth | Fetch-based, custom headers |
-| Leaderboard | Mixed (axios + fetch) |
-| Game/Challenges | Mixed |
-| Brands | Mixed |
-| Admin | Mixed |
+| Domain          | Client Usage                |
+| --------------- | --------------------------- |
+| Auth            | Fetch-based, custom headers |
+| Leaderboard     | Mixed (axios + fetch)       |
+| Game/Challenges | Mixed                       |
+| Brands          | Mixed                       |
+| Admin           | Mixed                       |
 
 ## Proposed Approach
 
@@ -78,7 +78,7 @@ export class APIClient {
     options?: RequestConfig & { body?: unknown }
   ): Promise<T> {
     const url = `${process.env.NEXT_PUBLIC_API_BASE}${path}`;
-    
+
     const headers: HeadersInit = {
       "Content-Type": "application/json",
     };
@@ -150,7 +150,7 @@ import { getSession } from "@auth0/nextauth";
 
 export default async function LeaderboardPage() {
   const session = await getSession();
-  
+
   // Set auth token on server-side before request
   if (session?.accessToken) {
     apiClient.setAuthToken(session.accessToken);
@@ -198,7 +198,7 @@ import { getServerSession } from "next-auth";
 
 export async function GET(request: Request) {
   const session = await getServerSession();
-  
+
   if (session?.accessToken) {
     apiClient.setAuthToken(session.accessToken);
   }
@@ -246,7 +246,7 @@ export const apiClient = {
   async request<T>(...): Promise<T> {
     try {
       const response = await fetch(...);
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new APIError(

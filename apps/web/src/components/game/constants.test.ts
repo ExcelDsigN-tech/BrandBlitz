@@ -4,11 +4,7 @@ import {
   ROUND_SECONDS as CANONICAL_ROUND_SECONDS,
   MAX_ROUNDS as CANONICAL_MAX_ROUNDS,
 } from "@brandblitz/stellar";
-import {
-  WARMUP_MIN_SECONDS,
-  ROUND_SECONDS,
-  TOTAL_ROUNDS,
-} from "./constants";
+import { WARMUP_MIN_SECONDS, ROUND_SECONDS, TOTAL_ROUNDS } from "./constants";
 
 describe("game constants parity with @brandblitz/stellar", () => {
   it("WARMUP_MIN_SECONDS matches the canonical value", () => {

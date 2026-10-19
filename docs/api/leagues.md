@@ -8,11 +8,11 @@ Every week (Monday 00:00 UTC → Sunday 23:59 UTC), players are grouped into **l
 
 ### League Tiers
 
-| Tier | Description |
-|---|---|
-| **Bronze** | Starting league for all new users |
+| Tier       | Description                                       |
+| ---------- | ------------------------------------------------- |
+| **Bronze** | Starting league for all new users                 |
 | **Silver** | Promoted from Bronze — finish top 3 in your group |
-| **Gold** | Promoted from Silver — finish top 3 in your group |
+| **Gold**   | Promoted from Silver — finish top 3 in your group |
 
 ### Promotion & Demotion Rules
 
@@ -82,30 +82,30 @@ curl -H "Authorization: Bearer eyJhbG..." \
 
 ### Response Fields
 
-| Field | Type | Description |
-|---|---|---|
-| `weekStart` | ISO 8601 | Start of the current league week (Monday 00:00 UTC) |
-| `weekEndExclusive` | ISO 8601 | End of the week (next Monday 00:00 UTC, exclusive) |
-| `league` | `bronze` \| `silver` \| `gold` | Your current league tier |
-| `groupId` | integer | Your group number within the tier |
-| `group` | array | The 30 (or fewer) players in your group, ranked by `weekly_points` |
+| Field              | Type                           | Description                                                        |
+| ------------------ | ------------------------------ | ------------------------------------------------------------------ |
+| `weekStart`        | ISO 8601                       | Start of the current league week (Monday 00:00 UTC)                |
+| `weekEndExclusive` | ISO 8601                       | End of the week (next Monday 00:00 UTC, exclusive)                 |
+| `league`           | `bronze` \| `silver` \| `gold` | Your current league tier                                           |
+| `groupId`          | integer                        | Your group number within the tier                                  |
+| `group`            | array                          | The 30 (or fewer) players in your group, ranked by `weekly_points` |
 
 #### Group Entry Fields
 
-| Field | Type | Description |
-|---|---|---|
-| `user_id` | string (UUID) | Player's internal ID |
-| `display_name` | string | Public display name |
-| `avatar_url` | string \| null | Avatar image URL |
-| `league` | string | League tier for this week |
-| `week_start` | ISO 8601 | Week this assignment belongs to |
-| `group_id` | integer | Group number |
-| `weekly_points` | integer | Total score from completed challenges this week |
-| `rank_in_group` | integer \| null | Position in the group (1 = highest) |
+| Field           | Type            | Description                                     |
+| --------------- | --------------- | ----------------------------------------------- |
+| `user_id`       | string (UUID)   | Player's internal ID                            |
+| `display_name`  | string          | Public display name                             |
+| `avatar_url`    | string \| null  | Avatar image URL                                |
+| `league`        | string          | League tier for this week                       |
+| `week_start`    | ISO 8601        | Week this assignment belongs to                 |
+| `group_id`      | integer         | Group number                                    |
+| `weekly_points` | integer         | Total score from completed challenges this week |
+| `rank_in_group` | integer \| null | Position in the group (1 = highest)             |
 
 ### Error Responses
 
-| Status | Body | Trigger |
-|---|---|---|
-| `401` | `{ "error": "Unauthorized" }` | Missing or invalid token |
-| `404` | `{ "error": "League not found" }` | No assignment found (should not happen — auto-created on first access) |
+| Status | Body                              | Trigger                                                                |
+| ------ | --------------------------------- | ---------------------------------------------------------------------- |
+| `401`  | `{ "error": "Unauthorized" }`     | Missing or invalid token                                               |
+| `404`  | `{ "error": "League not found" }` | No assignment found (should not happen — auto-created on first access) |

@@ -29,12 +29,13 @@ POST /challenges/:id/report
 }
 ```
 
-| Field | Required | Values |
-|-------|----------|--------|
-| `reason` | Yes | `misleading`, `offensive`, `spam`, `trademark_violation`, `other` |
-| `details` | No | Free text, max 500 characters |
+| Field     | Required | Values                                                            |
+| --------- | -------- | ----------------------------------------------------------------- |
+| `reason`  | Yes      | `misleading`, `offensive`, `spam`, `trademark_violation`, `other` |
+| `details` | No       | Free text, max 500 characters                                     |
 
 **Requirements:**
+
 - You must be authenticated
 - You must have an active user account
 - The challenge must be in `active` status

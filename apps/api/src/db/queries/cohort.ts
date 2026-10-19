@@ -88,9 +88,7 @@ function buildCohortWhere(
 
   if (filter.active_within_days !== undefined) {
     params.push(filter.active_within_days);
-    conditions.push(
-      `u.last_active_at >= NOW() - ($${idx++} || ' days')::interval`
-    );
+    conditions.push(`u.last_active_at >= NOW() - ($${idx++} || ' days')::interval`);
   }
 
   if (filter.created_after) {
@@ -225,9 +223,7 @@ export async function getCohortUsers(
  * Stream all matching cohort users for CSV export (no pagination).
  * Capped at EXPORT_ROW_LIMIT rows.
  */
-export async function getCohortUsersForExport(
-  filter: CohortFilter
-): Promise<CohortUser[]> {
+export async function getCohortUsersForExport(filter: CohortFilter): Promise<CohortUser[]> {
   const { conditions, params, nextIdx } = buildCohortWhere(filter, 1);
   let pIdx = nextIdx;
 
@@ -255,8 +251,7 @@ export async function getCohortUsersForExport(
   pIdx += havingParams.length;
 
   const whereClause = `WHERE ${conditions.join(" AND ")}`;
-  const havingClause =
-    havingReFinal.length > 0 ? `HAVING ${havingReFinal.join(" AND ")}` : "";
+  const havingClause = havingReFinal.length > 0 ? `HAVING ${havingReFinal.join(" AND ")}` : "";
 
   allParams.push(EXPORT_ROW_LIMIT);
 

@@ -4,18 +4,18 @@ BrandBlitz uses application-layer rate limits in `apps/api/src/middleware/rate-l
 
 ## Limiters
 
-| Limiter | Limit | Key | Route usage |
-|---|---:|---|---|
-| `apiLimiter` | Dynamic requests per 15 minutes, default 200 | User ID when authenticated, otherwise IP | General protected/public API reads including `/brands`, `/users/profile/:username`, `/users/:username/public`, `/users/:username/activity`, and `GET /waitlist/position/:email` |
-| `authLimiter` | 10 requests per 15 minutes | IP | `GET /auth/google/authorize`, `POST /auth/google/callback` |
-| `challengeStartLimiter` | 5 requests per hour | User ID when authenticated, otherwise IP | `POST /sessions/:challengeId/start` |
-| `uploadLimiter` | 20 requests per hour | User ID when authenticated, otherwise IP | `POST /upload/presign` |
-| `webhookLimiter` | 1000 requests per hour | IP | `POST /webhooks/stellar/deposit` |
-| `phoneRateLimit` | 3 requests per 15 minutes | Normalized phone number, falling back to user/IP | `POST /users/me/phone/send` |
-| `webhookRotationLimiter` | 10 requests per hour | User ID when authenticated, otherwise IP | Defined for admin webhook rotation flows; check the route before relying on current coverage |
-| `waitlistLimiter` | 5 requests per hour | IP | `POST /waitlist` |
-| `questionPreviewLimiter` | 10 requests per hour | Brand ID | `POST /brands/:id/questions/preview` |
-| `reportLimiter` | 5 requests per 15 minutes | User ID when authenticated, otherwise IP | `POST /challenges/:id/report` |
+| Limiter                  |                                        Limit | Key                                              | Route usage                                                                                                                                                                     |
+| ------------------------ | -------------------------------------------: | ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apiLimiter`             | Dynamic requests per 15 minutes, default 200 | User ID when authenticated, otherwise IP         | General protected/public API reads including `/brands`, `/users/profile/:username`, `/users/:username/public`, `/users/:username/activity`, and `GET /waitlist/position/:email` |
+| `authLimiter`            |                   10 requests per 15 minutes | IP                                               | `GET /auth/google/authorize`, `POST /auth/google/callback`                                                                                                                      |
+| `challengeStartLimiter`  |                          5 requests per hour | User ID when authenticated, otherwise IP         | `POST /sessions/:challengeId/start`                                                                                                                                             |
+| `uploadLimiter`          |                         20 requests per hour | User ID when authenticated, otherwise IP         | `POST /upload/presign`                                                                                                                                                          |
+| `webhookLimiter`         |                       1000 requests per hour | IP                                               | `POST /webhooks/stellar/deposit`                                                                                                                                                |
+| `phoneRateLimit`         |                    3 requests per 15 minutes | Normalized phone number, falling back to user/IP | `POST /users/me/phone/send`                                                                                                                                                     |
+| `webhookRotationLimiter` |                         10 requests per hour | User ID when authenticated, otherwise IP         | Defined for admin webhook rotation flows; check the route before relying on current coverage                                                                                    |
+| `waitlistLimiter`        |                          5 requests per hour | IP                                               | `POST /waitlist`                                                                                                                                                                |
+| `questionPreviewLimiter` |                         10 requests per hour | Brand ID                                         | `POST /brands/:id/questions/preview`                                                                                                                                            |
+| `reportLimiter`          |                    5 requests per 15 minutes | User ID when authenticated, otherwise IP         | `POST /challenges/:id/report`                                                                                                                                                   |
 
 Redis-backed limiters are configured with `passOnStoreError: true` where applicable, so a Redis outage fails open for those routes rather than blocking normal users.
 
@@ -90,13 +90,13 @@ Production server errors are intentionally generic and include the request ID wh
 
 ## Common status codes
 
-| Status | Meaning |
-|---:|---|
-| 400 | Bad request or schema validation failure |
-| 401 | Missing, invalid, or expired authentication |
-| 403 | Authenticated caller is not allowed to perform the action |
-| 404 | Resource was not found |
-| 409 | Duplicate resource or database constraint conflict |
-| 422 | Semantically invalid request body, such as an invalid waitlist email |
-| 429 | Rate limit exceeded |
-| 500 | Unexpected server error |
+| Status | Meaning                                                              |
+| -----: | -------------------------------------------------------------------- |
+|    400 | Bad request or schema validation failure                             |
+|    401 | Missing, invalid, or expired authentication                          |
+|    403 | Authenticated caller is not allowed to perform the action            |
+|    404 | Resource was not found                                               |
+|    409 | Duplicate resource or database constraint conflict                   |
+|    422 | Semantically invalid request body, such as an invalid waitlist email |
+|    429 | Rate limit exceeded                                                  |
+|    500 | Unexpected server error                                              |

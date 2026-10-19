@@ -170,10 +170,12 @@ describe("error middleware", () => {
       const req = makeRequest();
       const res = makeResponse();
       const fkError = Object.assign(
-        new Error('insert or update on table "challenges" violates foreign key constraint "challenges_brand_id_fkey"'),
+        new Error(
+          'insert or update on table "challenges" violates foreign key constraint "challenges_brand_id_fkey"'
+        ),
         {
           code: "23503",
-          detail: "Key (brand_id)=(999999) is not present in table \"brands\".",
+          detail: 'Key (brand_id)=(999999) is not present in table "brands".',
           table: "challenges",
           constraint: "challenges_brand_id_fkey",
         }
@@ -223,7 +225,9 @@ describe("error middleware", () => {
       const req = makeRequest();
       const res = makeResponse();
       const checkError = Object.assign(
-        new Error('new row for table "challenges" violates check constraint "challenges_prize_pool_check"'),
+        new Error(
+          'new row for table "challenges" violates check constraint "challenges_prize_pool_check"'
+        ),
         {
           code: "23514",
           detail: "Failing row contains (negative_amount).",
@@ -247,7 +251,7 @@ describe("error middleware", () => {
       const req = makeRequest();
       const res = makeResponse();
       const pgError = Object.assign(
-        new Error('pg internal: Key (email)=(test@example.com) already exists'),
+        new Error("pg internal: Key (email)=(test@example.com) already exists"),
         {
           code: "23505",
           detail: "Key (email)=(test@example.com) already exists. Schema: public, Table: users.",
@@ -275,13 +279,10 @@ describe("error middleware", () => {
       process.env.NODE_ENV = "production";
       const req = makeRequest();
       const res = makeResponse();
-      const connectionError = Object.assign(
-        new Error("connection timeout after 5000ms"),
-        {
-          code: "08006",
-          routine: "connect_timeout",
-        }
-      );
+      const connectionError = Object.assign(new Error("connection timeout after 5000ms"), {
+        code: "08006",
+        routine: "connect_timeout",
+      });
 
       errorHandler(connectionError as any, req, res, vi.fn());
 
@@ -317,10 +318,7 @@ describe("Sentry reporting in errorHandler", () => {
     errorHandler(error, req, res, vi.fn());
 
     expect(captureExceptionSyncMock).toHaveBeenCalledOnce();
-    expect(captureExceptionSyncMock).toHaveBeenCalledWith(
-      error,
-      { method: "POST", url: "/test" }
-    );
+    expect(captureExceptionSyncMock).toHaveBeenCalledWith(error, { method: "POST", url: "/test" });
   });
 
   it("does NOT call captureExceptionSync for 4xx client errors", () => {
@@ -357,9 +355,6 @@ describe("Sentry reporting in errorHandler", () => {
     errorHandler(error, req, res, vi.fn());
 
     expect(captureExceptionSyncMock).toHaveBeenCalledOnce();
-    expect(captureExceptionSyncMock).toHaveBeenCalledWith(
-      error,
-      { method: "POST", url: "/test" }
-    );
+    expect(captureExceptionSyncMock).toHaveBeenCalledWith(error, { method: "POST", url: "/test" });
   });
 });

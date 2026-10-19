@@ -10,8 +10,7 @@ import { toast } from "@/lib/toast";
 // Poll the OAuth popup often enough that a user-cancelled popup releases the
 // loading state well within the 500 ms target from issue #347.
 const POPUP_POLL_INTERVAL_MS = 250;
-const POPUP_FEATURES =
-  "width=500,height=600,menubar=no,toolbar=no,location=no,status=no";
+const POPUP_FEATURES = "width=500,height=600,menubar=no,toolbar=no,location=no,status=no";
 const POPUP_BLOCKED_MESSAGE =
   "Popup blocked. Please allow popups for this site, then try signing in again.";
 
@@ -125,7 +124,7 @@ export function LoginButton() {
         {isLoading ? "Signing in…" : "Continue with Google"}
       </Button>
       {error ? (
-        <p role="alert" className="text-center text-sm text-destructive">
+        <p role="alert" className="text-destructive text-center text-sm">
           {error}
         </p>
       ) : null}

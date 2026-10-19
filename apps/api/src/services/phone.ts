@@ -64,10 +64,7 @@ export async function sendVerificationCode(phoneNumber: string): Promise<void> {
     });
 }
 
-export async function checkVerificationCode(
-  phoneNumber: string,
-  code: string
-): Promise<boolean> {
+export async function checkVerificationCode(phoneNumber: string, code: string): Promise<boolean> {
   const result = await getTwilioClient()
     .verify.v2.services(getVerifyServiceSid())
     .verificationChecks.create({ to: normalizePhoneNumber(phoneNumber), code });
@@ -154,7 +151,7 @@ export async function sendOtp(userId: string, phoneNumber: string): Promise<stri
          otp_expires_at  = NOW() + interval '${OTP_EXPIRY_SECONDS} seconds',
          updated_at      = NOW()
      WHERE id = $2`,
-    [hash, userId],
+    [hash, userId]
   );
 
   await sendVerificationCode(phoneNumber);
@@ -172,7 +169,7 @@ export async function sendOtp(userId: string, phoneNumber: string): Promise<stri
 export async function verifyOtp(userId: string, code: string): Promise<boolean> {
   const result = await query<{ otp_hash: string | null; otp_expires_at: string | null }>(
     `SELECT otp_hash, otp_expires_at FROM users WHERE id = $1 AND deleted_at IS NULL`,
-    [userId],
+    [userId]
   );
 
   const user = result.rows[0];
@@ -189,7 +186,7 @@ export async function verifyOtp(userId: string, code: string): Promise<boolean> 
     // Clear OTP so it cannot be reused
     await query(
       `UPDATE users SET otp_hash = NULL, otp_expires_at = NULL, updated_at = NOW() WHERE id = $1`,
-      [userId],
+      [userId]
     );
   } else {
     // Track failed attempts
@@ -214,10 +211,7 @@ export async function verifyOtp(userId: string, code: string): Promise<boolean> 
 
 // ── Guards ────────────────────────────────────────────────────────────────────
 
-export async function requirePhoneVerified(
-  userId: string,
-  phoneVerified: boolean
-): Promise<void> {
+export async function requirePhoneVerified(userId: string, phoneVerified: boolean): Promise<void> {
   if (!phoneVerified) {
     throw createError(
       "Phone verification required before claiming rewards",

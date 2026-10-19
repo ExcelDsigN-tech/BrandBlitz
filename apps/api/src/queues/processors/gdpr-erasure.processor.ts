@@ -16,9 +16,7 @@ export const gdprErasureWorkerOptions = {
   concurrency: 1,
 } satisfies WorkerOptions;
 
-export async function processGdprErasureJob(
-  job: Job<GdprErasureJobData>
-): Promise<void> {
+export async function processGdprErasureJob(job: Job<GdprErasureJobData>): Promise<void> {
   const { userId, requestId } = job.data;
   logger.info("Processing GDPR erasure job", { jobId: job.id, userId });
 
@@ -44,11 +42,7 @@ export async function processGdprErasureJob(
 }
 
 export function createGdprErasureWorker(WorkerImpl: typeof Worker = Worker): Worker {
-  const worker = new WorkerImpl(
-    "gdpr-erasure",
-    processGdprErasureJob,
-    gdprErasureWorkerOptions
-  );
+  const worker = new WorkerImpl("gdpr-erasure", processGdprErasureJob, gdprErasureWorkerOptions);
 
   worker.on("completed", (job) => {
     logger.info("GDPR erasure job completed", { jobId: job.id });
