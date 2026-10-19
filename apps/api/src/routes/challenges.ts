@@ -502,9 +502,10 @@ router.post("/:id/report", authenticate, requireActiveUser, reportLimiter, async
     );
 
     await client.query(
-      `INSERT INTO audit_log (action, entity_type, entity_id, metadata)
-       VALUES ('content_report', 'challenge', $1, $2::jsonb)`,
+      `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+       VALUES ($1, 'content_report', 'challenge', $2, $3::jsonb)`,
       [
+        userId,
         challengeId,
         JSON.stringify({ reporter_user_id: userId, reason: body.reason, details: body.details }),
       ]

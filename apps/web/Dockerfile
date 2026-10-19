@@ -1,4 +1,8 @@
-FROM node:22.14.0-alpine AS base
+# Node version is pinned once in the repository root `.nvmrc` (22.14.0) and must
+# match apps/api/Dockerfile and apps/deposit-monitor/Dockerfile (issue #897).
+# To update the digest:
+#   docker pull node:22.14.0-alpine && docker inspect node:22.14.0-alpine --format '{{index .RepoDigests 0}}'
+FROM node:22.14.0-alpine@sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944 AS base
 RUN corepack enable && corepack prepare pnpm@10.33.0 --activate
 
 # ── deps ──────────────────────────────────────────────────────────────────────
@@ -39,7 +43,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 # ── runner ────────────────────────────────────────────────────────────────────
-FROM node:22.14.0-alpine AS runner
+FROM node:22.14.0-alpine@sha256:9bef0ef1e268f60627da9ba7d7605e8831d5b56ad07487d24d1aa386336d1944 AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

@@ -83,11 +83,9 @@ export async function handleExhaustedPayoutJob(
 ): Promise<void> {
   await failPayoutsForChallenge(job.data.challengeId, err.message);
   await query(
-    `INSERT INTO audit_log (action, entity_type, entity_id, metadata)
-     VALUES ($1, $2, $3, $4::jsonb)`,
+    `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+     VALUES (NULL, 'payout_failed', 'challenge', $1, $2::jsonb)`,
     [
-      "payout_failed",
-      "challenge",
       job.data.challengeId,
       JSON.stringify({
         jobId: job.id,

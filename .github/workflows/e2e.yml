@@ -65,7 +65,8 @@ jobs:
       # To upgrade: git ls-remote https://github.com/actions/setup-node.git refs/tags/v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          # Single source of truth for the Node version (issue #897).
+          node-version-file: .nvmrc
           cache: pnpm
 
       - name: Install dependencies
