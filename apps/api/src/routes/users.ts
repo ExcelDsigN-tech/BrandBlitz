@@ -10,8 +10,8 @@ import {
   getUserPublicProfileByUsername,
   searchUsersByUsername,
   markOnboardingCompleted,
-  getNotificationPreferences,
-  updateNotificationPreference,
+  updateUserPreferences,
+  setUserVanitySlug,
 } from "../db/queries/users";
 import { getReferralStats, ensureUserReferralCode } from "../services/referrals";
 import { stroopsToUsdc } from "../lib/usdc";
@@ -92,6 +92,10 @@ router.get("/me", authenticate, async (req, res) => {
     email: user.email,
     display_name: user.display_name,
     username: user.username,
+    referral_code: user.referral_code,
+    vanity_slug: user.vanity_slug,
+    timezone: user.timezone,
+    accessibility_mode: user.accessibility_mode,
     avatar_url: user.avatar_url,
     stellar_address: user.stellar_address,
     embedded_wallet_address: user.embedded_wallet_address,
@@ -399,6 +403,30 @@ router.post("/me/onboarding/complete", authenticate, async (req, res) => {
   res.json({ success: true, onboardingCompleted: completed });
 });
 
+router.patch("/me/preferences", authenticate, async (req, res) => {
+  const parsed = z
+    .object({
+      timezone: z.string().trim().min(1).max(100).optional(),
+      accessibilityMode: z.boolean().optional(),
+    })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success || (!parsed.data.timezone && parsed.data.accessibilityMode === undefined)) {
+    throw createError("Invalid preferences", 400, "INVALID_PREFERENCES");
+  }
+
+  if (parsed.data.timezone) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: parsed.data.timezone }).format();
+    } catch {
+      throw createError("Invalid IANA timezone", 400, "INVALID_TIMEZONE");
+    }
+  }
+
+  await updateUserPreferences(req.user!.sub, parsed.data);
+  res.json({ success: true });
+});
+
 router.get("/me/streak", authenticate, async (req, res) => {
   const streak = await getStreakDetail(req.user!.sub).catch(() => null);
   if (!streak) throw createError("User not found", 404);
@@ -512,6 +540,11 @@ router.get("/me/referrals/stats", authenticate, async (req, res) => {
 router.get("/me/referrals", authenticate, async (req, res) => {
   const userId = req.user!.sub;
   const referralCode = await ensureUserReferralCode(userId);
+  const vanityResult = await query<{ vanity_slug: string | null }>(
+    "SELECT vanity_slug FROM users WHERE id = $1 AND deleted_at IS NULL",
+    [userId]
+  );
+  const vanitySlug = vanityResult.rows[0]?.vanity_slug ?? null;
 
   const referredResult = await query<{
     id: string;
@@ -551,7 +584,8 @@ router.get("/me/referrals", authenticate, async (req, res) => {
   const totals = totalsResult.rows[0] || { pending_stroops: "0", confirmed_stroops: "0" };
 
   res.json({
-    referralCode,
+    referralCode: vanitySlug ?? referralCode,
+    vanitySlug,
     referredUsers: referredResult.rows.map((row) => ({
       id: row.id,
       username: row.username,
@@ -565,6 +599,47 @@ router.get("/me/referrals", authenticate, async (req, res) => {
       confirmedUsdc: stroopsToUsdc(BigInt(totals.confirmed_stroops)),
     },
   });
+});
+
+router.patch("/me/referral-code", authenticate, async (req, res) => {
+  const parsed = z
+    .object({
+      vanitySlug: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .min(3)
+        .max(32)
+        .regex(/^[a-z0-9-]+$/),
+    })
+    .strict()
+    .safeParse(req.body);
+  if (
+    !parsed.success ||
+    /^(admin|support|api|www|help|official|brandblitz)$/.test(parsed.data.vanitySlug)
+  ) {
+    throw createError(
+      "Vanity slug must be 3-32 lowercase letters, numbers, or hyphens",
+      400,
+      "INVALID_VANITY_SLUG"
+    );
+  }
+
+  try {
+    await setUserVanitySlug(req.user!.sub, parsed.data.vanitySlug);
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "23505"
+    ) {
+      throw createError("That vanity slug is already in use", 409, "VANITY_SLUG_TAKEN");
+    }
+    throw error;
+  }
+
+  res.json({ vanitySlug: parsed.data.vanitySlug });
 });
 
 router.post("/streaks/repair", authenticate, async (req, res) => {

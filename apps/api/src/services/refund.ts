@@ -37,20 +37,30 @@ export async function refundChallenge(data: {
   );
   if (!destination) throw new Error("No deposit found");
 
-  const amount = stroopsToUsdc(challenge.pool_amount_stroops);
-  const txHash = await submitRefundPayment({
-    destination,
-    amount,
-    challengeId: challenge.id,
-    hotWalletSecret: config.HOT_WALLET_SECRET,
-    network: config.STELLAR_NETWORK as NetworkName,
-  });
+  const refundPolicy = challenge.refund_policy ?? "full";
+  const percentage = Number(challenge.refund_percentage ?? 100);
+  const started = new Date(challenge.starts_at).getTime() <= Date.now();
+  const refundAmountStroops =
+    refundPolicy === "none_after_start" && started
+      ? 0n
+      : (BigInt(challenge.pool_amount_stroops) * BigInt(Math.round(percentage * 100))) / 10_000n;
+  const amount = stroopsToUsdc(refundAmountStroops.toString());
+  const txHash =
+    refundAmountStroops > 0n
+      ? await submitRefundPayment({
+          destination,
+          amount,
+          challengeId: challenge.id,
+          hotWalletSecret: config.HOT_WALLET_SECRET,
+          network: config.STELLAR_NETWORK as NetworkName,
+        })
+      : "no-refund-due";
 
   const refund = await createRefund({
     challengeId: challenge.id,
     adminId: data.adminId,
     reason: data.reason,
-    amountStroops: challenge.pool_amount_stroops,
+    amountStroops: refundAmountStroops.toString(),
     destination,
     txHash,
   });

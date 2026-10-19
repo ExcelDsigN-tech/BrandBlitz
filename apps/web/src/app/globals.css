@@ -178,3 +178,14 @@ a {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Profile-controlled challenge presentation mode (#1044). Scoring and timer
+   logic remain unchanged; only non-essential presentation motion is removed. */
+.accessibility-play-mode *,
+.accessibility-play-mode *::before,
+.accessibility-play-mode *::after {
+  animation-duration: 0.001ms !important;
+  animation-iteration-count: 1 !important;
+  scroll-behavior: auto !important;
+  transition-duration: 0.001ms !important;
+}

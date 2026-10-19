@@ -12,6 +12,7 @@ export type ChallengeStatus =
   | "payout_failed"
   | "cancelled"
   | "refunded";
+export type RefundPolicy = "full" | "partial_percentage" | "none_after_start";
 
 export interface Challenge {
   id: string;
@@ -39,6 +40,8 @@ export interface Challenge {
   challenge_license_id?: string | null;
   is_gallery_template?: boolean;
   gallery_opted_in_at?: string | null;
+  refund_policy?: RefundPolicy;
+  refund_percentage?: string;
 }
 
 export interface GalleryTemplate {
@@ -72,28 +75,22 @@ export interface ChallengeQuestion {
   correct_option: "A" | "B" | "C" | "D";
 }
 
-export async function createChallenge(
-  data: {
-    brandId: string;
-    challengeId: string;
-    depositMemo?: string;
-    poolAmountUsdc: string;
-    maxPlayers?: number;
-    endsAt?: string;
-    licenseId?: string;
-    payoutSchedule?: "instant" | "batched";
-    draft?: boolean;
-  },
-  executor: {
-    query: <T extends QueryResultRow>(text: string, params?: unknown[]) => Promise<QueryResult<T>>;
-  } = { query }
-): Promise<Challenge> {
-  const payoutSchedule = data.payoutSchedule ?? "instant";
-  const result = await executor.query<Challenge>(
+export async function createChallenge(data: {
+  brandId: string;
+  challengeId: string;
+  depositMemo?: string;
+  poolAmountUsdc: string;
+  maxPlayers?: number;
+  endsAt?: string;
+  licenseId?: string;
+  refundPolicy?: RefundPolicy;
+  refundPercentage?: number;
+}): Promise<Challenge> {
+  const result = await query<Challenge>(
     `INSERT INTO challenges
        (brand_id, challenge_id, deposit_memo, pool_amount_stroops, max_players, ends_at,
-        challenge_license_id, payout_schedule, status, starts_at)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9, CASE WHEN $9 = 'draft' THEN NULL ELSE NOW() END)
+        challenge_license_id, refund_policy, refund_percentage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      RETURNING *, (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc`,
     [
       data.brandId,
@@ -103,8 +100,8 @@ export async function createChallenge(
       data.maxPlayers ?? null,
       data.endsAt ?? null,
       data.licenseId ?? null,
-      payoutSchedule,
-      data.draft ? "draft" : "pending_deposit",
+      data.refundPolicy ?? "full",
+      data.refundPercentage ?? 100,
     ]
   );
   return result.rows[0];
