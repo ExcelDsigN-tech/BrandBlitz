@@ -1,4 +1,11 @@
-FROM nginx:1.25-alpine AS builder
+# Base image is pinned to an immutable digest (issue #898).
+# To refresh:
+#   docker pull nginx:1.25-alpine
+#   docker inspect nginx:1.25-alpine --format '{{index .RepoDigests 0}}'
+# then replace the sha256 in both FROM lines below. The digest currently
+# resolves to nginx 1.25.5-alpine (the latest 1.25-alpine tag), which matches
+# the NGINX_VERSION source tarball compiled below.
+FROM nginx:1.25-alpine@sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00 AS builder
 
 RUN apk add --no-cache --virtual .build-deps \
     git \
@@ -48,6 +55,6 @@ RUN curl -sSL "https://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz" -o ngin
     cp objs/ngx_http_brotli_filter_module.so /tmp/modules/ && \
     cp objs/ngx_http_brotli_static_module.so /tmp/modules/
 
-FROM nginx:1.25-alpine AS runner
+FROM nginx:1.25-alpine@sha256:516475cc129da42866742567714ddc681e5eed7b9ee0b9e9c015e464b4221a00 AS runner
 
 COPY --from=builder /tmp/modules/ /usr/lib/nginx/modules/

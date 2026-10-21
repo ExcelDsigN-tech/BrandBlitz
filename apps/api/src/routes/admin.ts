@@ -338,14 +338,14 @@ router.post("/users/:id/suspend", async (req, res) => {
     );
 
     await client.query(
-      `INSERT INTO audit_log (action, entity_type, entity_id, metadata)
-       VALUES ('suspend', 'user', $1, $2::jsonb)`,
+      `INSERT INTO audit_log (actor_id, action, entity, entity_key, after)
+       VALUES ($1, 'suspend', 'user', $2, $3::jsonb)`,
       [
+        req.user!.sub,
         userId,
         JSON.stringify({
           reason: body.reason,
           duration_days: body.durationDays || null,
-          performed_by: req.user!.sub,
         }),
       ]
     );
