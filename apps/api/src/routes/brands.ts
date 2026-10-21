@@ -140,33 +140,8 @@ const ChallengeSchema = z.object({
   maxPlayers: z.number().int().positive().optional(),
   endsAt: z.string().datetime(),
   licenseId: z.string().uuid().optional(),
-  payoutSchedule: z.enum(["instant", "batched"]).default("instant"),
-  variants: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1).max(100),
-        questionConfig: z.record(z.unknown()).default({}),
-      })
-    )
-    .max(2)
-    .optional(),
-  tiers: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1).max(100),
-        entryFeeUsdc: z
-          .string()
-          .regex(/^\d+(\.\d{1,7})?$/)
-          .refine((value) => Number(value) >= 0),
-        prizePoolUsdc: z
-          .string()
-          .regex(/^\d+(\.\d{1,7})?$/)
-          .refine((value) => Number(value) > 0),
-      })
-    )
-    .min(1)
-    .max(10)
-    .optional(),
+  refundPolicy: z.enum(["full", "partial_percentage", "none_after_start"]).default("full"),
+  refundPercentage: z.number().min(0).max(100).default(100),
 });
 
 const LicenseChallengeSchema = z.object({ challengeId: z.string().uuid() }).strict();
@@ -1015,7 +990,8 @@ router.post("/challenges", authenticate, requireCurrentTosAccepted, async (req, 
     maxPlayers: body.maxPlayers,
     endsAt: body.endsAt,
     licenseId: license?.id,
-    payoutSchedule: body.payoutSchedule,
+    refundPolicy: body.refundPolicy,
+    refundPercentage: body.refundPercentage,
   });
 
   if (body.variants?.length) {

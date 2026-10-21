@@ -40,9 +40,17 @@ printf '%s' "$HOT_WALLET_SECRET" | docker secret create hot_wallet_secret -
 
 ## Database
 
-| Variable            | Service(s)            | Description                                  |
-| ------------------- | --------------------- | -------------------------------------------- |
+| Variable | Service(s) | Description |
+|----------|-----------|-------------|
+| `DATABASE_URL` | api, worker | PostgreSQL connection string (e.g., `postgresql://brandblitz:password@postgres:5432/brandblitz`). No default — required. |
+| `REDIS_URL` | api, worker | Redis connection string (e.g., `redis://redis:6379/0`). No default — required. |
 | `POSTGRES_PASSWORD` | postgres, api, worker | Postgres password for the `brandblitz` user. |
+
+## CORS
+
+| Variable | Service(s) | Description |
+|----------|-----------|-------------|
+| `ALLOWED_ORIGINS` | api | Comma-separated list of origins permitted by CORS. No default — required. Must use explicit origins only (wildcard `*` is rejected). Example: `https://brandblitz.app,https://staging.brandblitz.app`. |
 
 ## OAuth (Google)
 
@@ -64,11 +72,13 @@ printf '%s' "$HOT_WALLET_SECRET" | docker secret create hot_wallet_secret -
 In production, S3 credentials are injected via Docker secrets — not plain env vars.
 See [rotate-s3-credentials runbook](../runbooks/rotate-s3-credentials.md).
 
-| Variable          | Service(s)         | Description                        |
-| ----------------- | ------------------ | ---------------------------------- |
-| `MINIO_ROOT_USER` | minio, api, worker | S3 access key ID.                  |
-| `S3_ENDPOINT`     | api, worker        | e.g. `https://s3.brandblitz.io`.   |
-| `S3_PUBLIC_URL`   | api, worker        | Public-facing URL for asset links. |
+| Variable | Service(s) | Description |
+|----------|-----------|-------------|
+| `S3_ENDPOINT` | api, worker | S3/MinIO endpoint URL (e.g., `https://s3.brandblitz.io`). No default — required. |
+| `S3_ACCESS_KEY_ID` | api, worker | S3 access key ID. No default — required. |
+| `S3_SECRET_ACCESS_KEY` | api, worker | S3 secret access key. No default — required. |
+| `S3_PUBLIC_URL` | api, worker | Public-facing URL for asset links (e.g., `https://assets.brandblitz.io`). No default — required. |
+| `MINIO_ROOT_USER` | minio | MinIO root user (only for local/staging MinIO, not used in production S3). |
 
 ## nginx
 

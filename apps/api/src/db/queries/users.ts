@@ -22,6 +22,9 @@ export interface User {
   stellar_address: string | null;
   embedded_wallet_address: string | null;
   referral_code: string | null;
+  vanity_slug?: string | null;
+  timezone?: string | null;
+  accessibility_mode?: boolean;
   league: "bronze" | "silver" | "gold" | null;
   total_score: number;
   total_earned_usdc: string;
@@ -85,7 +88,7 @@ export async function findUserByPhoneHash(phoneHash: string): Promise<User | nul
 
 export async function findUserByReferralCode(referralCode: string): Promise<User | null> {
   const result = await query<User>(
-    "SELECT * FROM users WHERE referral_code = $1 AND deleted_at IS NULL LIMIT 1",
+    "SELECT * FROM users WHERE (referral_code = $1 OR vanity_slug = $1) AND deleted_at IS NULL LIMIT 1",
     [referralCode]
   );
   return result.rows[0] ?? null;
@@ -107,6 +110,29 @@ export async function setUserReferralCode(userId: string, referralCode: string):
      WHERE id = $2
        AND referral_code IS NULL`,
     [referralCode, userId]
+  );
+}
+
+export async function setUserVanitySlug(userId: string, vanitySlug: string): Promise<void> {
+  await query(
+    `UPDATE users
+     SET vanity_slug = $1, updated_at = NOW()
+     WHERE id = $2 AND deleted_at IS NULL`,
+    [vanitySlug, userId]
+  );
+}
+
+export async function updateUserPreferences(
+  userId: string,
+  data: { timezone?: string; accessibilityMode?: boolean }
+): Promise<void> {
+  await query(
+    `UPDATE users
+     SET timezone = COALESCE($2, timezone),
+         accessibility_mode = COALESCE($3, accessibility_mode),
+         updated_at = NOW()
+     WHERE id = $1 AND deleted_at IS NULL`,
+    [userId, data.timezone ?? null, data.accessibilityMode ?? null]
   );
 }
 
@@ -514,4 +540,48 @@ export async function searchUsersByUsername(
     [`${prefix}%`, pageSize, (page - 1) * pageSize]
   );
   return result.rows;
+}
+
+export interface NotificationPreference {
+  id: string;
+  user_id: string;
+  category: "payout" | "badge" | "streak" | "referral";
+  enabled: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export async function getNotificationPreferences(userId: string): Promise<NotificationPreference[]> {
+  const result = await query<NotificationPreference>(
+    `SELECT * FROM notification_preferences WHERE user_id = $1 ORDER BY category ASC`,
+    [userId],
+  );
+  return result.rows;
+}
+
+export async function isNotificationCategoryEnabled(
+  userId: string,
+  category: string,
+): Promise<boolean> {
+  const result = await query<{ enabled: boolean }>(
+    `SELECT enabled FROM notification_preferences WHERE user_id = $1 AND category = $2`,
+    [userId, category],
+  );
+  return result.rows[0]?.enabled ?? true;
+}
+
+export async function updateNotificationPreference(
+  userId: string,
+  category: string,
+  enabled: boolean,
+): Promise<NotificationPreference | null> {
+  const result = await query<NotificationPreference>(
+    `INSERT INTO notification_preferences (user_id, category, enabled)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, category)
+     DO UPDATE SET enabled = $3, updated_at = NOW()
+     RETURNING *`,
+    [userId, category, enabled],
+  );
+  return result.rows[0] ?? null;
 }

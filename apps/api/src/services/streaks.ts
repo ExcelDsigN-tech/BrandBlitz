@@ -5,6 +5,7 @@ import {
   repairUserStreak,
   setUserStreak,
   type StreakState,
+  isNotificationCategoryEnabled,
 } from "../db/queries/users";
 
 const STREAK_MILESTONES = [3, 7, 14, 30] as const;
@@ -161,6 +162,21 @@ async function insertStreakMilestoneNotification(userId: string, milestone: numb
     type: "streak_milestone",
     payload: { milestone },
   });
+  try {
+    const enabled = await isNotificationCategoryEnabled(userId, "streak");
+    if (!enabled) {
+      logger.debug("Streak milestone notification skipped - user has disabled streak notifications", { userId });
+      return;
+    }
+
+    await query(
+      `INSERT INTO notifications (user_id, type, payload)
+       VALUES ($1, 'streak_milestone', $2::jsonb)`,
+      [userId, JSON.stringify({ milestone })]
+    );
+  } catch (err) {
+    logger.warn("Failed to insert streak milestone notification", { userId, milestone, err });
+  }
 }
 
 export interface ActivityRecord {

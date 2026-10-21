@@ -13,7 +13,7 @@ import {
   getEndedBatchedChallenges,
 } from "../db/queries/challenges";
 import { createPayout, updatePayoutStatus } from "../db/queries/payouts";
-import { incrementUserEarnings } from "../db/queries/users";
+import { incrementUserEarnings, isNotificationCategoryEnabled } from "../db/queries/users";
 import { rankWinners } from "./scoring";
 import { calculatePayoutShareStroops, stroopsToUsdc } from "../lib/usdc";
 import { enqueuePayoutJob } from "../queues/payout.queue";
@@ -48,6 +48,28 @@ async function insertPayoutNotification(
       challenge_id: challengeId,
     },
   });
+  try {
+    const enabled = await isNotificationCategoryEnabled(userId, "payout");
+    if (!enabled) {
+      logger.debug("Payout notification skipped - user has disabled payout notifications", { userId });
+      return;
+    }
+
+    await query(
+      `INSERT INTO notifications (user_id, type, payload)
+       VALUES ($1, 'payout_received', $2::jsonb)`,
+      [
+        userId,
+        JSON.stringify({
+          amount_usdc: amountUsdc,
+          tx_hash: txHash ?? null,
+          challenge_id: challengeId,
+        }),
+      ]
+    );
+  } catch (err) {
+    logger.warn("Failed to insert payout notification", { userId, err });
+  }
 }
 
 export function isFraudBlockError(err: unknown): boolean {

@@ -20,11 +20,18 @@ Place your TLS certificate and key at:
 
 ## Verification
 
-Check that all cookies have `Secure`, `HttpOnly`, and `SameSite=Lax` set:
+Check that the referral attribution cookie (`ref`) has `Secure`, `HttpOnly`, and `SameSite=Strict` set:
 
 ```bash
 curl -sI https://brandblitz.app | grep -i set-cookie
 ```
+
+Expected output should include a line like:
+```
+set-cookie: ref=...; Path=/; Expires=...; HttpOnly; Secure; SameSite=Strict
+```
+
+The API enforces `SameSite=Strict` in the `setCookieSecure` helper (see `apps/api/src/lib/cookies.ts`).
 
 The API also rejects plain HTTP requests at the application level in production via the `requireHttps` middleware (checks `x-forwarded-proto` header).
 
