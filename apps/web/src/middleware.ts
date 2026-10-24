@@ -53,6 +53,9 @@ function buildCSPHeader(nonce: string): string {
   return [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`,
+    // 'strict-dynamic' makes browsers ignore 'self' for scripts, so the
+    // service worker registered by the push opt-in needs its own directive.
+    `worker-src 'self'`,
     `img-src 'self' data: https://${cdnHost}`,
     `font-src 'self' https://fonts.gstatic.com`,
     `style-src 'self' https://fonts.googleapis.com 'unsafe-inline'`,

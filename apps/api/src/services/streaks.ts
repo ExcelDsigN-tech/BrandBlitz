@@ -1,6 +1,5 @@
 import { metrics } from "../lib/metrics";
-import { query } from "../db";
-import { logger } from "../lib/logger";
+import { dispatchNotification } from "./notifications";
 import {
   getUserStreak,
   repairUserStreak,
@@ -158,6 +157,11 @@ function dayDiff(from: string, to: string): number {
 }
 
 async function insertStreakMilestoneNotification(userId: string, milestone: number): Promise<void> {
+  await dispatchNotification({
+    userId,
+    type: "streak_milestone",
+    payload: { milestone },
+  });
   try {
     const enabled = await isNotificationCategoryEnabled(userId, "streak");
     if (!enabled) {

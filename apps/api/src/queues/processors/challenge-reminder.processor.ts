@@ -2,6 +2,7 @@ import { Worker, type Job } from "bullmq";
 import { redis } from "../../lib/redis";
 import { query } from "../../db";
 import { logger } from "../../lib/logger";
+import { dispatchNotification } from "../../services/notifications";
 import type { ChallengeReminderJobData } from "../challenge-reminder.queue";
 
 export async function processChallengeReminderJob(
@@ -47,25 +48,19 @@ export async function processChallengeReminderJob(
     [challengeId, email]
   ).catch(() => null);
 
-  // 4. Acceptance criterion: "Reuses existing notification delivery pipeline"
+  // 4. Acceptance criterion: "Reuses existing notification delivery pipeline".
+  //    dispatchNotification writes the in-app row and sends Web Push (#1009).
   if (userId) {
-    try {
-      await query(
-        `INSERT INTO notifications (user_id, type, payload)
-         VALUES ($1, 'challenge_reminder', $2::jsonb)`,
-        [
-          userId,
-          JSON.stringify({
-            challenge_id: challengeId,
-            brand_name: challenge.brand_name,
-            starts_at: challenge.starts_at,
-            lead_time_minutes: leadTimeMinutes,
-          }),
-        ]
-      );
-    } catch (err) {
-      logger.warn("Failed to insert challenge_reminder notification", { userId, err });
-    }
+    await dispatchNotification({
+      userId,
+      type: "challenge_reminder",
+      payload: {
+        challenge_id: challengeId,
+        brand_name: challenge.brand_name,
+        starts_at: challenge.starts_at,
+        lead_time_minutes: leadTimeMinutes,
+      },
+    });
   }
 
   logger.info("Challenge reminder dispatched", {
