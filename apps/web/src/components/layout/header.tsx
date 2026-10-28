@@ -63,14 +63,14 @@ export function Header() {
     <>
       <Link
         href="/challenge"
-        className="block py-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        className="block py-2 text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
         onClick={() => setMenuOpen(false)}
       >
         Challenges
       </Link>
       <Link
         href="/leaderboard"
-        className="block py-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+        className="block py-2 text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
         onClick={() => setMenuOpen(false)}
       >
         Leaderboard
@@ -78,7 +78,7 @@ export function Header() {
       {session && (
         <Link
           href="/dashboard"
-          className="block py-2 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors"
+          className="block py-2 text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
           onClick={() => setMenuOpen(false)}
         >
           Dashboard
@@ -88,14 +88,14 @@ export function Header() {
   );
 
   return (
-    <header className="border-b border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-sm sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-        <Link href="/" className="font-extrabold text-xl text-[var(--primary)]">
+    <header className="bg-[var(--background)]/95 sticky top-0 z-50 border-b border-[var(--border)] backdrop-blur-sm">
+      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-6">
+        <Link href="/" className="text-xl font-extrabold text-[var(--primary)]">
           BrandBlitz
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-6 text-sm">{navLinks}</nav>
+        <nav className="hidden items-center gap-6 text-sm md:flex">{navLinks}</nav>
 
         <div className="flex items-center gap-3">
           <ThemeToggle />
@@ -103,7 +103,7 @@ export function Header() {
 
           {/* Hamburger — mobile only */}
           <button
-            className="md:hidden flex flex-col justify-center items-center w-10 h-10 gap-1.5 rounded-md hover:bg-[var(--muted)] transition-colors"
+            className="flex h-10 w-10 flex-col items-center justify-center gap-1.5 rounded-md transition-colors hover:bg-[var(--muted)] md:hidden"
             aria-label="Open menu"
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((prev) => !prev)}
@@ -114,7 +114,7 @@ export function Header() {
           </button>
 
           {status === "loading" ? null : session ? (
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden items-center gap-3 md:flex">
               {session.user?.image ? (
                 <Image
                   src={session.user.image}
@@ -125,7 +125,7 @@ export function Header() {
                   className="h-8 w-8 rounded-full object-cover"
                 />
               ) : (
-                <div className="h-8 w-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-sm font-bold">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-sm font-bold text-white">
                   {session.user?.name?.charAt(0).toUpperCase() ?? "U"}
                 </div>
               )}
@@ -143,9 +143,12 @@ export function Header() {
 
       {/* Mobile menu */}
       {menuOpen && (
-        <div id="mobile-menu-panel" className="md:hidden border-t border-[var(--border)] bg-[var(--background)] px-6 pb-4">
-          <nav className="flex flex-col text-sm pt-3">{navLinks}</nav>
-          <div className="mt-4 pt-4 border-t border-[var(--border)]">
+        <div
+          id="mobile-menu-panel"
+          className="border-t border-[var(--border)] bg-[var(--background)] px-6 pb-4 md:hidden"
+        >
+          <nav className="flex flex-col pt-3 text-sm">{navLinks}</nav>
+          <div className="mt-4 border-t border-[var(--border)] pt-4">
             {session ? (
               <div className="flex items-center gap-3">
                 {session.user?.image ? (
@@ -158,7 +161,7 @@ export function Header() {
                     className="h-8 w-8 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="h-8 w-8 rounded-full bg-[var(--primary)] flex items-center justify-center text-white text-sm font-bold">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--primary)] text-sm font-bold text-white">
                     {session.user?.name?.charAt(0).toUpperCase() ?? "U"}
                   </div>
                 )}
@@ -169,7 +172,7 @@ export function Header() {
               </div>
             ) : (
               <Link href="/login" onClick={() => setMenuOpen(false)}>
-                <Button size="sm" className="w-full min-h-[44px]">
+                <Button size="sm" className="min-h-[44px] w-full">
                   Sign In
                 </Button>
               </Link>

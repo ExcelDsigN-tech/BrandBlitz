@@ -51,9 +51,11 @@ import { config } from "../lib/config";
 import { generateDepositMemo, MIN_POOL_STROOPS } from "@brandblitz/stellar";
 import { query } from "../db/index";
 import { apiLimiter, questionPreviewLimiter } from "../middleware/rate-limit";
-import { decodeCursorSafe, encodeCursor } from "../db/pagination";
+import { decodeCursor, decodeCursorSafe, encodeCursor } from "../db/pagination";
 import { sanitizeSvgText } from "../lib/svg-sanitize";
 import { withCoalescing } from "../lib/cache";
+import { createInviteCode, listInviteCodes } from "../db/queries/invite-codes";
+import { getBrandRetention } from "../db/queries/retention";
 import {
   createBrandWebhook,
   getBrandWebhooks,
@@ -138,33 +140,8 @@ const ChallengeSchema = z.object({
   maxPlayers: z.number().int().positive().optional(),
   endsAt: z.string().datetime(),
   licenseId: z.string().uuid().optional(),
-  payoutSchedule: z.enum(["instant", "batched"]).default("instant"),
-  variants: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1).max(100),
-        questionConfig: z.record(z.unknown()).default({}),
-      })
-    )
-    .max(2)
-    .optional(),
-  tiers: z
-    .array(
-      z.object({
-        name: z.string().trim().min(1).max(100),
-        entryFeeUsdc: z
-          .string()
-          .regex(/^\d+(\.\d{1,7})?$/)
-          .refine((value) => Number(value) >= 0),
-        prizePoolUsdc: z
-          .string()
-          .regex(/^\d+(\.\d{1,7})?$/)
-          .refine((value) => Number(value) > 0),
-      })
-    )
-    .min(1)
-    .max(10)
-    .optional(),
+  refundPolicy: z.enum(["full", "partial_percentage", "none_after_start"]).default("full"),
+  refundPercentage: z.number().min(0).max(100).default(100),
 });
 
 const LicenseChallengeSchema = z.object({ challengeId: z.string().uuid() }).strict();
@@ -404,7 +381,7 @@ router.get("/mine", authenticate, async (req, res) => {
   const brands = await Promise.all(
     ownedBrands.map(async (brand) => ({
       ...toBrandApi(brand),
-      challenges: (await getChallengesByBrandId(brand.id)).map((challenge) => ({
+      challenges: (await getChallengesByBrandId(brand.id, 100)).challenges.map((challenge) => ({
         id: challenge.id,
         status: challenge.status,
         poolAmountUsdc: challenge.pool_amount_usdc,
@@ -517,6 +494,47 @@ router.get("/:id/analytics", authenticate, async (req, res) => {
     getBrandAnalytics(brand.id, from, to)
   );
   res.json({ analytics });
+});
+
+router.get("/:id/retention", authenticate, async (req, res) => {
+  const id = z.string().uuid().parse(req.params.id);
+  await assertBrandRole(id, req.user!.sub, req.user?.email, "viewer");
+  res.json(await getBrandRetention(id));
+});
+
+router.get("/:id/invite-codes", authenticate, async (req, res) => {
+  const id = z.string().uuid().parse(req.params.id);
+  await assertBrandRole(id, req.user!.sub, req.user?.email, "owner");
+  const { cursor } = z.object({ cursor: z.string().max(512).optional() }).parse(req.query);
+  let decoded: { createdAt: string; id: string } | undefined;
+  if (cursor) {
+    try {
+      decoded = z
+        .object({ createdAt: z.string().datetime({ offset: true }), id: z.string().uuid() })
+        .parse(decodeCursor(cursor, ["createdAt", "id"]));
+    } catch {
+      throw createError("Invalid invite cursor", 400, "INVALID_CURSOR");
+    }
+  }
+  res.json(await listInviteCodes(id, decoded));
+});
+
+router.post("/:id/invite-codes", authenticate, async (req, res) => {
+  const brandId = z.string().uuid().parse(req.params.id);
+  const body = z
+    .object({
+      challengeId: z.string().uuid().optional(),
+      expiresAt: z
+        .string()
+        .datetime({ offset: true })
+        .refine((value) => new Date(value).getTime() > Date.now(), "Expiry must be in the future")
+        .optional(),
+      maxUses: z.number().int().min(1).max(100000).optional(),
+    })
+    .strict()
+    .parse(req.body);
+  const inviteCode = await createInviteCode({ brandId, actorId: req.user!.sub, ...body });
+  res.status(201).json({ inviteCode });
 });
 
 /**
@@ -972,7 +990,8 @@ router.post("/challenges", authenticate, requireCurrentTosAccepted, async (req, 
     maxPlayers: body.maxPlayers,
     endsAt: body.endsAt,
     licenseId: license?.id,
-    payoutSchedule: body.payoutSchedule,
+    refundPolicy: body.refundPolicy,
+    refundPercentage: body.refundPercentage,
   });
 
   if (body.variants?.length) {

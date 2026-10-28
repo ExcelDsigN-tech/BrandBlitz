@@ -1,6 +1,6 @@
 # Database Migrations
 
-Hand-rolled SQL migrations executed in lexicographic order by the migration runner.
+Hand-rolled SQL migrations executed by sequence number, then filename, by the migration runner.
 
 ## Naming Convention
 
@@ -14,7 +14,8 @@ All migration filenames use a **5-digit zero-padded sequence number** followed b
 00042-example-feature.sql
 ```
 
-This ensures migrations are ordered correctly regardless of the number of digits, as lexicographic sort (used by the migration runner) matches numeric sort when all numbers have the same width.
+Five-digit prefixes keep filenames readable and sortable. The migration runner compares the numeric
+sequence first so historical four-digit files run before newer five-digit migrations that depend on them.
 
 ### Migration Number Allocation
 
@@ -37,4 +38,6 @@ Some existing files (e.g. `0015_idx_audit_log_entity_key.sql`, `0021_session_rou
 
 ## Migration Runner Expectations
 
-The runner sorts migration files lexicographically and executes them in order. With 5-digit zero-padded prefixes, lexicographic order matches numeric order up to 99,999 migrations, which is far beyond the scope of this project.
+The runner sorts migration files by numeric sequence, breaking ties by filename. Rollbacks use the
+same sequence order in reverse when migrations share an application timestamp. Applied filenames
+remain unchanged in `schema_migrations`.

@@ -97,5 +97,5 @@ curl https://api.brandblitz.io/waitlist/6f1c2c1e-2f5b-4d1a-9b7e-0d3c2b1a0f9e/pos
 ## Notes
 
 - The waitlist signup page is at [`apps/web/src/app/waitlist/page.tsx`](../../apps/web/src/app/waitlist/page.tsx).
-- Entries live in the `waitlist` table. Position and throughput come from `created_at` and `activated_at` (migration `00036-waitlist-activation.sql`). Setting `activated_at` is how an entry is let in.
+- Entries live in the `waitlist` table. Position counts entries with `status = 'waiting'` in `created_at` order; throughput counts `activated_at` values in the window. Redeeming an invite code (`POST /waitlist/redeem-code`) sets `status = 'active'` and `activated_at` (migration `00036-priority-invite-codes.sql`; the throughput index is `00041-waitlist-activated-at-index.sql`).
 - Both endpoints are public. The position endpoint is scoped to its entry by the private `id`.

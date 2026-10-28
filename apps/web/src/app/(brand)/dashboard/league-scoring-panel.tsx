@@ -15,13 +15,15 @@ export function LeagueScoringPanel({ brandId, apiToken }: { brandId: string; api
 
   useEffect(() => {
     if (!apiToken) return;
-    void createApiClient(apiToken).get(`/leagues/brand/${brandId}`).then((response) => {
-      const league = response.data.leagues?.[0];
-      if (league) {
-        setLeagueId(league.id);
-        setWeights(league.scoring_weights);
-      }
-    });
+    void createApiClient(apiToken)
+      .get(`/leagues/brand/${brandId}`)
+      .then((response) => {
+        const league = response.data.leagues?.[0];
+        if (league) {
+          setLeagueId(league.id);
+          setWeights(league.scoring_weights);
+        }
+      });
   }, [apiToken, brandId]);
 
   const total = weights.speed + weights.accuracy + weights.streak;
@@ -47,12 +49,17 @@ export function LeagueScoringPanel({ brandId, apiToken }: { brandId: string; api
           <h3 className="font-semibold">League scoring</h3>
           <p className="text-xs text-[var(--muted-foreground)]">Weights must total 100%.</p>
         </div>
-        <Button size="sm" onClick={() => void save()} disabled={!valid || !apiToken}>Save weights</Button>
+        <Button size="sm" onClick={() => void save()} disabled={!valid || !apiToken}>
+          Save weights
+        </Button>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-3">
         {(["speed", "accuracy", "streak"] as const).map((factor) => (
           <label key={factor} className="text-sm capitalize">
-            <span className="flex justify-between"><span>{factor}</span><span>{Math.round(weights[factor] * 100)}%</span></span>
+            <span className="flex justify-between">
+              <span>{factor}</span>
+              <span>{Math.round(weights[factor] * 100)}%</span>
+            </span>
             <input
               className="mt-2 w-full accent-[var(--primary)]"
               type="range"
@@ -60,15 +67,21 @@ export function LeagueScoringPanel({ brandId, apiToken }: { brandId: string; api
               max="1"
               step="0.05"
               value={weights[factor]}
-              onChange={(event) => setWeights((current) => ({ ...current, [factor]: Number(event.target.value) }))}
+              onChange={(event) =>
+                setWeights((current) => ({ ...current, [factor]: Number(event.target.value) }))
+              }
               aria-label={`${factor} weight`}
             />
           </label>
         ))}
       </div>
-      {!valid && <p className="mt-2 text-xs text-red-600">Adjust the sliders so the total is 100%.</p>}
+      {!valid && (
+        <p className="mt-2 text-xs text-red-600">Adjust the sliders so the total is 100%.</p>
+      )}
       {message && <p className="mt-2 text-xs text-[var(--muted-foreground)]">{message}</p>}
-      <p className="mt-2 text-xs text-amber-700">Changing weights recalculates current and historical standings.</p>
+      <p className="mt-2 text-xs text-amber-700">
+        Changing weights recalculates current and historical standings.
+      </p>
     </section>
   );
 }

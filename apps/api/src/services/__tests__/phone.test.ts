@@ -241,7 +241,7 @@ describe("phone service — OTP flow (Issue #400)", () => {
 
       expect(mocks.redisExpire).toHaveBeenCalledWith(
         "otp_user_attempts:user-1",
-        OTP_WINDOW_SECONDS,
+        OTP_WINDOW_SECONDS
       );
     });
 

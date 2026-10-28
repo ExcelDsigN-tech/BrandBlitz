@@ -115,6 +115,7 @@ export interface Challenge {
   pool_amount_stroops: string;
   pool_amount_usdc: string;
   status:
+    | "draft"
     | "pending_deposit"
     | "active"
     | "ended"
@@ -122,8 +123,9 @@ export interface Challenge {
     | "payout_failed"
     | "cancelled"
     | "refunded";
-  starts_at: string;
+  starts_at: string | null;
   ends_at: string | null;
+  participant_count?: number;
   // joined fields
   brand_name?: string;
   tagline?: string;
@@ -212,8 +214,17 @@ export const ChallengeSchema = z.object({
   challenge_id: z.string(),
   pool_amount_stroops: z.string(),
   pool_amount_usdc: z.string(),
-  status: z.enum(["pending_deposit", "active", "ended", "settled", "payout_failed"]),
-  starts_at: z.string(),
+  status: z.enum([
+    "draft",
+    "pending_deposit",
+    "active",
+    "ended",
+    "settled",
+    "payout_failed",
+    "cancelled",
+    "refunded",
+  ]),
+  starts_at: z.string().nullable(),
   ends_at: z.string().nullable(),
   brand_name: z.string().optional(),
   tagline: z.string().optional(),

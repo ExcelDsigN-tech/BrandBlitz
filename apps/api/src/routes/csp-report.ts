@@ -5,22 +5,24 @@ import { captureMessage } from "../lib/sentry";
 
 const router = Router();
 
-const CspReportSchema = z.object({
-  "csp-report": z.object({
-    "document-uri": z.string().optional(),
-    "referrer": z.string().optional(),
-    "blocked-uri": z.string().optional(),
-    "violated-directive": z.string().optional(),
-    "effective-directive": z.string().optional(),
-    "original-policy": z.string().optional(),
-    "disposition": z.string().optional(),
-    "script-sample": z.string().optional(),
-    "source-file": z.string().optional(),
-    "line-number": z.coerce.number().optional(),
-    "column-number": z.coerce.number().optional(),
-    "status-code": z.coerce.number().optional(),
-  }),
-}).strict();
+const CspReportSchema = z
+  .object({
+    "csp-report": z.object({
+      "document-uri": z.string().optional(),
+      referrer: z.string().optional(),
+      "blocked-uri": z.string().optional(),
+      "violated-directive": z.string().optional(),
+      "effective-directive": z.string().optional(),
+      "original-policy": z.string().optional(),
+      disposition: z.string().optional(),
+      "script-sample": z.string().optional(),
+      "source-file": z.string().optional(),
+      "line-number": z.coerce.number().optional(),
+      "column-number": z.coerce.number().optional(),
+      "status-code": z.coerce.number().optional(),
+    }),
+  })
+  .strict();
 
 /**
  * CSP Violation Report Endpoint

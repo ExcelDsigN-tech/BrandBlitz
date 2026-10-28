@@ -98,9 +98,7 @@ router.get("/", async (req, res) => {
     computedAt: new Date().toISOString(),
   };
 
-  await redis
-    .set(cacheKey, JSON.stringify(payload), "EX", STATS_CACHE_TTL_SECONDS)
-    .catch(() => {});
+  await redis.set(cacheKey, JSON.stringify(payload), "EX", STATS_CACHE_TTL_SECONDS).catch(() => {});
 
   res.json({ ...payload, cacheHit: false });
 });

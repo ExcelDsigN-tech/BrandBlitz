@@ -80,10 +80,7 @@ export interface ChallengeScore {
 }
 
 // Pure function: no side effects, no DB calls
-export function calculateRoundScore(
-  event: RoundEvent,
-  context: ScoringContext
-): RoundScore {
+export function calculateRoundScore(event: RoundEvent, context: ScoringContext): RoundScore {
   // Calculate speed bonus based on time to answer
   // Preserve warmup edge case logic from warmup.test.ts
 }
@@ -117,12 +114,10 @@ Keep `apps/api/src/services/scoring.ts` as a thin adapter:
 import { calculateChallengeScore, calculateRoundScore } from "./scoring.engine";
 
 // Wraps pure engine, handles DB/session layer
-export async function calculateScoreForSession(
-  sessionId: string
-): Promise<ChallengeScore> {
+export async function calculateScoreForSession(sessionId: string): Promise<ChallengeScore> {
   const session = await getSession(sessionId);
   const events = await getRoundEventsForSession(sessionId);
-  
+
   const context: ScoringContext = {
     roundDurationMs: ROUND_DURATION_MS,
     basePoints: BASE_POINTS,
@@ -131,7 +126,7 @@ export async function calculateScoreForSession(
     currentTime: new Date(),
     sessionStartTime: session.startedAt,
   };
-  
+
   return calculateChallengeScore(events, context);
 }
 ```
@@ -139,10 +134,12 @@ export async function calculateScoreForSession(
 ### Integration Points
 
 #### Challenge Routes
+
 - Continue calling `services/scoring.ts` public API (unchanged)
 - No changes needed to route handlers
 
 #### Batch Re-scoring Tool
+
 - Calls pure `scoring.engine` directly
 - Loads round events from DB, builds context, calls engine
 - Example: admin dispute resolution, result auditing
@@ -152,17 +149,18 @@ export async function calculateScoreForSession(
 async function rescorerChallenge(sessionId: string) {
   const session = await getSession(sessionId);
   const events = await getRoundEventsForSession(sessionId);
-  
+
   const context: ScoringContext = {
     // ... build context
   };
-  
+
   const newScore = calculateChallengeScore(events, context);
   return newScore; // No DB write yet; admin reviews then decides
 }
 ```
 
 #### Anti-Cheat Overlap
+
 - Fraud detection (anti-cheat) remains in middleware
 - Scoring engine does NOT handle fraud; that's a separate check
 - Fraud → session marked invalid; scoring not called
@@ -182,8 +180,10 @@ describe("calculateRoundScore", () => {
       timeToAnswerMs: 1000,
       isSkipped: false,
     };
-    const context: ScoringContext = { /* ... */ };
-    
+    const context: ScoringContext = {
+      /* ... */
+    };
+
     const score = calculateRoundScore(event, context);
     expect(score.raw).toBe(BASE_POINTS);
     expect(score.speedBonus).toBeGreaterThan(0);
@@ -191,12 +191,14 @@ describe("calculateRoundScore", () => {
 
   it("handles warmup period (no score earned)", () => {
     // Existing warmup.test.ts logic moves here
-    const event: RoundEvent = { /* answered during warmup */ };
+    const event: RoundEvent = {
+      /* answered during warmup */
+    };
     const context: ScoringContext = {
       warmupPeriodMs: 60000,
       currentTime: new Date(sessionStart.getTime() + 30000), // 30s in
     };
-    
+
     const score = calculateRoundScore(event, context);
     expect(score.isWarmup).toBe(true);
   });
@@ -204,9 +206,13 @@ describe("calculateRoundScore", () => {
 
 describe("calculateChallengeScore", () => {
   it("sums round scores without exceeding max", () => {
-    const rounds: RoundEvent[] = [ /* ... */ ];
-    const context: ScoringContext = { /* ... */ };
-    
+    const rounds: RoundEvent[] = [
+      /* ... */
+    ];
+    const context: ScoringContext = {
+      /* ... */
+    };
+
     const total = calculateChallengeScore(rounds, context);
     expect(total.total).toBeLessThanOrEqual(total.maxPossible);
   });

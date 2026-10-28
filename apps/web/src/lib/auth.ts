@@ -2,6 +2,7 @@ import type { NextAuthOptions, User } from "next-auth";
 import type { JWT } from "next-auth/jwt";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GoogleProvider from "next-auth/providers/google";
+import { resolveSecret } from "@/lib/secrets";
 
 interface GoogleAccount {
   provider: string;
@@ -9,6 +10,11 @@ interface GoogleAccount {
 }
 
 const mockGoogleAuthEnabled = process.env.E2E_MOCK_GOOGLE_OAUTH === "true";
+
+// Docker secrets convention: prefer the mounted secret file (prod) and fall
+// back to the plain env var (local dev).
+const googleClientSecret = resolveSecret("GOOGLE_CLIENT_SECRET");
+const nextAuthSecret = resolveSecret("NEXTAUTH_SECRET");
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -37,7 +43,7 @@ export const authOptions: NextAuthOptions = {
       : []),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientSecret: googleClientSecret!,
       checks: ["pkce", "state"],
       authorization: {
         params: {
@@ -113,5 +119,5 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  secret: process.env.NEXTAUTH_SECRET,
+  secret: nextAuthSecret,
 };

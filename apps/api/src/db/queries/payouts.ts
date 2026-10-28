@@ -53,20 +53,20 @@ export async function updatePayoutStatus(
   errorMessage?: string
 ): Promise<void> {
   if (txHash && errorMessage) {
-    await query(
-      "UPDATE payouts SET status = $1, tx_hash = $2, error_message = $3 WHERE id = $4",
-      [status, txHash, errorMessage, id]
-    );
+    await query("UPDATE payouts SET status = $1, tx_hash = $2, error_message = $3 WHERE id = $4", [
+      status,
+      txHash,
+      errorMessage,
+      id,
+    ]);
   } else if (txHash) {
-    await query(
-      "UPDATE payouts SET status = $1, tx_hash = $2 WHERE id = $3",
-      [status, txHash, id]
-    );
+    await query("UPDATE payouts SET status = $1, tx_hash = $2 WHERE id = $3", [status, txHash, id]);
   } else if (errorMessage) {
-    await query(
-      "UPDATE payouts SET status = $1, error_message = $2 WHERE id = $3",
-      [status, errorMessage, id]
-    );
+    await query("UPDATE payouts SET status = $1, error_message = $2 WHERE id = $3", [
+      status,
+      errorMessage,
+      id,
+    ]);
   } else {
     await query("UPDATE payouts SET status = $1 WHERE id = $2", [status, id]);
   }
@@ -86,10 +86,7 @@ export async function failPayoutsForChallenge(
   );
 }
 
-export async function getPendingPayouts(
-  challengeId: string,
-  limit = 100
-): Promise<Payout[]> {
+export async function getPendingPayouts(challengeId: string, limit = 100): Promise<Payout[]> {
   const result = await query<Payout>(
     "SELECT *, (amount_stroops::numeric / 10000000)::numeric(20,7)::text AS amount_usdc FROM payouts WHERE challenge_id = $1 AND status = 'pending' ORDER BY created_at ASC LIMIT $2",
     [challengeId, limit]
@@ -103,7 +100,7 @@ export async function getPendingPayouts(
  */
 export async function getPayoutsByIds(payoutIds: string[]): Promise<Payout[]> {
   if (payoutIds.length === 0) return [];
-  
+
   const result = await query<Payout>(
     `SELECT p.*,
             (p.amount_stroops::numeric / 10000000)::numeric(20,7)::text AS amount_usdc,
@@ -150,7 +147,9 @@ export async function updatePayoutFeeBumpStatus(
 /**
  * Get payouts eligible for fee bump recovery.
  */
-export async function getStuckPayouts(limit = 50): Promise<(Payout & { fee_bump_attempts: number })[]> {
+export async function getStuckPayouts(
+  limit = 50
+): Promise<(Payout & { fee_bump_attempts: number })[]> {
   const result = await query<Payout & { fee_bump_attempts: number }>(
     `SELECT *,
             (amount_stroops::numeric / 10000000)::numeric(20,7)::text AS amount_usdc,

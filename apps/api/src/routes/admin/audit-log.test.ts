@@ -54,23 +54,21 @@ describe("GET /admin/audit-log", () => {
   });
 
   it("applies combined entityType + performedBy filter", async () => {
-    mocks.query
-      .mockResolvedValueOnce({ rows: [{ count: 1 }] })
-      .mockResolvedValueOnce({
-        rows: [
-          {
-            id: "log-1",
-            actor_id: "admin-1",
-            actor_username: "admin1",
-            action: "user_suspend",
-            entity: "user",
-            entity_key: "user-42",
-            before: null,
-            after: null,
-            created_at: "2026-07-01T00:00:00.000Z",
-          },
-        ],
-      });
+    mocks.query.mockResolvedValueOnce({ rows: [{ count: 1 }] }).mockResolvedValueOnce({
+      rows: [
+        {
+          id: "log-1",
+          actor_id: "admin-1",
+          actor_username: "admin1",
+          action: "user_suspend",
+          entity: "user",
+          entity_key: "user-42",
+          before: null,
+          after: null,
+          created_at: "2026-07-01T00:00:00.000Z",
+        },
+      ],
+    });
 
     const adminId = randomUUID();
     const response = await request(createApp()).get(

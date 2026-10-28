@@ -4,10 +4,33 @@ import { query } from "../db/index";
 import { createError } from "../middleware/error";
 import { apiLimiter, waitlistLimiter } from "../middleware/rate-limit";
 
-import { optionalAuth } from "../middleware/authenticate";
+import { authenticate, optionalAuth } from "../middleware/authenticate";
+import { requireActiveUser } from "../middleware/require-active-user";
+import { redeemInviteCode } from "../db/queries/invite-codes";
 import { scheduleChallengeReminder } from "../queues/challenge-reminder.queue";
 
 const router = Router();
+
+router.post("/redeem-code", authenticate, requireActiveUser, waitlistLimiter, async (req, res) => {
+  const { code } = z
+    .object({
+      code: z
+        .string()
+        .trim()
+        .regex(/^[A-Za-z0-9]{32}$/),
+    })
+    .parse(req.body);
+  res.json(await redeemInviteCode(req.user!.sub, code.toUpperCase()));
+});
+
+router.get("/access", authenticate, async (req, res) => {
+  const result = await query<{ status: string }>(
+    `SELECT w.status FROM waitlist w JOIN users u ON lower(u.email) = w.email
+     WHERE u.id = $1 AND u.deleted_at IS NULL`,
+    [req.user!.sub]
+  );
+  res.json({ status: result.rows[0]?.status ?? "not_enrolled" });
+});
 
 const WaitlistSchema = z.object({
   email: z.string().max(254).email(),
@@ -40,7 +63,7 @@ router.post("/", optionalAuth, waitlistLimiter, async (req, res) => {
 
   if (parsed.data.challenge_id) {
     const chRes = await query<{ id: string; status: string; starts_at: string }>(
-      "SELECT id, status, starts_at FROM challenges WHERE id = $1",
+      "SELECT id, status, starts_at FROM challenges WHERE id = $1 AND deleted_at IS NULL AND status <> 'draft'",
       [parsed.data.challenge_id]
     );
     if (chRes.rows.length === 0) {
@@ -101,9 +124,9 @@ router.get("/:id/position", apiLimiter, async (req, res) => {
   }
 
   const result = await query<{ activated: boolean; ahead: number; recent_activations: number }>(
-    `SELECT w.activated_at IS NOT NULL AS activated,
+    `SELECT w.status = 'active' AS activated,
             (SELECT COUNT(*) FROM waitlist p
-              WHERE p.activated_at IS NULL
+              WHERE p.status = 'waiting'
                 AND (p.created_at, p.id) < (w.created_at, w.id))::int AS ahead,
             (SELECT COUNT(*) FROM waitlist a
               WHERE a.activated_at >= NOW() - make_interval(days => $2))::int AS recent_activations

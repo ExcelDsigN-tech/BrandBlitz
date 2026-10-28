@@ -1,8 +1,10 @@
 import { query } from "../index";
+import type { QueryResult, QueryResultRow } from "pg";
 import { usdcToStroops } from "../../lib/usdc";
 import { encodeCursor, buildCursorWhereSimple, decodeCursorSafe } from "../pagination";
 
 export type ChallengeStatus =
+  | "draft"
   | "pending_deposit"
   | "active"
   | "ended"
@@ -10,6 +12,7 @@ export type ChallengeStatus =
   | "payout_failed"
   | "cancelled"
   | "refunded";
+export type RefundPolicy = "full" | "partial_percentage" | "none_after_start";
 
 export interface Challenge {
   id: string;
@@ -29,7 +32,7 @@ export interface Challenge {
   deposit_confirmations: number;
   payout_tx_hashes: string[] | null;
   max_players: number | null;
-  starts_at: string;
+  starts_at: string | null;
   ends_at: string | null;
   reported_count: number;
   deleted_at: string | null;
@@ -37,6 +40,8 @@ export interface Challenge {
   challenge_license_id?: string | null;
   is_gallery_template?: boolean;
   gallery_opted_in_at?: string | null;
+  refund_policy?: RefundPolicy;
+  refund_percentage?: string;
 }
 
 export interface GalleryTemplate {
@@ -78,24 +83,25 @@ export async function createChallenge(data: {
   maxPlayers?: number;
   endsAt?: string;
   licenseId?: string;
-  payoutSchedule?: "instant" | "batched";
+  refundPolicy?: RefundPolicy;
+  refundPercentage?: number;
 }): Promise<Challenge> {
-  const payoutSchedule = data.payoutSchedule ?? "instant";
   const result = await query<Challenge>(
     `INSERT INTO challenges
        (brand_id, challenge_id, deposit_memo, pool_amount_stroops, max_players, ends_at,
-        challenge_license_id, payout_schedule)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+        challenge_license_id, refund_policy, refund_percentage)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
      RETURNING *, (pool_amount_stroops::numeric / 10000000)::numeric(20,7)::text AS pool_amount_usdc`,
     [
       data.brandId,
       data.challengeId,
-      data.depositMemo ?? data.challengeId,
+      data.draft ? null : (data.depositMemo ?? data.challengeId),
       usdcToStroops(data.poolAmountUsdc),
       data.maxPlayers ?? null,
       data.endsAt ?? null,
       data.licenseId ?? null,
-      payoutSchedule,
+      data.refundPolicy ?? "full",
+      data.refundPercentage ?? 100,
     ]
   );
   return result.rows[0];
@@ -326,7 +332,7 @@ export async function getChallengesByBrandId(
       "DESC",
       cursorValues.created_at,
       cursorValues.id as string,
-      3
+      2
     );
     whereExtra = clause;
     params.push(cursorValues.created_at, cursorValues.id);
@@ -760,9 +766,7 @@ export async function optChallengeOutOfGallery(
 /**
  * Fetch a single gallery template by id (must be opted in and ended).
  */
-export async function getGalleryTemplateById(
-  id: string
-): Promise<GalleryTemplate | null> {
+export async function getGalleryTemplateById(id: string): Promise<GalleryTemplate | null> {
   const result = await query<GalleryTemplate>(
     `SELECT
        c.id,

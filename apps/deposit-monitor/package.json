@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "engines": {
-    "node": ">=22.11.0 <23"
+    "node": ">=22.14.0 <23"
   },
   "main": "dist/index.js",
   "scripts": {
@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@brandblitz/stellar": "workspace:*",
-
     "ioredis": "5.10.1",
     "winston": "3.19.0",
     "zod": "4.3.6"

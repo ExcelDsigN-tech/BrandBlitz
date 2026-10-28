@@ -10,10 +10,14 @@ import {
   getUserPublicProfileByUsername,
   searchUsersByUsername,
   markOnboardingCompleted,
+  updateUserPreferences,
+  setUserVanitySlug,
 } from "../db/queries/users";
 import { getReferralStats, ensureUserReferralCode } from "../services/referrals";
 import { stroopsToUsdc } from "../lib/usdc";
 import { getStreak, repairStreak, getUserActivity, getStreakDetail } from "../services/streaks";
+import { removePushSubscription } from "../services/push";
+import { getWebPushPublicKey, isSafePushEndpoint, isWebPushConfigured } from "../lib/web-push";
 import { query } from "../db";
 import {
   sendVerificationCode,
@@ -90,6 +94,10 @@ router.get("/me", authenticate, async (req, res) => {
     email: user.email,
     display_name: user.display_name,
     username: user.username,
+    referral_code: user.referral_code,
+    vanity_slug: user.vanity_slug,
+    timezone: user.timezone,
+    accessibility_mode: user.accessibility_mode,
     avatar_url: user.avatar_url,
     stellar_address: user.stellar_address,
     embedded_wallet_address: user.embedded_wallet_address,
@@ -397,6 +405,30 @@ router.post("/me/onboarding/complete", authenticate, async (req, res) => {
   res.json({ success: true, onboardingCompleted: completed });
 });
 
+router.patch("/me/preferences", authenticate, async (req, res) => {
+  const parsed = z
+    .object({
+      timezone: z.string().trim().min(1).max(100).optional(),
+      accessibilityMode: z.boolean().optional(),
+    })
+    .strict()
+    .safeParse(req.body);
+  if (!parsed.success || (!parsed.data.timezone && parsed.data.accessibilityMode === undefined)) {
+    throw createError("Invalid preferences", 400, "INVALID_PREFERENCES");
+  }
+
+  if (parsed.data.timezone) {
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: parsed.data.timezone }).format();
+    } catch {
+      throw createError("Invalid IANA timezone", 400, "INVALID_TIMEZONE");
+    }
+  }
+
+  await updateUserPreferences(req.user!.sub, parsed.data);
+  res.json({ success: true });
+});
+
 router.get("/me/streak", authenticate, async (req, res) => {
   const streak = await getStreakDetail(req.user!.sub).catch(() => null);
   if (!streak) throw createError("User not found", 404);
@@ -510,6 +542,11 @@ router.get("/me/referrals/stats", authenticate, async (req, res) => {
 router.get("/me/referrals", authenticate, async (req, res) => {
   const userId = req.user!.sub;
   const referralCode = await ensureUserReferralCode(userId);
+  const vanityResult = await query<{ vanity_slug: string | null }>(
+    "SELECT vanity_slug FROM users WHERE id = $1 AND deleted_at IS NULL",
+    [userId]
+  );
+  const vanitySlug = vanityResult.rows[0]?.vanity_slug ?? null;
 
   const referredResult = await query<{
     id: string;
@@ -549,7 +586,8 @@ router.get("/me/referrals", authenticate, async (req, res) => {
   const totals = totalsResult.rows[0] || { pending_stroops: "0", confirmed_stroops: "0" };
 
   res.json({
-    referralCode,
+    referralCode: vanitySlug ?? referralCode,
+    vanitySlug,
     referredUsers: referredResult.rows.map((row) => ({
       id: row.id,
       username: row.username,
@@ -563,6 +601,47 @@ router.get("/me/referrals", authenticate, async (req, res) => {
       confirmedUsdc: stroopsToUsdc(BigInt(totals.confirmed_stroops)),
     },
   });
+});
+
+router.patch("/me/referral-code", authenticate, async (req, res) => {
+  const parsed = z
+    .object({
+      vanitySlug: z
+        .string()
+        .trim()
+        .toLowerCase()
+        .min(3)
+        .max(32)
+        .regex(/^[a-z0-9-]+$/),
+    })
+    .strict()
+    .safeParse(req.body);
+  if (
+    !parsed.success ||
+    /^(admin|support|api|www|help|official|brandblitz)$/.test(parsed.data.vanitySlug)
+  ) {
+    throw createError(
+      "Vanity slug must be 3-32 lowercase letters, numbers, or hyphens",
+      400,
+      "INVALID_VANITY_SLUG"
+    );
+  }
+
+  try {
+    await setUserVanitySlug(req.user!.sub, parsed.data.vanitySlug);
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "23505"
+    ) {
+      throw createError("That vanity slug is already in use", 409, "VANITY_SLUG_TAKEN");
+    }
+    throw error;
+  }
+
+  res.json({ vanitySlug: parsed.data.vanitySlug });
 });
 
 router.post("/streaks/repair", authenticate, async (req, res) => {
@@ -972,6 +1051,165 @@ router.patch("/me/notifications/read-all", authenticate, async (req, res) => {
   ]);
 
   res.json({ success: true });
+});
+
+const PushSubscriptionSchema = z
+  .object({
+    endpoint: z.string().url().max(2048),
+    keys: z
+      .object({
+        p256dh: z.string().min(1).max(255),
+        auth: z.string().min(1).max(255),
+      })
+      .strict(),
+    user_agent: z.string().max(512).optional(),
+  })
+  .strict();
+
+/**
+ * GET /users/me/push/config
+ * Exposes whether Web Push is configured and the VAPID public key used by
+ * `PushManager.subscribe()` in the browser.
+ */
+router.get("/me/push/config", authenticate, (_req, res) => {
+  res.json({
+    configured: isWebPushConfigured(),
+    public_key: getWebPushPublicKey(),
+  });
+});
+
+/**
+ * GET /users/me/push/subscriptions
+ * Lists the authenticated user's registered devices plus their push opt-in.
+ */
+router.get("/me/push/subscriptions", authenticate, async (req, res) => {
+  const preference = await query<{ push_notifications_enabled: boolean }>(
+    `SELECT push_notifications_enabled FROM users WHERE id = $1`,
+    [req.user!.sub]
+  );
+
+  const subscriptions = await query<{
+    id: string;
+    endpoint: string;
+    user_agent: string | null;
+    last_used_at: string | null;
+    created_at: string;
+  }>(
+    `SELECT id, endpoint, user_agent, last_used_at, created_at
+     FROM push_subscriptions
+     WHERE user_id = $1
+     ORDER BY created_at DESC`,
+    [req.user!.sub]
+  );
+
+  res.json({
+    enabled: preference.rows[0]?.push_notifications_enabled ?? true,
+    subscriptions: subscriptions.rows,
+  });
+});
+
+/**
+ * POST /users/me/push/subscriptions
+ * Registers (or refreshes) a browser push subscription. Registering a device
+ * also opts the user back in to push if they had disabled it earlier.
+ */
+router.post("/me/push/subscriptions", authenticate, async (req, res) => {
+  const body = PushSubscriptionSchema.parse(req.body);
+
+  if (!isSafePushEndpoint(body.endpoint)) {
+    throw createError("Invalid push endpoint", 400, "INVALID_PUSH_ENDPOINT");
+  }
+
+  if (!isWebPushConfigured()) {
+    throw createError("Web push is not configured", 503, "PUSH_NOT_CONFIGURED");
+  }
+
+  const userAgent = body.user_agent ?? req.headers["user-agent"] ?? null;
+
+  const result = await query<{ id: string }>(
+    `INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, user_agent)
+     VALUES ($1, $2, $3, $4, $5)
+     ON CONFLICT (user_id, endpoint)
+     DO UPDATE SET
+       p256dh = EXCLUDED.p256dh,
+       auth = EXCLUDED.auth,
+       user_agent = EXCLUDED.user_agent,
+       failure_count = 0,
+       updated_at = NOW()
+     RETURNING id`,
+    [req.user!.sub, body.endpoint, body.keys.p256dh, body.keys.auth, userAgent]
+  );
+
+  await query(
+    `UPDATE users SET push_notifications_enabled = TRUE, updated_at = NOW() WHERE id = $1`,
+    [req.user!.sub]
+  );
+
+  res.status(201).json({ success: true, id: result.rows[0]?.id });
+});
+
+/**
+ * DELETE /users/me/push/subscriptions
+ * Removes a single device subscription (used on browser unsubscribes).
+ */
+router.delete("/me/push/subscriptions", authenticate, async (req, res) => {
+  const { endpoint } = z.object({ endpoint: z.string().url().max(2048) }).parse(req.body);
+  const removed = await removePushSubscription(req.user!.sub, endpoint);
+  res.json({ success: true, removed });
+});
+
+/**
+ * PATCH /users/me/push/preferences
+ * Toggles push delivery independently of in-app notifications.
+ */
+router.patch("/me/push/preferences", authenticate, async (req, res) => {
+  const { enabled } = z.object({ enabled: z.boolean() }).strict().parse(req.body);
+
+  await query(
+    `UPDATE users SET push_notifications_enabled = $2, updated_at = NOW() WHERE id = $1`,
+    [req.user!.sub, enabled]
+  );
+
+  res.json({ success: true, enabled });
+});
+
+/**
+ * GET /users/me/notification-preferences
+ * Returns notification preferences for all categories (payout, badge, streak, referral).
+ */
+router.get("/me/notification-preferences", authenticate, async (req, res) => {
+  const prefs = await getNotificationPreferences(req.user!.sub);
+  res.json({ preferences: prefs });
+});
+
+/**
+ * PATCH /users/me/notification-preferences/:category
+ * Update a single notification preference category.
+ * Body: { enabled: boolean }
+ */
+router.patch("/me/notification-preferences/:category", authenticate, async (req, res) => {
+  const { category } = req.params;
+  const parsed = z.object({ enabled: z.boolean() }).safeParse(req.body);
+
+  if (!parsed.success) {
+    throw createError("Invalid request body", 400, "INVALID_BODY");
+  }
+
+  const validCategories = ["payout", "badge", "streak", "referral"];
+  if (!validCategories.includes(category)) {
+    throw createError(
+      `Invalid category. Must be one of: ${validCategories.join(", ")}`,
+      400,
+      "INVALID_CATEGORY"
+    );
+  }
+
+  const updated = await updateNotificationPreference(req.user!.sub, category, parsed.data.enabled);
+  if (!updated) {
+    throw createError("Failed to update notification preference", 500);
+  }
+
+  res.json({ preference: updated });
 });
 
 /**

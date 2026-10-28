@@ -49,9 +49,11 @@ const KnownConfigSchema = z.discriminatedUnion("key", [
 
 // .strict() rejects any extra keys in the PATCH body (e.g. {value: ..., injected: ...}).
 // The value shape itself is validated by KnownConfigSchema after body parsing.
-const PatchConfigSchema = z.object({
-  value: z.any(),
-}).strict();
+const PatchConfigSchema = z
+  .object({
+    value: z.any(),
+  })
+  .strict();
 
 /**
  * PATCH /admin/config/:key
@@ -76,7 +78,12 @@ router.patch("/:key", async (req, res) => {
 router.get("/:key", async (req, res) => {
   const row = await getConfigRow(req.params.key);
   if (!row) throw createError("Config key not found", 404, "NOT_FOUND");
-  res.json({ key: row.key, value: row.value, updated_at: row.updated_at, updated_by: row.updated_by });
+  res.json({
+    key: row.key,
+    value: row.value,
+    updated_at: row.updated_at,
+    updated_by: row.updated_by,
+  });
 });
 
 export default router;

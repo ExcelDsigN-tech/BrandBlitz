@@ -11,11 +11,9 @@ import {
   isRateLimited,
   RATE_LIMIT_MAX_MESSAGES,
 } from "./challenges.chat";
-import {
-  encodeWsFrame,
-  decodeWsFrames,
-  encodeCloseFrame,
-} from "../lib/ws-frame";
+import { encodeWsFrame, decodeWsFrames, encodeCloseFrame } from "../lib/ws-frame";
+
+const TEST_WEBSOCKET_KEY = Buffer.from("test websocket nonce").toString("base64");
 
 const mocks = vi.hoisted(() => ({
   query: vi.fn(),
@@ -106,7 +104,7 @@ describe("Challenge Live Chat Channel (#1036)", () => {
     const headers: Record<string, string> = {
       upgrade: "websocket",
       connection: "Upgrade",
-      "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
+      "sec-websocket-key": TEST_WEBSOCKET_KEY,
       "sec-websocket-version": "13",
       authorization: `Bearer ${token}`,
       ...opts.customHeaders,
@@ -170,7 +168,7 @@ describe("Challenge Live Chat Channel (#1036)", () => {
         headers: {
           upgrade: "websocket",
           connection: "Upgrade",
-          "sec-websocket-key": "dGhlIHNhbXBsZSBub25jZQ==",
+          "sec-websocket-key": TEST_WEBSOCKET_KEY,
         },
       } as any;
 
@@ -223,7 +221,9 @@ describe("Challenge Live Chat Channel (#1036)", () => {
       await handleChatUpgrade(req, socket, Buffer.alloc(0));
 
       expect(socket.getWrittenText()).toContain("403 Forbidden");
-      expect(socket.getWrittenText()).toContain("Only active challenge participants can access chat");
+      expect(socket.getWrittenText()).toContain(
+        "Only active challenge participants can access chat"
+      );
       expect(socket.isDestroyed).toBe(true);
     });
 

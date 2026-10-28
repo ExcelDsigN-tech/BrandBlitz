@@ -69,7 +69,7 @@ export function GalleryTemplateSelector({
 
   if (templates.length === 0) {
     return (
-      <p className="text-center text-[var(--muted-foreground)] py-8">
+      <p className="py-8 text-center text-[var(--muted-foreground)]">
         No gallery templates are available yet. Check back after more challenges complete.
       </p>
     );
@@ -85,10 +85,7 @@ export function GalleryTemplateSelector({
           {error}
         </div>
       )}
-      <ul
-        className="grid gap-4 sm:grid-cols-2"
-        aria-label="Gallery templates"
-      >
+      <ul className="grid gap-4 sm:grid-cols-2" aria-label="Gallery templates">
         {templates.map((t) => (
           <li key={t.id}>
             <Card className="h-full transition-shadow hover:shadow-md">
@@ -100,11 +97,11 @@ export function GalleryTemplateSelector({
                     <img
                       src={t.logo_url}
                       alt={`${t.brand_name} logo`}
-                      className="h-10 w-10 rounded-full object-contain border border-[var(--border)]"
+                      className="h-10 w-10 rounded-full border border-[var(--border)] object-contain"
                     />
                   ) : (
                     <div
-                      className="h-10 w-10 rounded-full flex items-center justify-center text-white text-sm font-bold"
+                      className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white"
                       style={{ backgroundColor: t.primary_color ?? "#6366f1" }}
                       aria-hidden="true"
                     >

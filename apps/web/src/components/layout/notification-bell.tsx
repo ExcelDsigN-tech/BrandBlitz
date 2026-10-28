@@ -7,12 +7,19 @@ import {
   type Notification,
   type NotificationType,
 } from "@/components/ui/notification-toast";
+import {
+  getExistingPushSubscription,
+  isPushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "@/lib/push";
 
 const ICONS: Record<NotificationType, string> = {
   payout_received: "💸",
   badge_earned: "🏅",
   streak_milestone: "🔥",
   rank_overtaken: "📉",
+  challenge_reminder: "🚀",
 };
 
 const TYPE_LABELS: Record<NotificationType, string> = {
@@ -20,6 +27,7 @@ const TYPE_LABELS: Record<NotificationType, string> = {
   badge_earned: "Badge earned",
   streak_milestone: "Streak milestone",
   rank_overtaken: "Rank drop",
+  challenge_reminder: "Challenge starting",
 };
 
 function notificationSummary(n: Notification): string {
@@ -43,6 +51,11 @@ function notificationSummary(n: Notification): string {
       if (rank) return `You dropped to rank #${rank}`;
       return "You've been overtaken on the leaderboard";
     }
+    case "challenge_reminder": {
+      const brand = n.payload.brand_name as string | undefined;
+      const lead = n.payload.lead_time_minutes as number | undefined;
+      return `${brand ?? "A challenge"} starts${lead ? ` in ${lead} minutes` : " soon"}`;
+    }
   }
 }
 
@@ -60,6 +73,25 @@ function formatTime(iso: string): string {
 
 const POLL_INTERVAL_MS = 30_000;
 
+type PushUiState = "checking" | "unsupported" | "unconfigured" | "denied" | "enabled" | "disabled";
+
+function pushDescriptionFor(state: PushUiState): string {
+  switch (state) {
+    case "checking":
+      return "Checking availability…";
+    case "unsupported":
+      return "Not supported in this browser.";
+    case "unconfigured":
+      return "Not available right now.";
+    case "denied":
+      return "Blocked in your browser settings.";
+    case "enabled":
+      return "On — get alerts when the app is closed.";
+    case "disabled":
+      return "Off — you'll only see in-app notifications.";
+  }
+}
+
 interface NotificationBellProps {
   apiToken: string;
 }
@@ -71,8 +103,13 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
   const [visibleCount, setVisibleCount] = useState(5);
   const seenIds = useRef<Set<string>>(new Set());
   const drawerRef = useRef<HTMLDivElement>(null);
+  const [pushState, setPushState] = useState<PushUiState>("checking");
+  const [pushBusy, setPushBusy] = useState(false);
 
-  const [statusFeedback, setStatusFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [statusFeedback, setStatusFeedback] = useState<{
+    message: string;
+    type: "success" | "error";
+  } | null>(null);
 
   const fetchNotifications = useCallback(async () => {
     try {
@@ -83,9 +120,7 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
       const incoming = res.data.notifications;
       setNotifications(incoming);
 
-      const newOnes = incoming.filter(
-        (n) => !n.read_at && !seenIds.current.has(n.id),
-      );
+      const newOnes = incoming.filter((n) => !n.read_at && !seenIds.current.has(n.id));
       if (newOnes.length > 0) {
         setToastQueue((prev) => [
           ...prev,
@@ -103,6 +138,115 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
     const interval = setInterval(() => void fetchNotifications(), POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadPushState() {
+      if (!isPushSupported()) {
+        if (!cancelled) setPushState("unsupported");
+        return;
+      }
+
+      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+        if (!cancelled) setPushState("denied");
+        return;
+      }
+
+      try {
+        const api = createApiClient(apiToken);
+        const [configRes, subscriptionRes] = await Promise.all([
+          api.get<{ configured: boolean; public_key: string | null }>("/users/me/push/config", {
+            skipErrorToast: true,
+          }),
+          api.get<{ enabled: boolean }>("/users/me/push/subscriptions", {
+            skipErrorToast: true,
+          }),
+        ]);
+
+        if (cancelled) return;
+
+        if (!configRes.data.configured) {
+          setPushState("unconfigured");
+          return;
+        }
+
+        const existing = await getExistingPushSubscription();
+        if (cancelled) return;
+        setPushState(existing && subscriptionRes.data.enabled ? "enabled" : "disabled");
+      } catch {
+        if (!cancelled) setPushState("disabled");
+      }
+    }
+
+    void loadPushState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [apiToken]);
+
+  const togglePush = useCallback(async () => {
+    if (pushBusy) return;
+    setPushBusy(true);
+
+    try {
+      const api = createApiClient(apiToken);
+
+      if (pushState === "enabled") {
+        await api.patch("/users/me/push/preferences", { enabled: false }, { skipErrorToast: true });
+        const endpoint = await unsubscribeFromPush();
+        if (endpoint) {
+          await api.delete("/users/me/push/subscriptions", {
+            data: { endpoint },
+            skipErrorToast: true,
+          });
+        }
+        setPushState("disabled");
+        setStatusFeedback({ message: "Push notifications disabled", type: "success" });
+      } else {
+        const configRes = await api.get<{ configured: boolean; public_key: string | null }>(
+          "/users/me/push/config",
+          { skipErrorToast: true }
+        );
+
+        if (!configRes.data.public_key) {
+          throw new Error("Push notifications are not available right now");
+        }
+
+        const subscription = await subscribeToPush(configRes.data.public_key);
+
+        await api.post(
+          "/users/me/push/subscriptions",
+          { ...subscription, user_agent: navigator.userAgent },
+          { skipErrorToast: true }
+        );
+        await api.patch("/users/me/push/preferences", { enabled: true }, { skipErrorToast: true });
+
+        setPushState("enabled");
+        setStatusFeedback({ message: "Push notifications enabled", type: "success" });
+      }
+    } catch (err) {
+      if (typeof Notification !== "undefined" && Notification.permission === "denied") {
+        setPushState("denied");
+        setStatusFeedback({
+          message: "Notifications are blocked in your browser settings",
+          type: "error",
+        });
+      } else {
+        setStatusFeedback({
+          message:
+            err instanceof Error && err.message
+              ? err.message
+              : "Failed to update push notifications",
+          type: "error",
+        });
+      }
+    } finally {
+      setPushBusy(false);
+      setTimeout(() => setStatusFeedback(null), 3000);
+    }
+  }, [apiToken, pushBusy, pushState]);
 
   useEffect(() => {
     if (!drawerOpen) return;
@@ -128,13 +272,13 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
         const api = createApiClient(apiToken);
         await api.patch(`/users/me/notifications/${id}/read`, {}, { skipErrorToast: true });
         setNotifications((prev) =>
-          prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n)),
+          prev.map((n) => (n.id === id ? { ...n, read_at: new Date().toISOString() } : n))
         );
       } catch {
         // best-effort
       }
     },
-    [apiToken],
+    [apiToken]
   );
 
   const markAllRead = useCallback(async () => {
@@ -151,17 +295,20 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
     }
   }, [apiToken]);
 
-  const dismissToast = useCallback((id: string) => {
-    setToastQueue((prev) => prev.filter((n) => n.id !== id));
-    void markRead(id);
-  }, [markRead]);
+  const dismissToast = useCallback(
+    (id: string) => {
+      setToastQueue((prev) => prev.filter((n) => n.id !== id));
+      void markRead(id);
+    },
+    [markRead]
+  );
 
   const unreadCount = notifications.filter((n) => !n.read_at).length;
 
   return (
     <>
       {/* Toast queue — fixed top-right */}
-      <div className="fixed right-4 top-20 z-50 flex flex-col gap-2 pointer-events-none">
+      <div className="pointer-events-none fixed right-4 top-20 z-50 flex flex-col gap-2">
         {toastQueue.map((n) => (
           <div key={n.id} className="pointer-events-auto">
             <NotificationToast notification={n} onDismiss={dismissToast} />
@@ -174,7 +321,7 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
         <button
           aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
           onClick={() => setDrawerOpen((prev) => !prev)}
-          className="relative flex h-9 w-9 items-center justify-center rounded-md hover:bg-[var(--muted)] transition-colors"
+          className="relative flex h-9 w-9 items-center justify-center rounded-md transition-colors hover:bg-[var(--muted)]"
         >
           <svg
             xmlns="http://www.w3.org/2000/svg"
@@ -192,7 +339,7 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
           {unreadCount > 0 && (
-            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] text-[10px] font-bold text-white leading-none">
+            <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-[var(--primary)] text-[10px] font-bold leading-none text-white">
               {unreadCount > 9 ? "9+" : unreadCount}
             </span>
           )}
@@ -200,7 +347,7 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
 
         {/* Inbox drawer */}
         {drawerOpen && (
-          <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl z-50 overflow-hidden">
+          <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--background)] shadow-xl">
             <div className="flex items-center justify-between border-b border-[var(--border)] px-4 py-3">
               <h2 className="text-sm font-semibold">Notifications</h2>
               {unreadCount > 0 && (
@@ -216,10 +363,10 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
             {statusFeedback && (
               <div
                 role="status"
-                className={`px-4 py-1.5 text-xs font-medium text-center border-b ${
+                className={`border-b px-4 py-1.5 text-center text-xs font-medium ${
                   statusFeedback.type === "success"
-                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                    : "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20"
+                    ? "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                    : "border-red-500/20 bg-red-500/10 text-red-600 dark:text-red-400"
                 }`}
               >
                 {statusFeedback.message}
@@ -235,16 +382,16 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
                 notifications.slice(0, visibleCount).map((n) => (
                   <div
                     key={n.id}
-                    className={`flex items-start gap-3 border-b border-[var(--border)] px-4 py-3 last:border-0 transition-colors ${
+                    className={`flex items-start gap-3 border-b border-[var(--border)] px-4 py-3 transition-colors last:border-0 ${
                       !n.read_at ? "bg-[var(--primary)]/5" : ""
                     }`}
                   >
-                    <span className="text-lg leading-none mt-0.5">{ICONS[n.type]}</span>
-                    <div className="flex-1 min-w-0">
+                    <span className="mt-0.5 text-lg leading-none">{ICONS[n.type]}</span>
+                    <div className="min-w-0 flex-1">
                       <p className="text-xs font-medium text-[var(--muted-foreground)]">
                         {TYPE_LABELS[n.type]}
                       </p>
-                      <p className="text-sm text-[var(--foreground)] truncate">
+                      <p className="truncate text-sm text-[var(--foreground)]">
                         {notificationSummary(n)}
                       </p>
                       <p className="mt-0.5 text-xs text-[var(--muted-foreground)]">
@@ -255,7 +402,7 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
                       <button
                         aria-label="Mark as read"
                         onClick={() => void markRead(n.id)}
-                        className="mt-1 text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-colors text-xs"
+                        className="mt-1 text-xs text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
                       >
                         ✕
                       </button>
@@ -265,12 +412,47 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
               )}
             </div>
 
+            <div className="border-t border-[var(--border)] px-4 py-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-[var(--foreground)]">
+                    Push notifications
+                  </p>
+                  <p className="text-[11px] text-[var(--muted-foreground)]">
+                    {pushDescriptionFor(pushState)}
+                  </p>
+                </div>
+                {(pushState === "enabled" || pushState === "disabled") && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={pushState === "enabled"}
+                    aria-label="Push notifications"
+                    disabled={pushBusy}
+                    onClick={() => void togglePush()}
+                    className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors disabled:opacity-50 ${
+                      pushState === "enabled"
+                        ? "bg-[var(--primary)]"
+                        : "bg-[var(--muted-foreground)]/40"
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                        pushState === "enabled" ? "translate-x-4" : "translate-x-0.5"
+                      }`}
+                    />
+                  </button>
+                )}
+              </div>
+            </div>
+
             {notifications.length > 0 && (
-              <div className="border-t border-[var(--border)] px-4 py-2.5 bg-[var(--muted)]/20 flex items-center justify-between text-xs text-[var(--muted-foreground)]">
+              <div className="bg-[var(--muted)]/20 flex items-center justify-between border-t border-[var(--border)] px-4 py-2.5 text-xs text-[var(--muted-foreground)]">
                 {notifications.length > visibleCount ? (
                   <>
                     <span>
-                      Showing {Math.min(visibleCount, notifications.length)} of {notifications.length}
+                      Showing {Math.min(visibleCount, notifications.length)} of{" "}
+                      {notifications.length}
                     </span>
                     <button
                       onClick={() => setVisibleCount((prev) => prev + 5)}
@@ -280,7 +462,7 @@ export function NotificationBell({ apiToken }: NotificationBellProps) {
                     </button>
                   </>
                 ) : (
-                  <span className="w-full text-center py-0.5">
+                  <span className="w-full py-0.5 text-center">
                     {notifications.length >= 50
                       ? "Showing 50 most recent notifications"
                       : "All notifications loaded"}

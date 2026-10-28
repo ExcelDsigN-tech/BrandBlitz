@@ -24,7 +24,10 @@ const DepositWebhookSchema = z
   .object({
     memo: z.string().uuid("memo must be a valid UUID"),
     txHash: z.string().regex(/^[0-9a-fA-F]{64}$/, "txHash must be a 64-character hex string"),
-    amount: z.string().regex(/^\d+(\.\d{1,7})?$/, "amount must be a numeric string").optional(),
+    amount: z
+      .string()
+      .regex(/^\d+(\.\d{1,7})?$/, "amount must be a numeric string")
+      .optional(),
   })
   .strict();
 

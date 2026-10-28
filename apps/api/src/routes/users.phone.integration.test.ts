@@ -69,7 +69,7 @@ describeIntegration("Phone Verification Full Integration", () => {
 
     await query(`CREATE SCHEMA IF NOT EXISTS ${schemaName}`);
     await query(`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`);
-    
+
     const fs = await import("fs");
     const path = await import("path");
     const initSqlPath = path.resolve(__dirname, "../../../../../init.sql");
@@ -82,7 +82,10 @@ describeIntegration("Phone Verification Full Integration", () => {
     app.use(errorHandler);
 
     userId = randomUUID();
-    await query(`INSERT INTO users (id, email, username, phone_verified) VALUES ($1, $2, $3, false)`, [userId, "phone-test@test.com", "phonetester"]);
+    await query(
+      `INSERT INTO users (id, email, username, phone_verified) VALUES ($1, $2, $3, false)`,
+      [userId, "phone-test@test.com", "phonetester"]
+    );
     userToken = signToken(userId, "phone-test@test.com");
   });
 
@@ -128,7 +131,7 @@ describeIntegration("Phone Verification Full Integration", () => {
       .set("Authorization", `Bearer ${userToken}`)
       .send({ phone });
     expect(res4.status).toBe(429);
-    
+
     expect(mockTwilioVerifyCreate).toHaveBeenCalledTimes(3);
   });
 
@@ -146,10 +149,12 @@ describeIntegration("Phone Verification Full Integration", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
 
-    const userRow = await query(`SELECT phone_verified, phone_hash FROM users WHERE id = $1`, [userId]);
+    const userRow = await query(`SELECT phone_verified, phone_hash FROM users WHERE id = $1`, [
+      userId,
+    ]);
     expect(userRow.rows[0].phone_verified).toBe(true);
     expect(userRow.rows[0].phone_hash).not.toBeNull();
-    
+
     // Also verify redis is updated
     const redisVal = await redis.get(`phone:hash:${userRow.rows[0].phone_hash}`);
     expect(redisVal).toBe(userId);

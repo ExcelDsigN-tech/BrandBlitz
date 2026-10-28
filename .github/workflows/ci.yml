@@ -5,6 +5,12 @@ on:
     branches: ["main", "develop"]
   pull_request:
 
+# Least privilege by default: every job in this workflow only reads the repo.
+# The build job consumes Sentry secrets but never writes back to GitHub, so no
+# job needs a broader scope — add job-level permissions if that ever changes.
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -14,8 +20,11 @@ jobs:
   docs-lint:
     name: Markdown lint (docs)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/checkout.git refs/tags/v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Install markdownlint-cli
         run: npm install -g markdownlint-cli
@@ -35,8 +44,11 @@ jobs:
   env-check:
     name: Required env vars present
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      # actions/checkout v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/checkout.git refs/tags/v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Validate ALLOWED_ORIGINS is configured everywhere
         run: |
@@ -61,16 +73,70 @@ jobs:
             exit 1
           fi
 
+  # ── Node version consistency (issue #897) ───────────────────────────────────
+  # The Node version is pinned once in .nvmrc and must match the base image
+  # used by every Dockerfile so the three services cannot drift apart again.
+  dockerfile-node-version:
+    name: Node version matches .nvmrc
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      # actions/checkout v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/checkout.git refs/tags/v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Verify Dockerfiles pin the .nvmrc Node version
+        run: |
+          set -euo pipefail
+          expected="$(tr -d '[:space:]' < .nvmrc)"
+          echo "Expected Node version from .nvmrc: ${expected}"
+
+          failed=0
+          for dockerfile in \
+            apps/api/Dockerfile \
+            apps/web/Dockerfile \
+            apps/deposit-monitor/Dockerfile; do
+            matches="$(grep -E '^FROM node:' "$dockerfile" || true)"
+            if [ -z "$matches" ]; then
+              echo "::error file=${dockerfile}::no Node base image (FROM node:...) found"
+              failed=1
+              continue
+            fi
+            while IFS= read -r from_line; do
+              image="${from_line#FROM }"
+              image="${image%% AS *}"
+              version="$(printf '%s' "$image" | sed -E 's/^node:([0-9]+\.[0-9]+\.[0-9]+)-alpine@sha256:[0-9a-f]{64}$/\1/')"
+              if [ "$version" = "$image" ]; then
+                echo "::error file=${dockerfile}::Node base image must be pinned as node:<version>-alpine@sha256:<digest>, got: ${image}"
+                failed=1
+              elif [ "$version" != "$expected" ]; then
+                echo "::error file=${dockerfile}::expected node:${expected}-alpine, found node:${version}-alpine"
+                failed=1
+              else
+                echo "✅ ${dockerfile}: ${image}"
+              fi
+            done <<< "$matches"
+          done
+
+          exit "$failed"
+
   # ── Validate .env.example vs config schema ──────────────────────────────────
   validate-env-example:
     name: Validate .env.example vs config schema
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      # actions/checkout v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/checkout.git refs/tags/v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # pnpm/action-setup v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/pnpm/action-setup.git refs/tags/v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      # actions/setup-node v4 — pinned to commit SHA
+      # To upgrade: git ls-remote https://github.com/actions/setup-node.git refs/tags/v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Validate .env.example against config schema
@@ -95,6 +161,7 @@ jobs:
   test-api:
     name: API unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     services:
       postgres:
         image: postgres:17-alpine
@@ -119,11 +186,11 @@ jobs:
           --health-timeout 5s
           --health-retries 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Seed test database
@@ -135,12 +202,13 @@ jobs:
   test-web:
     name: Web unit tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @brandblitz/web test
@@ -148,12 +216,13 @@ jobs:
   test-storage:
     name: Storage package tests
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @brandblitz/storage test
@@ -162,12 +231,13 @@ jobs:
   bench-stellar:
     name: Stellar muxed account benchmark
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Run muxed account slug generation benchmark
@@ -179,6 +249,7 @@ jobs:
   build:
     name: Build & upload source maps
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     needs: [test-api, test-web, test-storage, bench-stellar]
     # Only upload maps on pushes to main (not PRs — avoids noise & token exposure)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -188,11 +259,11 @@ jobs:
       SENTRY_PROJECT_WEB: ${{ secrets.SENTRY_PROJECT_WEB }}
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 

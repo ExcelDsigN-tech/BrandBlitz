@@ -7,9 +7,13 @@ import {
 import type { NetworkName } from "@brandblitz/stellar";
 import { EscrowClient, type EscrowRecipient } from "@brandblitz/stellar";
 import { getLeaderboard } from "../db/queries/sessions";
-import { getChallengeById, updateChallengeStatus, getEndedBatchedChallenges } from "../db/queries/challenges";
+import {
+  getChallengeById,
+  updateChallengeStatus,
+  getEndedBatchedChallenges,
+} from "../db/queries/challenges";
 import { createPayout, updatePayoutStatus } from "../db/queries/payouts";
-import { incrementUserEarnings } from "../db/queries/users";
+import { incrementUserEarnings, isNotificationCategoryEnabled } from "../db/queries/users";
 import { rankWinners } from "./scoring";
 import { calculatePayoutShareStroops, stroopsToUsdc } from "../lib/usdc";
 import { enqueuePayoutJob } from "../queues/payout.queue";
@@ -23,6 +27,7 @@ import { queueReferralBonusForPayout } from "./referrals";
 import { query } from "../db";
 import { getLicensePayoutTerms } from "../db/queries/challenge-licenses";
 import { getChallengeTeamLeaderboard, splitTeamPayout } from "../db/queries/challenge-teams";
+import { dispatchNotification } from "./notifications";
 
 // Sentinel included in the PG trigger exception message (migration 018).
 export const FRAUD_BLOCK_SENTINEL = "FRAUD_BLOCKED_PAYOUT";
@@ -33,7 +38,25 @@ async function insertPayoutNotification(
   txHash: string | null | undefined,
   challengeId: string
 ): Promise<void> {
+  // Persists the in-app row and fans out a Web Push where configured (#1009).
+  await dispatchNotification({
+    userId,
+    type: "payout_received",
+    payload: {
+      amount_usdc: amountUsdc,
+      tx_hash: txHash ?? null,
+      challenge_id: challengeId,
+    },
+  });
   try {
+    const enabled = await isNotificationCategoryEnabled(userId, "payout");
+    if (!enabled) {
+      logger.debug("Payout notification skipped - user has disabled payout notifications", {
+        userId,
+      });
+      return;
+    }
+
     await query(
       `INSERT INTO notifications (user_id, type, payload)
        VALUES ($1, 'payout_received', $2::jsonb)`,
@@ -260,10 +283,13 @@ export async function processPayout(challengeId: string): Promise<void> {
   }
 
   if (recipients.length === 0) {
-    logger.info("No remaining payout recipients to process (already settled or no eligible winners)", {
-      challengeId,
-      rankedCount: ranked.length,
-    });
+    logger.info(
+      "No remaining payout recipients to process (already settled or no eligible winners)",
+      {
+        challengeId,
+        rankedCount: ranked.length,
+      }
+    );
     await updateChallengeStatus(challengeId, "settled");
     return;
   }
@@ -513,4 +539,3 @@ export async function processBatchPayout(): Promise<{
     await redis.del(lockKey);
   }
 }
-

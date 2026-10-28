@@ -74,7 +74,8 @@ export function OgPreviewCard({
           <div>
             <CardTitle className="text-lg">Social Share Preview (Open Graph)</CardTitle>
             <CardDescription>
-              Custom branded preview card shown on Twitter/X, Discord, LinkedIn, and messaging apps (#1022).
+              Custom branded preview card shown on Twitter/X, Discord, LinkedIn, and messaging apps
+              (#1022).
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -114,7 +115,8 @@ export function OgPreviewCard({
           />
         </div>
         <p className="mt-3 text-xs text-[var(--muted-foreground)]">
-          Rendered at 1200×630 using your brand kit palette ({primaryColor ?? "#0f172a"}), logo, and live prize pool.
+          Rendered at 1200×630 using your brand kit palette ({primaryColor ?? "#0f172a"}), logo, and
+          live prize pool.
         </p>
       </CardContent>
     </Card>

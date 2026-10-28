@@ -15,7 +15,7 @@ staged_prettier_files() {
 }
 if [ -n "$(staged_prettier_files)" ]; then
   if ! staged_prettier_files -z \
-    | xargs -0 pnpm exec prettier --check --ignore-path .gitignore --no-error-on-unmatched-pattern; then
+    | xargs -0 -n 25 pnpm exec prettier --check --ignore-path .gitignore --no-error-on-unmatched-pattern; then
     echo >&2
     echo "pre-commit: Prettier found formatting issues in the staged files listed above." >&2
     echo "  Fix them with:  pnpm format" >&2

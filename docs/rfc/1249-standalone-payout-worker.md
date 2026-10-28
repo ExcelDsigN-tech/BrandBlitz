@@ -28,7 +28,7 @@ process that also binds the HTTP listener (confirmed: no separate entrypoint fil
 the payout worker exists under `apps/api` — unlike `apps/deposit-monitor`, which has its
 own `src/index.ts` and its own deployable process).
 
-`processPayoutJob` already isolates *retry* semantics correctly — fraud-blocked payouts
+`processPayoutJob` already isolates _retry_ semantics correctly — fraud-blocked payouts
 throw `UnrecoverableError` so BullMQ won't retry a decision that won't change — but that
 retry-correctness is orthogonal to the process-isolation problem this RFC addresses.
 
@@ -54,7 +54,7 @@ await fetch(`${config.API_URL}/webhooks/stellar/deposit`, {
 ```
 
 This is the shape this RFC proposes for the payout worker too: a separate process that
-owns Stellar interaction (submission, not signing-authority *storage* necessarily — see
+owns Stellar interaction (submission, not signing-authority _storage_ necessarily — see
 Open Questions) and calls back to the API via a signed webhook for the DB write, rather
 than opening a second direct Postgres connection pool against the same database.
 
@@ -75,7 +75,7 @@ apps/payout-worker/
   import-path change for either consumer, same as `@brandblitz/stellar` is already
   shared between `apps/api` and `apps/deposit-monitor` today.
 - `payout.processor.ts`'s BullMQ `Worker` setup moves into `apps/payout-worker/src/
-  index.ts`, unchanged in shape — it already just needs a Redis connection, which the
+index.ts`, unchanged in shape — it already just needs a Redis connection, which the
   new process gets independently (same `REDIS_URL`, same queue name `"payout"`, so
   `apps/api` enqueuing a job via `payout.queue.ts` and `apps/payout-worker` consuming it
   works exactly as it does today — only the process boundary changes, not the queue
@@ -127,7 +127,7 @@ independently guessing at its own `DB_POOL_MAX`.
    same time. Because both consume the exact same BullMQ queue name with the same job
    payload shape, any job already enqueued but not yet picked up at cutover time is
    simply picked up by whichever worker is running — BullMQ's queue persistence in
-   Redis means no in-flight job is lost, only its *consumer* changes. A job actively
+   Redis means no in-flight job is lost, only its _consumer_ changes. A job actively
    mid-processing in the old in-process worker at the exact moment of deploy should be
    allowed to finish (standard graceful-shutdown drain, matching the pattern already
    used in `gdpr-erasure.processor.ts`'s SIGTERM handling) before that process exits.
@@ -150,7 +150,7 @@ independently guessing at its own `DB_POOL_MAX`.
 1. (a) vs (b) above for hot-wallet secret placement — needs a security-conscious
    maintainer's call, not just an engineering-convenience one.
 2. Should the internal completion webhook reuse `apps/api/src/middleware/
-   verify-webhook.ts` as-is, or does payout completion need a distinct secret from
+verify-webhook.ts` as-is, or does payout completion need a distinct secret from
    `WEBHOOK_SECRET` (currently shared with `deposit-monitor`'s inbound webhook) so a
    compromised deposit-monitor credential can't forge a payout-completion call?
    Recommend a **separate** secret for this reason — flagged here rather than assumed.

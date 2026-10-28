@@ -37,14 +37,22 @@ async function getWebhookSecrets(): Promise<{ current: string; pending?: string 
   return secrets;
 }
 
-export function signWebhookPayload(payload: string | Buffer, timestamp: number, secret: string): string {
+export function signWebhookPayload(
+  payload: string | Buffer,
+  timestamp: number,
+  secret: string
+): string {
   const body = typeof payload === "string" ? payload : payload.toString("utf8");
   const hmac = crypto.createHmac("sha256", secret);
   hmac.update(`${timestamp}.${body}`);
   return hmac.digest("hex");
 }
 
-export async function verifyWebhook(req: Request, res: Response, next: NextFunction): Promise<void> {
+export async function verifyWebhook(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
   const secrets = await getWebhookSecrets();
 
   if (!secrets.current) {

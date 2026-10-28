@@ -178,7 +178,14 @@ describe("Payout Schedule (#1026)", () => {
 
       // Mock queries for challenge 1
       mocks.query.mockResolvedValueOnce({
-        rows: [{ id: "batch-c-1", status: "ended", payout_schedule: "batched", pool_amount_stroops: "100000000" }],
+        rows: [
+          {
+            id: "batch-c-1",
+            status: "ended",
+            payout_schedule: "batched",
+            pool_amount_stroops: "100000000",
+          },
+        ],
       });
       // Leaderboard for challenge 1: no sessions (settles cleanly)
       mocks.query.mockResolvedValueOnce({ rows: [] });
@@ -187,7 +194,14 @@ describe("Payout Schedule (#1026)", () => {
 
       // Mock queries for challenge 2
       mocks.query.mockResolvedValueOnce({
-        rows: [{ id: "batch-c-2", status: "ended", payout_schedule: "batched", pool_amount_stroops: "200000000" }],
+        rows: [
+          {
+            id: "batch-c-2",
+            status: "ended",
+            payout_schedule: "batched",
+            pool_amount_stroops: "200000000",
+          },
+        ],
       });
       // Leaderboard for challenge 2: no sessions (settles cleanly)
       mocks.query.mockResolvedValueOnce({ rows: [] });
@@ -211,15 +225,20 @@ describe("Payout Schedule (#1026)", () => {
 
       expect(result.processedChallenges).toEqual([]);
       expect(result.failedChallenges).toEqual([]);
-      expect(mocks.loggerWarn).toHaveBeenCalledWith(
-        expect.stringContaining("already in progress")
-      );
+      expect(mocks.loggerWarn).toHaveBeenCalledWith(expect.stringContaining("already in progress"));
     });
 
     it("does not re-pay recipients whose payouts are already sent or confirmed", async () => {
       // Mock challenge
       mocks.query.mockResolvedValueOnce({
-        rows: [{ id: "re-run-c-1", status: "ended", payout_schedule: "batched", pool_amount_stroops: "100000000" }],
+        rows: [
+          {
+            id: "re-run-c-1",
+            status: "ended",
+            payout_schedule: "batched",
+            pool_amount_stroops: "100000000",
+          },
+        ],
       });
 
       // Leaderboard with 1 winner

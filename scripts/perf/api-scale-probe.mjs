@@ -2,36 +2,36 @@
 
 const DEFAULT_SCENARIOS = [
   {
-    id: 'earnings-history',
-    issue: '#1110',
-    method: 'GET',
-    path: '/users/me/earnings',
+    id: "earnings-history",
+    issue: "#1110",
+    method: "GET",
+    path: "/users/me/earnings",
     authRequired: true,
-    notes: 'Exercises the authenticated earnings aggregation path for long-tenured users.',
+    notes: "Exercises the authenticated earnings aggregation path for long-tenured users.",
   },
   {
-    id: 'user-search-growth',
-    issue: '#1111',
-    method: 'GET',
-    path: `/users/search?q=${encodeURIComponent(process.env.BRANDBLITZ_SEARCH_QUERY || 'brand')}`,
+    id: "user-search-growth",
+    issue: "#1111",
+    method: "GET",
+    path: `/users/search?q=${encodeURIComponent(process.env.BRANDBLITZ_SEARCH_QUERY || "brand")}`,
     authRequired: false,
-    notes: 'Exercises search latency as the users table grows and indexes become important.',
+    notes: "Exercises search latency as the users table grows and indexes become important.",
   },
   {
-    id: 'public-profile-spike',
-    issue: '#1112',
-    method: 'GET',
-    path: `/users/${encodeURIComponent(process.env.BRANDBLITZ_PUBLIC_USERNAME || 'demo')}/public`,
+    id: "public-profile-spike",
+    issue: "#1112",
+    method: "GET",
+    path: `/users/${encodeURIComponent(process.env.BRANDBLITZ_PUBLIC_USERNAME || "demo")}/public`,
     authRequired: false,
-    notes: 'Approximates repeated viral traffic to one public profile before cache tuning.',
+    notes: "Approximates repeated viral traffic to one public profile before cache tuning.",
   },
   {
-    id: 'question-preview-concurrency',
-    issue: '#1114',
-    method: 'GET',
-    path: `/brands/${encodeURIComponent(process.env.BRANDBLITZ_BRAND_ID || 'demo')}/questions/preview`,
+    id: "question-preview-concurrency",
+    issue: "#1114",
+    method: "GET",
+    path: `/brands/${encodeURIComponent(process.env.BRANDBLITZ_BRAND_ID || "demo")}/questions/preview`,
     authRequired: true,
-    notes: 'Exercises concurrent brand onboarding preview generation.',
+    notes: "Exercises concurrent brand onboarding preview generation.",
   },
 ];
 
@@ -46,18 +46,18 @@ function listFromEnv(name, fallback) {
   const raw = process.env[name];
   if (!raw) return fallback;
   const values = raw
-    .split(',')
+    .split(",")
     .map((item) => Number(item.trim()))
     .filter((item) => Number.isFinite(item) && item > 0);
   return values.length ? values : fallback;
 }
 
 const config = {
-  baseUrl: process.env.BRANDBLITZ_API_BASE_URL || 'http://localhost:3000',
-  token: process.env.BRANDBLITZ_AUTH_TOKEN || '',
-  requestsPerStep: numberFromEnv('BRANDBLITZ_REQUESTS_PER_STEP', 120),
-  concurrencySteps: listFromEnv('BRANDBLITZ_CONCURRENCY_STEPS', [10, 50, 100]),
-  delayMs: numberFromEnv('BRANDBLITZ_DELAY_MS', 0),
+  baseUrl: process.env.BRANDBLITZ_API_BASE_URL || "http://localhost:3000",
+  token: process.env.BRANDBLITZ_AUTH_TOKEN || "",
+  requestsPerStep: numberFromEnv("BRANDBLITZ_REQUESTS_PER_STEP", 120),
+  concurrencySteps: listFromEnv("BRANDBLITZ_CONCURRENCY_STEPS", [10, 50, 100]),
+  delayMs: numberFromEnv("BRANDBLITZ_DELAY_MS", 0),
 };
 
 function percentile(values, target) {
@@ -72,7 +72,7 @@ function sleep(ms) {
 }
 
 function buildHeaders(scenario) {
-  const headers = { Accept: 'application/json' };
+  const headers = { Accept: "application/json" };
   if (scenario.authRequired && config.token) {
     headers.Authorization = `Bearer ${config.token}`;
   }
@@ -98,7 +98,7 @@ async function timedRequest(scenario) {
   } catch (error) {
     return {
       ok: false,
-      status: 'network-error',
+      status: "network-error",
       durationMs: performance.now() - startedAt,
       error: error instanceof Error ? error.message : String(error),
     };
@@ -146,7 +146,9 @@ async function run() {
   const scenarios = DEFAULT_SCENARIOS.filter((scenario) => {
     if (!scenario.authRequired) return true;
     if (config.token) return true;
-    console.warn(`Skipping ${scenario.id}: set BRANDBLITZ_AUTH_TOKEN to exercise this authenticated path.`);
+    console.warn(
+      `Skipping ${scenario.id}: set BRANDBLITZ_AUTH_TOKEN to exercise this authenticated path.`
+    );
     return false;
   });
 

@@ -134,9 +134,7 @@ describe("loadConfig — process.exit on invalid env", () => {
     const logSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     // Re-import the module so loadConfig() runs with the stubbed env
-    await expect(import("./config?bust=" + Date.now())).rejects.toThrow(
-      "process.exit called"
-    );
+    await expect(import("./config?bust=" + Date.now())).rejects.toThrow("process.exit called");
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(logSpy).toHaveBeenCalled();
     const loggedOutput = logSpy.mock.calls.map((call) => String(call[0])).join("\n");
@@ -163,9 +161,7 @@ describe("loadConfig — process.exit on invalid env", () => {
     delete process.env.DATABASE_URL;
     delete process.env.JWT_SECRET;
 
-    await expect(import("./config?bust-hint-" + Date.now())).rejects.toThrow(
-      "process.exit called"
-    );
+    await expect(import("./config?bust-hint-" + Date.now())).rejects.toThrow("process.exit called");
     expect(exitSpy).toHaveBeenCalledWith(1);
     const errorOutput = errorSpy.mock.calls.map((c) => String(c[0])).join("\n");
     expect(errorOutput).toContain("Missing required env vars");

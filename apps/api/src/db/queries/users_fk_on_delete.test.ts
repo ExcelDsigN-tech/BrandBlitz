@@ -128,17 +128,20 @@ describeIntegration("FK ON DELETE behaviour (migration 012)", () => {
     const brandId = await insertBrand(userId);
     const challengeId = await insertChallenge(brandId);
 
-    const { rows: [session] } = await query<{ id: string }>(
+    const {
+      rows: [session],
+    } = await query<{ id: string }>(
       `INSERT INTO game_sessions (user_id, challenge_id) VALUES ($1, $2) RETURNING id`,
       [userId, challengeId]
     );
 
     await query("DELETE FROM users WHERE id = $1 /* include_deleted */", [userId]);
 
-    const { rows: [row] } = await query<{ user_id: string | null }>(
-      "SELECT user_id FROM game_sessions WHERE id = $1",
-      [session.id]
-    );
+    const {
+      rows: [row],
+    } = await query<{ user_id: string | null }>("SELECT user_id FROM game_sessions WHERE id = $1", [
+      session.id,
+    ]);
     expect(row.user_id).toBeNull();
   });
 
@@ -147,27 +150,27 @@ describeIntegration("FK ON DELETE behaviour (migration 012)", () => {
     const brandId = await insertBrand(userId);
     const challengeId = await insertChallenge(brandId);
 
-    const { rows: [payout] } = await query<{ id: string }>(
+    const {
+      rows: [payout],
+    } = await query<{ id: string }>(
       `INSERT INTO payouts (challenge_id, user_id) VALUES ($1, $2) RETURNING id`,
       [challengeId, userId]
     );
 
     await query("DELETE FROM users WHERE id = $1 /* include_deleted */", [userId]);
 
-    const { rows: [row] } = await query<{ user_id: string | null }>(
-      "SELECT user_id FROM payouts WHERE id = $1",
-      [payout.id]
-    );
+    const {
+      rows: [row],
+    } = await query<{ user_id: string | null }>("SELECT user_id FROM payouts WHERE id = $1", [
+      payout.id,
+    ]);
     expect(row.user_id).toBeNull();
   });
 
   it("hard-delete user with fraud_flags is rejected (RESTRICT)", async () => {
     const userId = await insertUser();
 
-    await query(
-      `INSERT INTO fraud_flags (user_id, flag_type) VALUES ($1, 'test_flag')`,
-      [userId]
-    );
+    await query(`INSERT INTO fraud_flags (user_id, flag_type) VALUES ($1, 'test_flag')`, [userId]);
 
     await expect(
       query("DELETE FROM users WHERE id = $1 /* include_deleted */", [userId])

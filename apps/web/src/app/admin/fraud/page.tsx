@@ -538,7 +538,8 @@ export default function AdminFraudPage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <Label htmlFor="score-override-value">
-              New score <span className="text-xs text-gray-400">(leave blank to clear override)</span>
+              New score{" "}
+              <span className="text-xs text-gray-400">(leave blank to clear override)</span>
             </Label>
             <Input
               id="score-override-value"

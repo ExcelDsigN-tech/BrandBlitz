@@ -22,6 +22,8 @@ import { ReportModal } from "@/components/game/report-modal";
 import { FirstRunTutorial } from "@/components/game/first-run-tutorial";
 import { ChallengeTeamsPanel } from "@/components/challenge/challenge-teams-panel";
 import { ChallengeChatPanel } from "@/components/challenge/challenge-chat-panel";
+import { ChallengeRatingPrompt } from "@/components/game/challenge-rating-prompt";
+import { ChallengeComments } from "@/components/challenge/challenge-comments";
 
 const WarmupPhase = dynamic(
   () => import("@/components/game/warmup-phase").then((m) => m.WarmupPhase),
@@ -140,6 +142,7 @@ export function ChallengePage({ params }: Props) {
   const [showTooltip, setShowTooltip] = React.useState(false);
   const [showReportModal, setShowReportModal] = React.useState(false);
   const [showTutorial, setShowTutorial] = React.useState(false);
+  const [accessibilityMode, setAccessibilityMode] = React.useState(false);
 
   const mountedRef = React.useRef(true);
   const currentRoundRef = React.useRef(currentRound);
@@ -178,6 +181,7 @@ export function ChallengePage({ params }: Props) {
     void (async () => {
       try {
         const res = await api.get("/users/me", { skipErrorToast: true });
+        if (!cancelled) setAccessibilityMode(Boolean(res.data.user?.accessibility_mode));
         if (!cancelled && !res.data.user?.onboarding_completed) {
           setShowTutorial(true);
         }
@@ -529,6 +533,7 @@ export function ChallengePage({ params }: Props) {
           onSkip={handlePreviewSkip}
         />
         <div className="mx-auto max-w-xl space-y-6 px-4">
+          <ChallengeComments challengeId={challenge.id} apiToken={apiToken} />
           <ChallengeTeamsPanel
             challengeId={challenge.id}
             apiToken={apiToken}
@@ -664,6 +669,7 @@ export function ChallengePage({ params }: Props) {
           answerState={answerState}
           disabled={!isOnline}
           pauseTimer={!isOnline}
+          accessibilityMode={accessibilityMode}
         />
         <FirstRunTutorial open={showTutorial} onDismiss={handleTutorialDismiss} />
       </div>
@@ -681,7 +687,8 @@ export function ChallengePage({ params }: Props) {
           primaryColor={challenge?.primary_color ?? undefined}
           secondaryColor={challenge?.secondary_color ?? undefined}
         />
-        <div className="mx-auto max-w-xl px-4">
+        <div className="mx-auto max-w-xl space-y-6 px-4">
+          <ChallengeComments challengeId={challengeId} apiToken={apiToken} />
           <ChallengeChatPanel
             challengeId={challengeId}
             apiToken={apiToken}
@@ -690,6 +697,7 @@ export function ChallengePage({ params }: Props) {
             challengeStatus={challenge?.status ?? "active"}
             isLoggedIn={Boolean(session?.user)}
           />
+        </div>
         <div className="px-6 pb-10">
           <ChallengeRatingPrompt challengeId={challengeId} apiToken={apiToken} />
         </div>

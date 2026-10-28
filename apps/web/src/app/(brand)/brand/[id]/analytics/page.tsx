@@ -134,12 +134,12 @@ export default function AnalyticsPage() {
     return (
       <main className="mx-auto max-w-5xl px-6 py-12">
         <div className="mb-8">
-          <div className="animate-pulse h-8 w-48 rounded bg-[var(--muted)]" />
-          <div className="animate-pulse mt-2 h-4 w-64 rounded bg-[var(--muted)]" />
+          <div className="h-8 w-48 animate-pulse rounded bg-[var(--muted)]" />
+          <div className="mt-2 h-4 w-64 animate-pulse rounded bg-[var(--muted)]" />
         </div>
         <div className="grid gap-6 md:grid-cols-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse h-32 rounded-lg bg-[var(--muted)]" />
+            <div key={i} className="h-32 animate-pulse rounded-lg bg-[var(--muted)]" />
           ))}
         </div>
       </main>

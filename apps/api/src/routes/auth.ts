@@ -9,10 +9,7 @@ import {
   exchangeGoogleAuthorizationCode,
   verifyGoogleIdToken,
 } from "../services/google-auth";
-import {
-  consumePendingReferralAttribution,
-  ensureUserReferralCode,
-} from "../services/referrals";
+import { consumePendingReferralAttribution, ensureUserReferralCode } from "../services/referrals";
 import {
   signAccessToken,
   signRefreshToken,
@@ -23,6 +20,8 @@ import {
   isJtiRevoked,
 } from "../lib/tokens";
 import { query } from "../db";
+import { hasTotpEnabled } from "../db/queries/totp";
+import totpRouter, { signPendingTotpToken } from "./auth.2fa";
 
 const router = Router();
 
@@ -85,6 +84,14 @@ router.post("/google/callback", authLimiter, async (req, res) => {
   // issuing new credentials so any pre-login token is invalidated.
   await revokeAllUserRefreshTokens(user.id);
 
+  // If the user has confirmed TOTP 2FA, issue a short-lived pending token
+  // instead of full credentials.  The client must call POST /auth/2fa/verify
+  // to exchange it for a real access/refresh token pair.
+  if (await hasTotpEnabled(user.id)) {
+    const pendingToken = signPendingTotpToken(user);
+    return res.json({ requiresTwoFactor: true, pendingToken, user: serializeUser(user) });
+  }
+
   const accessToken = signAccessToken(user);
   const refreshToken = signRefreshToken(user);
   const payload = verifyRefreshToken(refreshToken);
@@ -101,7 +108,7 @@ router.post("/google/callback", authLimiter, async (req, res) => {
       "user",
       user.id,
       JSON.stringify({ method: "google_oauth", tokenRotated: true }),
-    ],
+    ]
   );
 
   res.json({ token: accessToken, refreshToken, user: serializeUser(user) });
@@ -127,18 +134,13 @@ router.post("/refresh", async (req, res) => {
   const alreadyUsed = await markJtiUsed(payload.jti);
   if (alreadyUsed) {
     await revokeAllUserRefreshTokens(payload.sub);
-    throw createError(
-      "Refresh token reuse detected — all sessions revoked",
-      401,
-      "TOKEN_REUSE",
-    );
+    throw createError("Refresh token reuse detected — all sessions revoked", 401, "TOKEN_REUSE");
   }
   if (await isJtiRevoked(payload.jti))
     throw createError("Refresh token revoked", 401, "TOKEN_REVOKED");
 
   const user = await findUserById(payload.sub);
-  if (!user)
-    throw createError("Invalid refresh token", 401, "INVALID_REFRESH_TOKEN");
+  if (!user) throw createError("Invalid refresh token", 401, "INVALID_REFRESH_TOKEN");
 
   const newAccess = signAccessToken(user);
   const newRefresh = signRefreshToken(user);
@@ -160,5 +162,8 @@ router.post("/logout", async (req, res) => {
   }
   res.json({ ok: true });
 });
+
+// Mount TOTP 2FA sub-router at /auth/2fa/...
+router.use("/2fa", totpRouter);
 
 export default router;

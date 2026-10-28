@@ -37,8 +37,7 @@ describe("Issue #1108: Deposit Monitor Polling Performance", () => {
     // Simulate fetchDepositEvents RPC call to Horizon
     // Latency scales with number of addresses being monitored
     const fetchStart = performance.now();
-    const horizonLatency =
-      BASE_HORIZON_LATENCY_MS + activeAddresses * 0.05;
+    const horizonLatency = BASE_HORIZON_LATENCY_MS + activeAddresses * 0.05;
     await new Promise((r) => setTimeout(r, horizonLatency));
     const fetchDuration = performance.now() - fetchStart;
 
@@ -71,8 +70,7 @@ describe("Issue #1108: Deposit Monitor Polling Performance", () => {
       cycles.push(metrics);
     }
 
-    const avgDuration =
-      cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) / cycles.length;
+    const avgDuration = cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) / cycles.length;
     const maxDuration = Math.max(...cycles.map((m) => m.totalCycleDuration));
     const cycleExceededInterval = maxDuration > POLL_INTERVAL_MS;
 
@@ -101,11 +99,9 @@ describe("Issue #1108: Deposit Monitor Polling Performance", () => {
       cycles.push(metrics);
     }
 
-    const avgDuration =
-      cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) / cycles.length;
+    const avgDuration = cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) / cycles.length;
     const maxDuration = Math.max(...cycles.map((m) => m.totalCycleDuration));
-    const avgHorizonRps =
-      cycles.reduce((sum, m) => sum + m.rpsToHorizon, 0) / cycles.length;
+    const avgHorizonRps = cycles.reduce((sum, m) => sum + m.rpsToHorizon, 0) / cycles.length;
     const cycleExceededInterval = maxDuration > POLL_INTERVAL_MS;
 
     logger.info(
@@ -135,11 +131,9 @@ describe("Issue #1108: Deposit Monitor Polling Performance", () => {
       cycles.push(metrics);
     }
 
-    const avgDuration =
-      cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) / cycles.length;
+    const avgDuration = cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) / cycles.length;
     const maxDuration = Math.max(...cycles.map((m) => m.totalCycleDuration));
-    const avgHorizonRps =
-      cycles.reduce((sum, m) => sum + m.rpsToHorizon, 0) / cycles.length;
+    const avgHorizonRps = cycles.reduce((sum, m) => sum + m.rpsToHorizon, 0) / cycles.length;
     const cycleExceededInterval = maxDuration > POLL_INTERVAL_MS;
 
     logger.info(
@@ -162,9 +156,7 @@ describe("Issue #1108: Deposit Monitor Polling Performance", () => {
 
     // At 2000 addresses, we expect cycle time to approach or exceed interval
     if (cycleExceededInterval) {
-      logger.warn(
-        "Poll cycle exceeds interval; recommend sharding or webhook-based approach"
-      );
+      logger.warn("Poll cycle exceeds interval; recommend sharding or webhook-based approach");
     }
   });
 
@@ -182,9 +174,7 @@ describe("Issue #1108: Deposit Monitor Polling Performance", () => {
 
     const comparison = addressCounts.map((count) => {
       const cycles = results[count];
-      const avgDuration =
-        cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) /
-        cycles.length;
+      const avgDuration = cycles.reduce((sum, m) => sum + m.totalCycleDuration, 0) / cycles.length;
       const maxDuration = Math.max(...cycles.map((m) => m.totalCycleDuration));
       const costPerAddress = avgDuration / count;
 
@@ -200,11 +190,8 @@ describe("Issue #1108: Deposit Monitor Polling Performance", () => {
     logger.info(comparison, "Polling efficiency comparison across scales");
 
     // Verify polling scales reasonably (linear cost per address, not quadratic)
-    const cost100 =
-      (results[100][0].totalCycleDuration / 100) *
-      100; // normalized baseline
-    const cost2000 =
-      (results[2000][0].totalCycleDuration / 2000) * 100; // cost for 100 at 2k scale
+    const cost100 = (results[100][0].totalCycleDuration / 100) * 100; // normalized baseline
+    const cost2000 = (results[2000][0].totalCycleDuration / 2000) * 100; // cost for 100 at 2k scale
 
     // Should not see exponential growth
     expect(cost2000).toBeLessThan(cost100 * 3);

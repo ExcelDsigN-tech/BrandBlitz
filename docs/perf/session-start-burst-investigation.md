@@ -4,7 +4,7 @@
 **Target:** `POST /sessions/:challengeId/warmup-start` and `POST /sessions/:challengeId/start` (`apps/api/src/routes/sessions.ts`)  
 **Scenario:** 5,000 synchronized session starts within a 10-second window at challenge open time  
 **Benchmark Script:** `scripts/benchmark-session-burst.ts`  
-**Automated Test:** `apps/api/src/routes/sessions.burst.test.ts`  
+**Automated Test:** `apps/api/src/routes/sessions.burst.test.ts`
 
 ---
 
@@ -28,6 +28,7 @@ When a scheduled BrandBlitz challenge transitions from upcoming to active, a syn
 ## 2. Endpoint Execution Profile
 
 ### A. `POST /sessions/:challengeId/warmup-start`
+
 ```
 Client Request
   ↓
@@ -41,11 +42,13 @@ Client Request
   ↓
 HTTP 200 { sessionId, unlockAt }
 ```
+
 - **Total DB queries per request:** 4 queries
 - **Total Redis calls per request:** 4 calls
 - **Connection hold time:** ~16 ms per request (assuming 4 ms per query)
 
 ### B. `POST /sessions/:challengeId/start`
+
 ```
 Client Request
   ↓
@@ -62,6 +65,7 @@ Client Request
   ↓
 HTTP 200 { sessionId, startsAt }
 ```
+
 - **Total DB queries per request:** 5 queries
 - **Connection hold time:** ~20 ms per request
 
@@ -73,24 +77,25 @@ The simulation was executed using `scripts/benchmark-session-burst.ts` modeling 
 
 ### Comparative Metrics
 
-| Metric | Scenario 1: Baseline (Unshaped, Pool Max 10) | Scenario 2: Tuned (Rate-shaped 300 rps, Pool 20, Cache) |
-|---|---|---|
-| **Total Requests** | 5,000 | 5,000 |
-| **Completed Requests** | 3,124 (62.5%) | 5,000 (100% admitted or cleanly shaped) |
-| **Connection Timeouts** | 1,876 (37.5%) | **0 (0%)** |
-| **Peak Pool Waiting Clients** | **1,248** | **42** |
-| **p50 Response Time** | 1,850 ms | 68 ms |
-| **p95 Response Time** | **>5,000 ms (Timed out)** | **145 ms** |
-| **p99 Response Time** | **>5,200 ms** | **220 ms** |
-| **Max Response Time** | 5,420 ms | 310 ms |
-| **Effective Throughput** | ~156 req/s | ~340 req/s |
-| **DB Queries Executed** | 20,000 attempts | 15,000 (25% saved via cache) |
+| Metric                        | Scenario 1: Baseline (Unshaped, Pool Max 10) | Scenario 2: Tuned (Rate-shaped 300 rps, Pool 20, Cache) |
+| ----------------------------- | -------------------------------------------- | ------------------------------------------------------- |
+| **Total Requests**            | 5,000                                        | 5,000                                                   |
+| **Completed Requests**        | 3,124 (62.5%)                                | 5,000 (100% admitted or cleanly shaped)                 |
+| **Connection Timeouts**       | 1,876 (37.5%)                                | **0 (0%)**                                              |
+| **Peak Pool Waiting Clients** | **1,248**                                    | **42**                                                  |
+| **p50 Response Time**         | 1,850 ms                                     | 68 ms                                                   |
+| **p95 Response Time**         | **>5,000 ms (Timed out)**                    | **145 ms**                                              |
+| **p99 Response Time**         | **>5,200 ms**                                | **220 ms**                                              |
+| **Max Response Time**         | 5,420 ms                                     | 310 ms                                                  |
+| **Effective Throughput**      | ~156 req/s                                   | ~340 req/s                                              |
+| **DB Queries Executed**       | 20,000 attempts                              | 15,000 (25% saved via cache)                            |
 
 ---
 
 ## 4. Bottleneck Identification
 
 ### Bottleneck 1: Connection Pool Exhaustion (`DB_POOL_MAX = 10`)
+
 - **Capacity constraint:** With 10 connections and 16 ms of connection time per request, the pool's theoretical ceiling is:
   $$\text{Throughput} = \frac{10 \text{ connections}}{0.016 \text{ s/req}} = 625 \text{ req/s}$$
 - **Queue accumulation under surge:** When 3,000 requests arrive in the first 2 seconds (1,500 req/s arrival rate), requests enter the queue at $1,500 - 625 = 875 \text{ req/s}$.
@@ -101,6 +106,7 @@ The simulation was executed using `scripts/benchmark-session-burst.ts` modeling 
   ```
 
 ### Bottleneck 2: Database Row-Lock & Foreign Key Contention
+
 1. **Challenge Row Lock during Activation:**
    - At challenge open time, an admin transaction or automated cron runs:
      ```sql
@@ -115,6 +121,7 @@ The simulation was executed using `scripts/benchmark-session-burst.ts` modeling 
    - `UPDATE users SET last_active_at = NOW() WHERE id = $1` in `POST /sessions/:challengeId/start` acquires a write lock on each user row, triggering WAL flushes for non-critical telemetry on the hot start path.
 
 ### Bottleneck 3: Redundant Static Queries
+
 - All 5,000 requests execute `SELECT * FROM challenges WHERE id = $1`. The challenge record (status, pool amount, brand ID) is static once active. Executing 5,000 queries for identical immutable data wastes 25% of all pool connection cycles.
 
 ---
@@ -122,6 +129,7 @@ The simulation was executed using `scripts/benchmark-session-burst.ts` modeling 
 ## 5. Architectural Recommendations
 
 ### 1. Ingress Rate-Shaping & Admission Queue (Immediate)
+
 To prevent connection pool collapse, incoming traffic must be rate-shaped at ingress before reaching the Node.js event loop:
 
 - **Option A: Nginx Leaky Bucket Rate Shaping**
@@ -139,7 +147,7 @@ To prevent connection pool collapse, incoming traffic must be rate-shaped at ing
     1,
     `challenge:admission:${challengeId}`,
     300, // capacity
-    300  // refill rate per second
+    300 // refill rate per second
   );
   if (!allowed) {
     res.setHeader("Retry-After", "1");
@@ -148,24 +156,31 @@ To prevent connection pool collapse, incoming traffic must be rate-shaped at ing
   ```
 
 ### 2. Challenge Metadata Caching (Immediate)
+
 Cache `getChallengeById` in Redis or local in-memory LRU with a short TTL (e.g. 5–10 seconds) during active challenges:
+
 ```ts
 // Check Redis cache before hitting PostgreSQL
 const cached = await redis.get(`cache:challenge:${challengeId}`);
 if (cached) return JSON.parse(cached);
 ```
+
 - **Impact:** Eliminates 5,000 queries during the 10-second burst, instantly reclaiming 25% of PostgreSQL connection bandwidth.
 
 ### 3. Asynchronous `last_active_at` Updates (Immediate)
+
 Remove synchronous `UPDATE users SET last_active_at = NOW()` from the critical path of `POST /sessions/:challengeId/start`:
+
 - Buffer active user IDs in Redis (`SADD active_users:buffer ${userId}`) and flush to Postgres in batches of 500 via background worker every 15 seconds.
 - **Impact:** Eliminates 5,000 row updates and transaction locks from the session start hot path.
 
 ### 4. Connection Pool & PgBouncer Scaling (Infrastructure)
+
 - Increase `DB_POOL_MAX` from 10 to **25–30** in production (`config.DB_POOL_MAX`).
 - In multi-instance deployments, deploy **PgBouncer** in `transaction` pooling mode in front of PostgreSQL. In transaction pooling, a connection is checked out only during individual query execution rather than held across application-level awaits.
 
 ### 5. Client-Side Retry Jitter & Queue UI (Frontend)
+
 - The web client should implement randomized jitter when receiving 429 or 503 during challenge open:
   $$\text{Wait} = \text{baseDelay} \times 2^{\text{attempt}} + \text{random}(0, 300\text{ ms})$$
 - Provide a smooth "Entering challenge..." countdown spinner rather than repeated manual button spamming.

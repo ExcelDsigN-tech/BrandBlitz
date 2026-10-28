@@ -8,12 +8,7 @@ import {
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import {
-  s3,
-  BUCKETS,
-  getPublicUrl,
-  PRESIGNED_URL_TTL_SECONDS,
-} from "@brandblitz/storage";
+import { s3, BUCKETS, getPublicUrl, PRESIGNED_URL_TTL_SECONDS } from "@brandblitz/storage";
 import { redis } from "../lib/redis";
 import { authenticate } from "../middleware/authenticate";
 import { uploadLimiter } from "../middleware/rate-limit";
@@ -34,18 +29,14 @@ function pendingUploadKey(userId: string, s3Key: string): string {
 const router = Router();
 
 export const ALLOWED_UPLOAD_TYPES = {
-  "brand-logo":    { bucket: BUCKETS.BRAND_ASSETS, prefix: "logos/",    maxMb: 2 },
+  "brand-logo": { bucket: BUCKETS.BRAND_ASSETS, prefix: "logos/", maxMb: 2 },
   "product-image": { bucket: BUCKETS.BRAND_ASSETS, prefix: "products/", maxMb: 5 },
-  "user-avatar":   { bucket: BUCKETS.BRAND_ASSETS, prefix: "avatars/",  maxMb: 1 },
+  "user-avatar": { bucket: BUCKETS.BRAND_ASSETS, prefix: "avatars/", maxMb: 1 },
 } as const;
 
-export const ALLOWED_CONTENT_TYPES = [
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-] as const;
+export const ALLOWED_CONTENT_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;
 
-export type AllowedMime = typeof ALLOWED_CONTENT_TYPES[number];
+export type AllowedMime = (typeof ALLOWED_CONTENT_TYPES)[number];
 
 /**
  * Maximum allowed size (in bytes) for an uploaded object, derived from the key
@@ -100,10 +91,7 @@ router.post("/presign", authenticate, uploadLimiter, async (req, res) => {
 
   const config = ALLOWED_UPLOAD_TYPES[type];
   if (contentLength > config.maxMb * 1024 * 1024) {
-    throw createError(
-      `Content length exceeds maximum of ${config.maxMb}MB for ${type}`,
-      400
-    );
+    throw createError(`Content length exceeds maximum of ${config.maxMb}MB for ${type}`, 400);
   }
 
   const key = `${config.prefix}${randomUUID()}`;
@@ -131,12 +119,7 @@ router.post("/presign", authenticate, uploadLimiter, async (req, res) => {
   }
 
   // Record ownership so /abort can verify the caller created this key
-  await redis.set(
-    pendingUploadKey(req.user!.sub, key),
-    "1",
-    "EX",
-    PENDING_UPLOAD_TTL_SECONDS
-  );
+  await redis.set(pendingUploadKey(req.user!.sub, key), "1", "EX", PENDING_UPLOAD_TTL_SECONDS);
 
   res.json({
     uploadUrl,
@@ -157,9 +140,10 @@ router.post("/presign", authenticate, uploadLimiter, async (req, res) => {
 router.post("/verify", authenticate, async (req, res) => {
   const { key } = z.object({ key: z.string() }).parse(req.body);
 
-  const bucket = key.startsWith("logos/") || key.startsWith("products/") || key.startsWith("avatars/")
-    ? BUCKETS.BRAND_ASSETS
-    : BUCKETS.SHARE_CARDS;
+  const bucket =
+    key.startsWith("logos/") || key.startsWith("products/") || key.startsWith("avatars/")
+      ? BUCKETS.BRAND_ASSETS
+      : BUCKETS.SHARE_CARDS;
 
   // Step 1: confirm object exists and get its declared ContentType + size
   let declaredMime: string;
@@ -196,7 +180,9 @@ router.post("/verify", authenticate, async (req, res) => {
     const obj = await s3.send(
       new GetObjectCommand({ Bucket: bucket, Key: key, Range: "bytes=0-15" })
     );
-    const bytes = await (obj.Body as { transformToByteArray(): Promise<Uint8Array> }).transformToByteArray();
+    const bytes = await (
+      obj.Body as { transformToByteArray(): Promise<Uint8Array> }
+    ).transformToByteArray();
     buf = Buffer.from(bytes);
   } catch (err) {
     // Surface S3 read failures server-side rather than letting them vanish.
@@ -253,9 +239,7 @@ router.delete("/abort", authenticate, async (req, res) => {
   }
 
   const bucket =
-    key.startsWith("logos/") ||
-    key.startsWith("products/") ||
-    key.startsWith("avatars/")
+    key.startsWith("logos/") || key.startsWith("products/") || key.startsWith("avatars/")
       ? BUCKETS.BRAND_ASSETS
       : BUCKETS.SHARE_CARDS;
 
@@ -270,11 +254,13 @@ router.delete("/abort", authenticate, async (req, res) => {
  * and updating the associated DB record (brand logo, challenge asset, etc.).
  */
 router.post("/complete", authenticate, async (req, res) => {
-  const { uploadId, resourceType, resourceId } = z.object({
-    uploadId: z.string().uuid(),
-    resourceType: z.enum(["brand-logo", "challenge-asset", "user-avatar"]),
-    resourceId: z.string().uuid(),
-  }).parse(req.body);
+  const { uploadId, resourceType, resourceId } = z
+    .object({
+      uploadId: z.string().uuid(),
+      resourceType: z.enum(["brand-logo", "challenge-asset", "user-avatar"]),
+      resourceId: z.string().uuid(),
+    })
+    .parse(req.body);
 
   // Verify the upload exists and the user owns it
   const uploadKey = pendingUploadKey(req.user!.sub, uploadId);
@@ -303,22 +289,13 @@ router.post("/complete", authenticate, async (req, res) => {
 
   // Update the associated DB record
   const publicUrl = getPublicUrl(bucket, optimizedKey);
-  
+
   if (resourceType === "brand-logo") {
-    await query(
-      "UPDATE brands SET logo_url = $1 WHERE id = $2",
-      [publicUrl, resourceId]
-    );
+    await query("UPDATE brands SET logo_url = $1 WHERE id = $2", [publicUrl, resourceId]);
   } else if (resourceType === "user-avatar") {
-    await query(
-      "UPDATE users SET avatar_url = $1 WHERE id = $2",
-      [publicUrl, resourceId]
-    );
+    await query("UPDATE users SET avatar_url = $1 WHERE id = $2", [publicUrl, resourceId]);
   } else if (resourceType === "challenge-asset") {
-    await query(
-      "UPDATE challenges SET asset_url = $1 WHERE id = $2",
-      [publicUrl, resourceId]
-    );
+    await query("UPDATE challenges SET asset_url = $1 WHERE id = $2", [publicUrl, resourceId]);
   }
 
   // Clear ownership record

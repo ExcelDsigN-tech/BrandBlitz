@@ -34,10 +34,7 @@ vi.mock("../middleware/authenticate", () => ({
   },
 }));
 
-import configRouter, {
-  PUBLIC_CONFIG_CACHE_KEY,
-  PUBLIC_CONFIG_CACHE_TTL_SECONDS,
-} from "./config";
+import configRouter, { PUBLIC_CONFIG_CACHE_KEY, PUBLIC_CONFIG_CACHE_TTL_SECONDS } from "./config";
 import adminCacheRouter from "./admin/cache";
 
 function createApp() {
@@ -59,9 +56,7 @@ describe("public config cache", () => {
   it("queries Postgres once and serves the following request from Redis", async () => {
     const payload = { game_round_duration_seconds: 30 };
     mocks.getPublicConfig.mockResolvedValue(payload);
-    mocks.redisGet
-      .mockResolvedValueOnce(null)
-      .mockResolvedValueOnce(JSON.stringify(payload));
+    mocks.redisGet.mockResolvedValueOnce(null).mockResolvedValueOnce(JSON.stringify(payload));
 
     const app = createApp();
     const first = await request(app).get("/config").expect(200);
@@ -76,7 +71,7 @@ describe("public config cache", () => {
       PUBLIC_CONFIG_CACHE_KEY,
       JSON.stringify(payload),
       "EX",
-      PUBLIC_CONFIG_CACHE_TTL_SECONDS,
+      PUBLIC_CONFIG_CACHE_TTL_SECONDS
     );
   });
 
@@ -87,9 +82,7 @@ describe("public config cache", () => {
     const app = createApp();
     const res = await request(app).get("/config").expect(200);
 
-    expect(res.headers["cache-control"]).toBe(
-      `public, max-age=${PUBLIC_CONFIG_CACHE_TTL_SECONDS}`,
-    );
+    expect(res.headers["cache-control"]).toBe(`public, max-age=${PUBLIC_CONFIG_CACHE_TTL_SECONDS}`);
   });
 
   it("returns an empty object when no whitelisted keys exist in app_config", async () => {

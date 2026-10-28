@@ -35,6 +35,7 @@ const configUpdateSchema = z.discriminatedUnion("key", [
 ```
 
 **Problems:**
+
 1. **Unvalidated fallbacks** - `league` and `payout` accept any value (`z.record(z.unknown())`)
 2. **Monolithic union** - Adding a new config key requires editing a 100+ line union
 3. **Scattered schemas** - Some schemas are inline, some imported, no organization
@@ -115,6 +116,7 @@ app.post("/admin/config", async (req, res) => {
 ### Keys Using Unvalidated Fallback
 
 1. **`league`** - Should validate:
+
    ```typescript
    {
      entry_fee: string; // "10.00" format
@@ -140,12 +142,14 @@ app.post("/admin/config", async (req, res) => {
 ### Why This Happened
 
 **Historical Context:**
+
 - Initial config system had 3-4 keys (well-defined)
 - `league` and `payout` were added during a sprint with "temp" schemas
 - Tech debt ticket to add real schemas was never prioritized
 - Pattern became normalized: "just use `z.record(z.unknown())`"
 
 **Current Impact:**
+
 - Production incident (2024-01): Invalid `league.entry_fee` accepted ("not-a-number")
 - Support burden: Invalid config causes runtime errors, not validation errors
 - Development friction: Can't trust TypeScript types for these configs
@@ -155,6 +159,7 @@ app.post("/admin/config", async (req, res) => {
 ### Per-Key Schema Module Pattern
 
 **Directory Structure:**
+
 ```
 apps/api/src/config-schemas/
 ├── index.ts                    # Registry and exports
@@ -169,52 +174,54 @@ apps/api/src/config-schemas/
 ```
 
 **Individual Schema Module:**
+
 ```typescript
 // apps/api/src/config-schemas/league.schema.ts
-import { z } from 'zod';
+import { z } from "zod";
 
 /**
  * Configuration for league behavior
  */
-export const leagueConfigSchema = z.object({
-  /**
-   * Entry fee in USD (e.g., "10.00")
-   */
-  entry_fee: z.string().regex(/^\d+\.\d{2}$/, {
-    message: "Entry fee must be in format '0.00'",
-  }),
-  
-  /**
-   * Prize distribution percentages (must sum to 100)
-   */
-  prize_distribution: z
-    .array(z.number().int().min(0).max(100))
-    .min(1)
-    .refine(
-      (arr) => arr.reduce((sum, val) => sum + val, 0) === 100,
-      { message: "Prize distribution must sum to 100" }
-    ),
-  
-  /**
-   * Maximum number of participants
-   */
-  max_participants: z.number().int().positive().max(10000),
-  
-  /**
-   * Minimum number of participants to start
-   */
-  min_participants: z.number().int().positive().max(1000),
-  
-  /**
-   * League duration in hours
-   */
-  duration_hours: z.number().int().positive().max(168), // Max 1 week
-  
-  /**
-   * Optional start time (ISO 8601)
-   */
-  start_time: z.string().datetime().optional(),
-}).strict(); // Reject unknown keys
+export const leagueConfigSchema = z
+  .object({
+    /**
+     * Entry fee in USD (e.g., "10.00")
+     */
+    entry_fee: z.string().regex(/^\d+\.\d{2}$/, {
+      message: "Entry fee must be in format '0.00'",
+    }),
+
+    /**
+     * Prize distribution percentages (must sum to 100)
+     */
+    prize_distribution: z
+      .array(z.number().int().min(0).max(100))
+      .min(1)
+      .refine((arr) => arr.reduce((sum, val) => sum + val, 0) === 100, {
+        message: "Prize distribution must sum to 100",
+      }),
+
+    /**
+     * Maximum number of participants
+     */
+    max_participants: z.number().int().positive().max(10000),
+
+    /**
+     * Minimum number of participants to start
+     */
+    min_participants: z.number().int().positive().max(1000),
+
+    /**
+     * League duration in hours
+     */
+    duration_hours: z.number().int().positive().max(168), // Max 1 week
+
+    /**
+     * Optional start time (ISO 8601)
+     */
+    start_time: z.string().datetime().optional(),
+  })
+  .strict(); // Reject unknown keys
 
 export type LeagueConfig = z.infer<typeof leagueConfigSchema>;
 
@@ -239,17 +246,18 @@ export const LEAGUE_CONFIG_EXAMPLES = {
 ```
 
 **Registry (Index File):**
+
 ```typescript
 // apps/api/src/config-schemas/index.ts
-import { z } from 'zod';
-import { antiCheatConfigSchema } from './anti-cheat.schema';
-import { leagueConfigSchema } from './league.schema';
-import { payoutConfigSchema } from './payout.schema';
-import { depositConfigSchema } from './deposit.schema';
-import { escrowConfigSchema } from './escrow.schema';
-import { kycConfigSchema } from './kyc.schema';
-import { maintenanceConfigSchema } from './maintenance.schema';
-import { withdrawalConfigSchema } from './withdrawal.schema';
+import { z } from "zod";
+import { antiCheatConfigSchema } from "./anti-cheat.schema";
+import { leagueConfigSchema } from "./league.schema";
+import { payoutConfigSchema } from "./payout.schema";
+import { depositConfigSchema } from "./deposit.schema";
+import { escrowConfigSchema } from "./escrow.schema";
+import { kycConfigSchema } from "./kyc.schema";
+import { maintenanceConfigSchema } from "./maintenance.schema";
+import { withdrawalConfigSchema } from "./withdrawal.schema";
 
 /**
  * Registry of all config schemas
@@ -272,18 +280,15 @@ export const CONFIG_SCHEMAS = {
 export type ConfigKey = keyof typeof CONFIG_SCHEMAS;
 
 // Get the schema for a specific key
-export function getConfigSchema<K extends ConfigKey>(key: K): typeof CONFIG_SCHEMAS[K] {
+export function getConfigSchema<K extends ConfigKey>(key: K): (typeof CONFIG_SCHEMAS)[K] {
   return CONFIG_SCHEMAS[key];
 }
 
 // Get the inferred type for a config key
-export type ConfigValue<K extends ConfigKey> = z.infer<typeof CONFIG_SCHEMAS[K]>;
+export type ConfigValue<K extends ConfigKey> = z.infer<(typeof CONFIG_SCHEMAS)[K]>;
 
 // Validate a config value
-export function validateConfig<K extends ConfigKey>(
-  key: K,
-  value: unknown
-): ConfigValue<K> {
+export function validateConfig<K extends ConfigKey>(key: K, value: unknown): ConfigValue<K> {
   const schema = CONFIG_SCHEMAS[key];
   return schema.parse(value);
 }
@@ -297,20 +302,21 @@ export function isValidConfigKey(key: string): key is ConfigKey {
 export const ALL_CONFIG_KEYS = Object.keys(CONFIG_SCHEMAS) as ConfigKey[];
 
 // Export all schemas for direct use
-export * from './anti-cheat.schema';
-export * from './league.schema';
-export * from './payout.schema';
-export * from './deposit.schema';
-export * from './escrow.schema';
-export * from './kyc.schema';
-export * from './maintenance.schema';
-export * from './withdrawal.schema';
+export * from "./anti-cheat.schema";
+export * from "./league.schema";
+export * from "./payout.schema";
+export * from "./deposit.schema";
+export * from "./escrow.schema";
+export * from "./kyc.schema";
+export * from "./maintenance.schema";
+export * from "./withdrawal.schema";
 ```
 
 **Updated Route Handler:**
+
 ```typescript
 // apps/api/src/routes/admin/config.ts
-import { validateConfig, isValidConfigKey, type ConfigKey } from '@/config-schemas';
+import { validateConfig, isValidConfigKey, type ConfigKey } from "@/config-schemas";
 
 // Simple request schema (no discriminated union)
 const configUpdateRequestSchema = z.object({
@@ -320,7 +326,7 @@ const configUpdateRequestSchema = z.object({
 
 app.post("/admin/config", async (req, res) => {
   const { key, value } = configUpdateRequestSchema.parse(req.body);
-  
+
   // Type-safe validation
   if (!isValidConfigKey(key)) {
     return res.status(400).json({
@@ -328,14 +334,14 @@ app.post("/admin/config", async (req, res) => {
       validKeys: ALL_CONFIG_KEYS,
     });
   }
-  
+
   try {
     // Validate with key-specific schema
     const validatedValue = validateConfig(key, value);
-    
+
     // Save to database
     await setConfig(key, validatedValue);
-    
+
     res.json({
       success: true,
       key,
@@ -355,13 +361,13 @@ app.post("/admin/config", async (req, res) => {
 // Type-safe GET endpoint
 app.get<{ key: ConfigKey }>("/admin/config/:key", async (req, res) => {
   const { key } = req.params;
-  
+
   if (!isValidConfigKey(key)) {
     return res.status(404).json({ error: "Config key not found" });
   }
-  
+
   const value = await getConfig(key);
-  
+
   // value has type ConfigValue<typeof key> - fully type-safe!
   res.json({ key, value });
 });
@@ -372,12 +378,14 @@ app.get<{ key: ConfigKey }>("/admin/config/:key", async (req, res) => {
 ### 1. Type Safety
 
 **Before:**
+
 ```typescript
 const config = await getConfig("league");
 // config: any (no type information)
 ```
 
 **After:**
+
 ```typescript
 const config = await getConfig("league");
 // config: LeagueConfig (fully typed)
@@ -387,6 +395,7 @@ const config = await getConfig("league");
 ### 2. Adding New Config Keys
 
 **Before (Discriminated Union):**
+
 ```typescript
 // Must edit 100+ line union in routes/admin/config.ts
 const configUpdateSchema = z.discriminatedUnion("key", [
@@ -399,6 +408,7 @@ const configUpdateSchema = z.discriminatedUnion("key", [
 ```
 
 **After (Registry):**
+
 ```typescript
 // 1. Create new schema file
 // apps/api/src/config-schemas/new-feature.schema.ts
@@ -418,6 +428,7 @@ export const CONFIG_SCHEMAS = {
 ### 3. Validation Errors
 
 **Before:**
+
 ```typescript
 // Invalid value silently accepted
 await setConfig("league", { entry_fee: "not-a-number" }); // ✅ Succeeds
@@ -425,6 +436,7 @@ await setConfig("league", { entry_fee: "not-a-number" }); // ✅ Succeeds
 ```
 
 **After:**
+
 ```typescript
 // Validation error at write time
 await setConfig("league", { entry_fee: "not-a-number" });
@@ -434,15 +446,17 @@ await setConfig("league", { entry_fee: "not-a-number" });
 ### 4. Self-Documenting
 
 **Before:**
+
 ```typescript
 // What fields does league config have? 🤷
 // Need to check database or ask someone
 ```
 
 **After:**
+
 ```typescript
 // JSDoc + TypeScript = self-documenting
-import { type LeagueConfig } from '@/config-schemas';
+import { type LeagueConfig } from "@/config-schemas";
 // Hover over LeagueConfig to see all fields with descriptions
 ```
 
@@ -451,6 +465,7 @@ import { type LeagueConfig } from '@/config-schemas';
 ### Phase 1: Create Schema Infrastructure (Week 1)
 
 **Tasks:**
+
 - [ ] Create `apps/api/src/config-schemas/` directory
 - [ ] Create `index.ts` registry
 - [ ] Write helper functions (`validateConfig`, `isValidConfigKey`)
@@ -461,10 +476,12 @@ import { type LeagueConfig } from '@/config-schemas';
 ### Phase 2: Create Missing Schemas (Week 1-2)
 
 **Priority 1: Close Validation Gaps**
+
 - [ ] `league.schema.ts` - Currently uses `z.record(z.unknown())`
 - [ ] `payout.schema.ts` - Currently uses `z.record(z.unknown())`
 
 **Priority 2: Migrate Inline Schemas**
+
 - [ ] `anti-cheat.schema.ts` - Extract from route file
 - [ ] `kyc.schema.ts` - Extract from route file
 - [ ] `withdrawal.schema.ts` - Extract from route file
@@ -473,6 +490,7 @@ import { type LeagueConfig } from '@/config-schemas';
 - [ ] `maintenance.schema.ts` - Extract from route file
 
 **For Each Schema:**
+
 1. Create schema file with JSDoc
 2. Add example valid values for tests
 3. Write unit tests
@@ -483,6 +501,7 @@ import { type LeagueConfig } from '@/config-schemas';
 ### Phase 3: Update Route Handlers (Week 2)
 
 **Tasks:**
+
 - [ ] Replace discriminated union with registry lookup
 - [ ] Update POST `/admin/config` endpoint
 - [ ] Update GET `/admin/config/:key` endpoint
@@ -494,6 +513,7 @@ import { type LeagueConfig } from '@/config-schemas';
 ### Phase 4: Update Database Queries (Week 2)
 
 **Tasks:**
+
 - [ ] Update `apps/api/src/db/queries/config.ts`
 - [ ] Use `validateConfig()` before writing to DB
 - [ ] Add validation to read path (optional defense)
@@ -504,6 +524,7 @@ import { type LeagueConfig } from '@/config-schemas';
 ### Phase 5: Update Admin UI (Week 3)
 
 **Tasks:**
+
 - [ ] Update web admin panel to show schema-driven forms
 - [ ] Generate form fields from Zod schemas
 - [ ] Show validation errors inline
@@ -514,6 +535,7 @@ import { type LeagueConfig } from '@/config-schemas';
 ### Phase 6: Cleanup (Week 3)
 
 **Tasks:**
+
 - [ ] Remove old discriminated union code
 - [ ] Update documentation
 - [ ] Add linting rule preventing `z.record(z.unknown())`
@@ -527,55 +549,61 @@ import { type LeagueConfig } from '@/config-schemas';
 
 ```typescript
 // apps/api/src/config-schemas/league.schema.ts
-import { z } from 'zod';
+import { z } from "zod";
 
-export const leagueConfigSchema = z.object({
-  entry_fee: z.string().regex(/^\d+\.\d{2}$/, {
-    message: "Entry fee must be in format '0.00'",
-  }),
-  
-  prize_distribution: z
-    .array(z.number().int().min(0).max(100))
-    .min(1)
-    .max(10)
-    .refine(
-      (arr) => arr.reduce((sum, val) => sum + val, 0) === 100,
-      { message: "Prize distribution must sum to 100" }
-    ),
-  
-  max_participants: z.number().int().positive().max(10000),
-  
-  min_participants: z.number().int().positive().max(1000)
-    .refine(
-      function(val) {
-        // Access sibling field via 'this' in refine context
-        return val <= (this as any).parent?.max_participants;
-      },
-      { message: "min_participants must be <= max_participants" }
-    ),
-  
-  duration_hours: z.number().int().positive().max(168),
-  
-  start_time: z.string().datetime().optional(),
-  
-  auto_start: z.boolean().default(true),
-  
-  entry_fee_distribution: z.object({
-    prize_pool_percent: z.number().min(0).max(100),
-    platform_fee_percent: z.number().min(0).max(100),
-    creator_reward_percent: z.number().min(0).max(100),
-  }).refine(
-    (obj) => 
-      obj.prize_pool_percent + 
-      obj.platform_fee_percent + 
-      obj.creator_reward_percent === 100,
-    { message: "Entry fee distribution must sum to 100%" }
-  ).default({
-    prize_pool_percent: 85,
-    platform_fee_percent: 10,
-    creator_reward_percent: 5,
-  }),
-}).strict();
+export const leagueConfigSchema = z
+  .object({
+    entry_fee: z.string().regex(/^\d+\.\d{2}$/, {
+      message: "Entry fee must be in format '0.00'",
+    }),
+
+    prize_distribution: z
+      .array(z.number().int().min(0).max(100))
+      .min(1)
+      .max(10)
+      .refine((arr) => arr.reduce((sum, val) => sum + val, 0) === 100, {
+        message: "Prize distribution must sum to 100",
+      }),
+
+    max_participants: z.number().int().positive().max(10000),
+
+    min_participants: z
+      .number()
+      .int()
+      .positive()
+      .max(1000)
+      .refine(
+        function (val) {
+          // Access sibling field via 'this' in refine context
+          return val <= (this as any).parent?.max_participants;
+        },
+        { message: "min_participants must be <= max_participants" }
+      ),
+
+    duration_hours: z.number().int().positive().max(168),
+
+    start_time: z.string().datetime().optional(),
+
+    auto_start: z.boolean().default(true),
+
+    entry_fee_distribution: z
+      .object({
+        prize_pool_percent: z.number().min(0).max(100),
+        platform_fee_percent: z.number().min(0).max(100),
+        creator_reward_percent: z.number().min(0).max(100),
+      })
+      .refine(
+        (obj) =>
+          obj.prize_pool_percent + obj.platform_fee_percent + obj.creator_reward_percent === 100,
+        { message: "Entry fee distribution must sum to 100%" }
+      )
+      .default({
+        prize_pool_percent: 85,
+        platform_fee_percent: 10,
+        creator_reward_percent: 5,
+      }),
+  })
+  .strict();
 
 export type LeagueConfig = z.infer<typeof leagueConfigSchema>;
 ```
@@ -584,33 +612,37 @@ export type LeagueConfig = z.infer<typeof leagueConfigSchema>;
 
 ```typescript
 // apps/api/src/config-schemas/payout.schema.ts
-import { z } from 'zod';
+import { z } from "zod";
 
-export const payoutConfigSchema = z.object({
-  min_threshold: z.string().regex(/^\d+\.\d{2}$/, {
-    message: "Min threshold must be in format '0.00'",
-  }),
-  
-  processing_fee_percent: z.number().min(0).max(100),
-  
-  batch_size: z.number().int().positive().max(1000),
-  
-  retry_attempts: z.number().int().min(0).max(10),
-  
-  retry_delay_ms: z.number().int().positive().max(3600000), // Max 1 hour
-  
-  daily_limit_usd: z.number().positive().optional(),
-  
-  require_kyc_above_usd: z.number().positive().optional(),
-  
-  auto_process: z.boolean().default(true),
-  
-  processing_window: z.object({
-    start_hour: z.number().int().min(0).max(23),
-    end_hour: z.number().int().min(0).max(23),
-    timezone: z.string().default('UTC'),
-  }).optional(),
-}).strict();
+export const payoutConfigSchema = z
+  .object({
+    min_threshold: z.string().regex(/^\d+\.\d{2}$/, {
+      message: "Min threshold must be in format '0.00'",
+    }),
+
+    processing_fee_percent: z.number().min(0).max(100),
+
+    batch_size: z.number().int().positive().max(1000),
+
+    retry_attempts: z.number().int().min(0).max(10),
+
+    retry_delay_ms: z.number().int().positive().max(3600000), // Max 1 hour
+
+    daily_limit_usd: z.number().positive().optional(),
+
+    require_kyc_above_usd: z.number().positive().optional(),
+
+    auto_process: z.boolean().default(true),
+
+    processing_window: z
+      .object({
+        start_hour: z.number().int().min(0).max(23),
+        end_hour: z.number().int().min(0).max(23),
+        timezone: z.string().default("UTC"),
+      })
+      .optional(),
+  })
+  .strict();
 
 export type PayoutConfig = z.infer<typeof payoutConfigSchema>;
 ```
@@ -621,41 +653,39 @@ export type PayoutConfig = z.infer<typeof payoutConfigSchema>;
 
 ```typescript
 // apps/api/src/config-schemas/__tests__/league.schema.test.ts
-import { leagueConfigSchema, LEAGUE_CONFIG_EXAMPLES } from '../league.schema';
+import { leagueConfigSchema, LEAGUE_CONFIG_EXAMPLES } from "../league.schema";
 
-describe('leagueConfigSchema', () => {
-  it('accepts valid default config', () => {
-    expect(() => 
-      leagueConfigSchema.parse(LEAGUE_CONFIG_EXAMPLES.default)
-    ).not.toThrow();
+describe("leagueConfigSchema", () => {
+  it("accepts valid default config", () => {
+    expect(() => leagueConfigSchema.parse(LEAGUE_CONFIG_EXAMPLES.default)).not.toThrow();
   });
-  
-  it('rejects invalid entry_fee format', () => {
-    expect(() => 
+
+  it("rejects invalid entry_fee format", () => {
+    expect(() =>
       leagueConfigSchema.parse({
         ...LEAGUE_CONFIG_EXAMPLES.default,
         entry_fee: "10", // Missing decimal places
       })
-    ).toThrow('Entry fee must be in format');
+    ).toThrow("Entry fee must be in format");
   });
-  
-  it('rejects prize_distribution not summing to 100', () => {
-    expect(() => 
+
+  it("rejects prize_distribution not summing to 100", () => {
+    expect(() =>
       leagueConfigSchema.parse({
         ...LEAGUE_CONFIG_EXAMPLES.default,
         prize_distribution: [50, 30, 15], // Sums to 95
       })
-    ).toThrow('must sum to 100');
+    ).toThrow("must sum to 100");
   });
-  
-  it('rejects min_participants > max_participants', () => {
-    expect(() => 
+
+  it("rejects min_participants > max_participants", () => {
+    expect(() =>
       leagueConfigSchema.parse({
         ...LEAGUE_CONFIG_EXAMPLES.default,
         min_participants: 200,
         max_participants: 100,
       })
-    ).toThrow('min_participants must be <= max_participants');
+    ).toThrow("min_participants must be <= max_participants");
   });
 });
 ```
@@ -664,21 +694,21 @@ describe('leagueConfigSchema', () => {
 
 ```typescript
 // apps/api/src/config-schemas/__tests__/index.test.ts
-import { validateConfig, isValidConfigKey, ALL_CONFIG_KEYS } from '../index';
+import { validateConfig, isValidConfigKey, ALL_CONFIG_KEYS } from "../index";
 
-describe('Config Schema Registry', () => {
-  it('validates all config keys', () => {
+describe("Config Schema Registry", () => {
+  it("validates all config keys", () => {
     expect(ALL_CONFIG_KEYS.length).toBeGreaterThan(0);
-    ALL_CONFIG_KEYS.forEach(key => {
+    ALL_CONFIG_KEYS.forEach((key) => {
       expect(isValidConfigKey(key)).toBe(true);
     });
   });
-  
-  it('rejects invalid config keys', () => {
-    expect(isValidConfigKey('nonexistent')).toBe(false);
+
+  it("rejects invalid config keys", () => {
+    expect(isValidConfigKey("nonexistent")).toBe(false);
   });
-  
-  it('validates league config', () => {
+
+  it("validates league config", () => {
     const validConfig = {
       entry_fee: "10.00",
       prize_distribution: [50, 30, 20],
@@ -686,18 +716,16 @@ describe('Config Schema Registry', () => {
       min_participants: 10,
       duration_hours: 24,
     };
-    
-    expect(() => 
-      validateConfig('league', validConfig)
-    ).not.toThrow();
+
+    expect(() => validateConfig("league", validConfig)).not.toThrow();
   });
-  
-  it('provides type-safe error messages', () => {
+
+  it("provides type-safe error messages", () => {
     try {
-      validateConfig('league', { entry_fee: "invalid" });
+      validateConfig("league", { entry_fee: "invalid" });
     } catch (error) {
       expect(error).toBeInstanceOf(z.ZodError);
-      expect(error.errors[0].path).toContain('entry_fee');
+      expect(error.errors[0].path).toContain("entry_fee");
     }
   });
 });
@@ -706,18 +734,21 @@ describe('Config Schema Registry', () => {
 ## Success Metrics
 
 **Validation Coverage:**
+
 - ✅ 0 config keys use `z.record(z.unknown())`
 - ✅ 100% of config keys have explicit schemas
 - ✅ All schemas have JSDoc documentation
 - ✅ All schemas have example valid values
 
 **Code Quality:**
+
 - ✅ No monolithic union (removed discriminated union)
 - ✅ Each config key has own module (<200 lines)
 - ✅ Registry provides type-safe access
 - ✅ Adding new key takes <50 lines of code
 
 **Production Safety:**
+
 - ✅ Invalid config rejected at write time, not runtime
 - ✅ Zero production incidents from invalid config (6 months post-migration)
 - ✅ Admin UI shows validation errors before submission

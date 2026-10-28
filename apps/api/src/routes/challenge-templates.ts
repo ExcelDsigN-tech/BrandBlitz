@@ -13,10 +13,7 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
-import {
-  getGalleryTemplates,
-  getGalleryTemplateById,
-} from "../db/queries/challenges";
+import { getGalleryTemplates, getGalleryTemplateById } from "../db/queries/challenges";
 import {
   getChallengeQuestions,
   createChallenge,
@@ -59,10 +56,7 @@ const CloneSchema = z.object({
     .regex(/^\d+(\.\d{1,7})?$/, "Invalid USDC amount")
     .refine((v) => parseFloat(v) >= 1, "Minimum pool amount is 1 USDC"),
   /** Optional end time for the cloned challenge (ISO 8601). */
-  endsAt: z
-    .string()
-    .datetime({ offset: true })
-    .optional(),
+  endsAt: z.string().datetime({ offset: true }).optional(),
   maxPlayers: z.number().int().positive().optional(),
 });
 

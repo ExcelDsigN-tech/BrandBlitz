@@ -96,10 +96,18 @@ describeIntegration("challenge cancellation integration", () => {
       $$ LANGUAGE plpgsql
     `);
 
-    await query(`CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
+    await query(
+      `CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
   });
 
   afterAll(async () => {
@@ -170,10 +178,9 @@ describeIntegration("challenge cancellation integration", () => {
     const sessionId3 = session3Result.rows[0].id;
 
     // Cancel the challenge
-    await query(
-      `UPDATE challenges SET status = 'cancelled', cancelled_at = NOW() WHERE id = $1`,
-      [challengeId]
-    );
+    await query(`UPDATE challenges SET status = 'cancelled', cancelled_at = NOW() WHERE id = $1`, [
+      challengeId,
+    ]);
 
     // Terminate associated sessions
     await query(
@@ -276,10 +283,9 @@ describeIntegration("challenge cancellation integration", () => {
     );
 
     // Verify no round scores were created
-    const roundScores = await query(
-      `SELECT * FROM session_round_scores WHERE session_id = $1`,
-      [sessionId]
-    );
+    const roundScores = await query(`SELECT * FROM session_round_scores WHERE session_id = $1`, [
+      sessionId,
+    ]);
     expect(roundScores.rows).toHaveLength(0);
 
     // Verify session is cancelled

@@ -14,7 +14,7 @@ vi.mock(
     default: {},
     FingerprintJsProvider: () => null,
   }),
-  { virtual: true },
+  { virtual: true }
 );
 
 Object.defineProperty(window, "matchMedia", {

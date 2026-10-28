@@ -133,10 +133,7 @@ describe("POST /me/delete-account", () => {
       execute_at: new Date().toISOString(),
     });
 
-    await request(app)
-      .post("/me/delete-account")
-      .send({ email: "alice@example.com" })
-      .expect(202);
+    await request(app).post("/me/delete-account").send({ email: "alice@example.com" }).expect(202);
   });
 
   it("returns 409 when a deletion request is already pending", async () => {
@@ -158,17 +155,11 @@ describe("POST /me/delete-account", () => {
   it("returns 404 when user is not found", async () => {
     mockFindUserById.mockResolvedValueOnce(null);
 
-    await request(app)
-      .post("/me/delete-account")
-      .send({ email: "alice@example.com" })
-      .expect(404);
+    await request(app).post("/me/delete-account").send({ email: "alice@example.com" }).expect(404);
   });
 
   it("returns 400 for invalid email body", async () => {
-    await request(app)
-      .post("/me/delete-account")
-      .send({ email: "not-an-email" })
-      .expect(400);
+    await request(app).post("/me/delete-account").send({ email: "not-an-email" }).expect(400);
   });
 });
 
@@ -178,9 +169,7 @@ describe("DELETE /me/delete-account", () => {
     mockCancelErasureRequest.mockResolvedValueOnce(undefined);
     mockCancelGdprErasure.mockResolvedValueOnce(undefined);
 
-    const res = await request(app)
-      .delete("/me/delete-account")
-      .expect(200);
+    const res = await request(app).delete("/me/delete-account").expect(200);
 
     expect(res.body.message).toMatch(/cancelled/);
     expect(mockCancelErasureRequest).toHaveBeenCalledWith("user-123");
@@ -190,9 +179,7 @@ describe("DELETE /me/delete-account", () => {
   it("returns 404 when no self-initiated pending request exists", async () => {
     mockFindPendingSelfErasureRequest.mockResolvedValueOnce(null);
 
-    await request(app)
-      .delete("/me/delete-account")
-      .expect(404);
+    await request(app).delete("/me/delete-account").expect(404);
 
     expect(mockCancelErasureRequest).not.toHaveBeenCalled();
   });
@@ -201,9 +188,7 @@ describe("DELETE /me/delete-account", () => {
     // findPendingSelfErasureRequest excludes admin_id IS NOT NULL rows
     mockFindPendingSelfErasureRequest.mockResolvedValueOnce(null);
 
-    await request(app)
-      .delete("/me/delete-account")
-      .expect(404);
+    await request(app).delete("/me/delete-account").expect(404);
 
     expect(mockCancelErasureRequest).not.toHaveBeenCalled();
   });

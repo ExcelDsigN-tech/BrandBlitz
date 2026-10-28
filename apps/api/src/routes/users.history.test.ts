@@ -202,10 +202,7 @@ describe("GET /users/me/history", () => {
   it("passes the authenticated user's id to the query, not a query-string override", async () => {
     await fetch(`${baseUrl}/users/me/history?userId=hacker-id`);
 
-    expect(mocks.getSessionHistory).toHaveBeenCalledWith(
-      "user-abc-123",
-      expect.any(Object),
-    );
+    expect(mocks.getSessionHistory).toHaveBeenCalledWith("user-abc-123", expect.any(Object));
     // Confirm the hacker id was never used
     const callArg = mocks.getSessionHistory.mock.calls[0]?.[0];
     expect(callArg).not.toBe("hacker-id");
@@ -226,7 +223,7 @@ describe("GET /users/me/history", () => {
     await fetch(`${baseUrl}/users/me/history`);
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ status: "completed" }),
+      expect.objectContaining({ status: "completed" })
     );
   });
 
@@ -238,9 +235,9 @@ describe("GET /users/me/history", () => {
       await fetch(`${baseUrl}/users/me/history?status=${status}`);
       expect(mocks.getSessionHistory).toHaveBeenCalledWith(
         "user-abc-123",
-        expect.objectContaining({ status }),
+        expect.objectContaining({ status })
       );
-    },
+    }
   );
 
   it("returns 400 for an unrecognised status value", async () => {
@@ -276,13 +273,16 @@ describe("GET /users/me/history", () => {
   it.each(["won", "lost", "disqualified", "in_progress"] as const)(
     "surfaces outcome=%s from the query layer unchanged",
     async (outcome) => {
-      const item = makeHistoryItem({ outcome, payout_amount_usdc: outcome === "won" ? "5.0" : null });
+      const item = makeHistoryItem({
+        outcome,
+        payout_amount_usdc: outcome === "won" ? "5.0" : null,
+      });
       mocks.getSessionHistory.mockResolvedValue({ items: [item], nextCursor: null });
 
       const res = await fetch(`${baseUrl}/users/me/history?status=all`);
       const body: any = await res.json();
       expect(body.items[0].outcome).toBe(outcome);
-    },
+    }
   );
 
   // ── Round inclusion ───────────────────────────────────────────────────────
@@ -297,7 +297,7 @@ describe("GET /users/me/history", () => {
     expect(body.items[0]).not.toHaveProperty("rounds");
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ includeRounds: false }),
+      expect.objectContaining({ includeRounds: false })
     );
   });
 
@@ -311,7 +311,7 @@ describe("GET /users/me/history", () => {
 
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ includeRounds: true }),
+      expect.objectContaining({ includeRounds: true })
     );
 
     expect(body.items[0].rounds).toHaveLength(3);
@@ -325,7 +325,7 @@ describe("GET /users/me/history", () => {
     await fetch(`${baseUrl}/users/me/history?include_rounds=1`);
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ includeRounds: true }),
+      expect.objectContaining({ includeRounds: true })
     );
   });
 
@@ -333,7 +333,7 @@ describe("GET /users/me/history", () => {
     await fetch(`${baseUrl}/users/me/history?include_rounds=false`);
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ includeRounds: false }),
+      expect.objectContaining({ includeRounds: false })
     );
   });
 
@@ -374,12 +374,14 @@ describe("GET /users/me/history", () => {
   // ── Cursor pagination ─────────────────────────────────────────────────────
 
   it("forwards cursor parameter to the query layer", async () => {
-    const cursor = Buffer.from(JSON.stringify({ completed_at: "2026-01-01", id: "abc" })).toString("base64url");
+    const cursor = Buffer.from(JSON.stringify({ completed_at: "2026-01-01", id: "abc" })).toString(
+      "base64url"
+    );
 
     await fetch(`${baseUrl}/users/me/history?cursor=${cursor}`);
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ cursor }),
+      expect.objectContaining({ cursor })
     );
   });
 
@@ -409,7 +411,7 @@ describe("GET /users/me/history", () => {
     await fetch(`${baseUrl}/users/me/history?limit=50`);
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ limit: 50 }),
+      expect.objectContaining({ limit: 50 })
     );
   });
 
@@ -428,7 +430,7 @@ describe("GET /users/me/history", () => {
     expect(res.status).toBe(200);
     expect(mocks.getSessionHistory).toHaveBeenCalledWith(
       "user-abc-123",
-      expect.objectContaining({ limit: 100 }),
+      expect.objectContaining({ limit: 100 })
     );
   });
 });

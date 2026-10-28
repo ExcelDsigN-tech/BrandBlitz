@@ -163,15 +163,11 @@ export function CohortBuilder({ apiToken }: CohortBuilderProps) {
           total: number;
           nextCursor: string | null;
         }>(`/admin/users/cohort?${buildQueryString(params)}`);
-        setResults((prev) =>
-          cursorOverride ? [...(prev ?? []), ...data.users] : data.users
-        );
+        setResults((prev) => (cursorOverride ? [...(prev ?? []), ...data.users] : data.users));
         setTotal(data.total);
         setNextCursor(data.nextCursor);
       } catch (err: unknown) {
-        setError(
-          err instanceof Error ? err.message : "Failed to run cohort query."
-        );
+        setError(err instanceof Error ? err.message : "Failed to run cohort query.");
       } finally {
         setLoading(false);
       }
@@ -184,10 +180,9 @@ export function CohortBuilder({ apiToken }: CohortBuilderProps) {
     try {
       const api = createApiClient(apiToken);
       const params = filterToParams(filter);
-      const response = await api.get(
-        `/admin/users/cohort/export?${buildQueryString(params)}`,
-        { responseType: "blob" }
-      );
+      const response = await api.get(`/admin/users/cohort/export?${buildQueryString(params)}`, {
+        responseType: "blob",
+      });
       const blob = new Blob([response.data as BlobPart], { type: "text/csv" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -231,7 +226,7 @@ export function CohortBuilder({ apiToken }: CohortBuilderProps) {
                 <button
                   type="button"
                   aria-label={`Delete preset ${preset.name}`}
-                  className="text-[var(--muted-foreground)] hover:text-red-500 text-xs leading-none"
+                  className="text-xs leading-none text-[var(--muted-foreground)] hover:text-red-500"
                   onClick={() => deletePreset(preset.name)}
                 >
                   ×
@@ -355,10 +350,7 @@ export function CohortBuilder({ apiToken }: CohortBuilderProps) {
                 type="date"
                 value={filter.created_after?.slice(0, 10) ?? ""}
                 onChange={(e) =>
-                  updateFilter(
-                    "created_after",
-                    e.target.value ? `${e.target.value}T00:00:00Z` : ""
-                  )
+                  updateFilter("created_after", e.target.value ? `${e.target.value}T00:00:00Z` : "")
                 }
               />
             </div>
@@ -408,11 +400,7 @@ export function CohortBuilder({ apiToken }: CohortBuilderProps) {
               {downloading ? "Exporting…" : `Export CSV (${total.toLocaleString()})`}
             </Button>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSavingPreset((s) => !s)}
-          >
+          <Button variant="ghost" size="sm" onClick={() => setSavingPreset((s) => !s)}>
             Save as preset
           </Button>
         </div>
@@ -484,7 +472,7 @@ export function CohortBuilder({ apiToken }: CohortBuilderProps) {
                   </thead>
                   <tbody>
                     {results.map((u) => (
-                      <tr key={u.id} className="border-b last:border-0 hover:bg-[var(--muted)]/40">
+                      <tr key={u.id} className="hover:bg-[var(--muted)]/40 border-b last:border-0">
                         <td className="px-3 py-2 font-medium">{u.display_name}</td>
                         <td className="px-3 py-2 text-[var(--muted-foreground)]">{u.email}</td>
                         <td className="px-3 py-2 capitalize">{u.league ?? "—"}</td>
@@ -505,17 +493,13 @@ export function CohortBuilder({ apiToken }: CohortBuilderProps) {
                         <td className="px-3 py-2 text-right">{u.challenges_played}</td>
                         <td className="px-3 py-2 text-right">
                           {u.fraud_flag_count > 0 ? (
-                            <span className="font-semibold text-red-600">
-                              {u.fraud_flag_count}
-                            </span>
+                            <span className="font-semibold text-red-600">{u.fraud_flag_count}</span>
                           ) : (
                             0
                           )}
                         </td>
                         <td className="px-3 py-2 text-[var(--muted-foreground)]">
-                          {u.last_active_at
-                            ? new Date(u.last_active_at).toLocaleDateString()
-                            : "—"}
+                          {u.last_active_at ? new Date(u.last_active_at).toLocaleDateString() : "—"}
                         </td>
                       </tr>
                     ))}

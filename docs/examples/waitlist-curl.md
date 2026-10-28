@@ -62,8 +62,11 @@ Content-Type: application/json
 
 ## Look up waitlist position
 
+Use the `id` returned by a new `POST /waitlist` signup. There is no lookup by
+email.
+
 ```bash
-curl -i "$API_URL/waitlist/position/founder@example.com" \
+curl -i "$API_URL/waitlist/6f1c2c1e-2f5b-4d1a-9b7e-0d3c2b1a0f9e/position" \
   -H 'Accept: application/json'
 ```
 
@@ -73,16 +76,16 @@ Success response:
 HTTP/1.1 200 OK
 Content-Type: application/json
 
-{ "position": 42 }
+{ "activated": false, "position": 42, "estimatedWaitSeconds": 1814400, "throughputPerDay": 2 }
 ```
 
-If the email is not on the waitlist:
+If the id is unknown or malformed:
 
 ```http
 HTTP/1.1 404 Not Found
 Content-Type: application/json
 
-{ "error": "Email not found on waitlist" }
+{ "error": "Waitlist entry not found" }
 ```
 
 ## Rate-limited response
@@ -96,7 +99,7 @@ Content-Type: application/json
 { "error": "Too many signup attempts, please try again later" }
 ```
 
-`GET /waitlist/position/:email` uses the general `apiLimiter` bucket.
+`GET /waitlist/:id/position` uses the general `apiLimiter` bucket.
 
 ## Browser origins and CORS
 

@@ -125,10 +125,7 @@ describe("GET /legal/status", () => {
 
 describe("POST /legal/accept", () => {
   it("returns 401 without auth", async () => {
-    await request(app)
-      .post("/legal/accept")
-      .send({ type: "tos", version: "1.0" })
-      .expect(401);
+    await request(app).post("/legal/accept").send({ type: "tos", version: "1.0" }).expect(401);
 
     expect(mockRecordUserLegalAcceptance).not.toHaveBeenCalled();
   });

@@ -43,7 +43,9 @@ async function listMigrations(): Promise<MigrationFile[]> {
       (entry) => entry.isFile() && entry.name.endsWith(".sql") && !entry.name.endsWith(".down.sql")
     )
     .map((entry) => entry.name)
-    .sort();
+    // Historical files mix four- and five-digit prefixes. Numeric ordering
+    // keeps new migrations after their dependencies without renaming history.
+    .sort((a, b) => Number.parseInt(a, 10) - Number.parseInt(b, 10) || a.localeCompare(b));
   const knownNames = new Set(
     dirEntries.filter((entry) => entry.isFile()).map((entry) => entry.name)
   );
@@ -163,7 +165,7 @@ async function runDown(count: number): Promise<void> {
 
   await withLockedTransaction(async (client) => {
     const applied = await client.query<{ version: string }>(
-      "SELECT version FROM schema_migrations ORDER BY applied_at DESC, version DESC"
+      "SELECT version FROM schema_migrations ORDER BY applied_at DESC, substring(version from '^[0-9]+')::integer DESC, version DESC"
     );
     const targets = applied.rows.slice(0, count);
 
@@ -239,11 +241,14 @@ const LEGACY_EXEMPT_FILES = new Set([
   "0026-challenge-templates.sql",
   "0027-challenge-tags.down.sql",
   "0027-challenge-tags.sql",
+  "0027-drop-correct-answer.down.sql",
   "0027-drop-correct-answer.sql",
   "0028-challenge-gallery.down.sql",
   "0028-challenge-gallery.sql",
+  "0028-notification-preferences.sql",
   "0029-scheduled-config-changes.down.sql",
   "0029-scheduled-config-changes.sql",
+  "0030-accessibility-timezone-refund-policy.sql",
   "0030-brand-digest-preferences.down.sql",
   "0030-brand-digest-preferences.sql",
   "0030-challenge-ratings.down.sql",

@@ -1,0 +1,2 @@
+DROP INDEX idx_sessions_retention_challenge;
+DROP INDEX idx_challenges_retention_brand;

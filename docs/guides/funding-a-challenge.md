@@ -21,16 +21,16 @@ GET /challenges/:id/deposit-info
   "depositInfo": {
     "hotWalletAddress": "G...",
     "memo": "abc123def456...",
-    "amount": 10.00
+    "amount": 10.0
   }
 }
 ```
 
-| Field | Description |
-|-------|-------------|
-| `hotWalletAddress` | The Stellar address to send USDC to |
-| `memo` | A unique memo string — **must be included** in the transaction |
-| `amount` | The USDC amount to fund the challenge pool |
+| Field              | Description                                                    |
+| ------------------ | -------------------------------------------------------------- |
+| `hotWalletAddress` | The Stellar address to send USDC to                            |
+| `memo`             | A unique memo string — **must be included** in the transaction |
+| `amount`           | The USDC amount to fund the challenge pool                     |
 
 **Access restrictions:** Only the brand owner can call this endpoint. Returns 403 for non-owners and 400 if the challenge is not in `pending_deposit` status.
 
@@ -60,12 +60,12 @@ The challenge page will update automatically once the deposit is detected.
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---------|----------|
-| "Challenge is not pending deposit" (400) | The challenge is already funded or in a different status |
-| "Forbidden" (403) | You are not the brand owner for this challenge |
-| Deposit not detected | Ensure the memo was included exactly. Check the transaction on a Stellar explorer. |
-| Amount mismatch | Send the exact amount returned by the API |
+| Problem                                  | Solution                                                                           |
+| ---------------------------------------- | ---------------------------------------------------------------------------------- |
+| "Challenge is not pending deposit" (400) | The challenge is already funded or in a different status                           |
+| "Forbidden" (403)                        | You are not the brand owner for this challenge                                     |
+| Deposit not detected                     | Ensure the memo was included exactly. Check the transaction on a Stellar explorer. |
+| Amount mismatch                          | Send the exact amount returned by the API                                          |
 
 ## Related
 

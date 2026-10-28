@@ -2,12 +2,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export default function ChallengeLoading() {
   return (
-    <div
-      className="min-h-screen p-6"
-      role="status"
-      aria-busy="true"
-      aria-label="Loading challenge"
-    >
+    <div className="min-h-screen p-6" role="status" aria-busy="true" aria-label="Loading challenge">
       <div className="mx-auto max-w-lg space-y-6">
         <div className="flex items-center justify-between">
           <Skeleton className="h-5 w-24" />

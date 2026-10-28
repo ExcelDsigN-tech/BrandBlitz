@@ -11,6 +11,7 @@ Phone verification serves several fraud-prevention goals:
 3. **Payment fraud detection**: Phone verification is a fraud signal — verified users are less likely to be compromised accounts requesting unearned payouts.
 
 Phone verification is **optional** for browsing challenges and viewing leaderboards, but **required** before:
+
 - Cashing out or requesting a payout
 - Participating in high-value challenges
 - Receiving notifications
@@ -24,6 +25,7 @@ Phone verification is **optional** for browsing challenges and viewing leaderboa
 Send an SMS verification code to the user's phone number. This endpoint is rate-limited to 3 requests per 15 minutes per phone number.
 
 **Request:**
+
 ```json
 {
   "phone": "+15551234567"
@@ -33,6 +35,7 @@ Send an SMS verification code to the user's phone number. This endpoint is rate-
 The phone number must be in E.164 format (e.g., `+1-555-123-4567` is normalized to `+15551234567`). Non-numeric characters are stripped, and the number must be between 10 and 15 digits.
 
 **Response:**
+
 ```json
 {
   "success": true
@@ -40,6 +43,7 @@ The phone number must be in E.164 format (e.g., `+1-555-123-4567` is normalized 
 ```
 
 **Error responses:**
+
 - **400 Bad Request**: `"phone": "Phone number must be a valid E.164 number"`
 - **429 Too Many Requests**: `"error": "Too many verification attempts, please try again later"` with `Retry-After` header
 
@@ -52,6 +56,7 @@ The phone number is immediately sent to Twilio's Verify service, which dispatche
 Confirm the 6-digit SMS code. This endpoint includes brute-force protection that locks out a phone number after 5 consecutive failed attempts within a rolling 1-hour window.
 
 **Request:**
+
 ```json
 {
   "phone": "+15551234567",
@@ -60,6 +65,7 @@ Confirm the 6-digit SMS code. This endpoint includes brute-force protection that
 ```
 
 **Response (on success):**
+
 ```json
 {
   "success": true
@@ -67,6 +73,7 @@ Confirm the 6-digit SMS code. This endpoint includes brute-force protection that
 ```
 
 **Error responses:**
+
 - **400 Bad Request**: `"error": "Invalid verification code"` — the code is wrong or expired
 - **409 Conflict**: `"error": "Phone number already associated with another account"` — the phone is already verified on a different user's account
 - **429 Too Many Requests**: `"error": "Too many verification attempts, please try again later"` — 5+ failed attempts on this phone within the last 60 minutes
@@ -77,12 +84,13 @@ On a 429 response, the `Retry-After` header tells you how many seconds to wait b
 
 The phone verification endpoints are subject to rate limiting keyed by phone number, not by user or IP address.
 
-| Endpoint | Limit | Window | Keyed By |
-|---|---|---|---|
-| `POST /users/me/phone/send` | 3 requests | 15 minutes | Phone number |
+| Endpoint                     | Limit             | Window               | Keyed By     |
+| ---------------------------- | ----------------- | -------------------- | ------------ |
+| `POST /users/me/phone/send`  | 3 requests        | 15 minutes           | Phone number |
 | OTP submission (brute-force) | 5 failed attempts | 60 minutes (rolling) | Phone number |
 
 This keying strategy prevents:
+
 - Users from bombing themselves with 100 OTP requests
 - VPN rotation from evading brute-force detection
 - Rate-limit evasion by creating many accounts
@@ -92,11 +100,13 @@ This keying strategy prevents:
 Phone numbers are stored securely using one-way hashing, as documented in [docs/adr/001-phone-storage.md](../adr/001-phone-storage.md).
 
 **What is stored:**
+
 - `phone_hash`: HMAC-SHA256 hash of the normalized E.164 number
 - `phone_verified`: Boolean flag (true after successful verification)
 - `phone_verified_at`: Timestamp of when verification succeeded
 
 **What is NOT stored:**
+
 - The user's raw phone number is not stored in the database
 - Only the hash is recorded, so a database leak does not expose phone numbers
 
@@ -119,6 +129,7 @@ Content-Type: application/json
 ```
 
 Recommended retry strategy:
+
 1. Parse the `Retry-After` header
 2. Wait that many seconds (or a random amount up to that value)
 3. Retry the request
@@ -126,6 +137,7 @@ Recommended retry strategy:
 ### Handling 400 (Invalid Code)
 
 An invalid code always returns 400:
+
 ```json
 {
   "error": "Invalid verification code"
@@ -133,6 +145,7 @@ An invalid code always returns 400:
 ```
 
 This could mean:
+
 - The user entered the wrong 6 digits
 - The OTP expired (10-minute window)
 - The phone number doesn't match the one that received the OTP
@@ -142,6 +155,7 @@ Suggest the user request a fresh code via `POST /users/me/phone/send` and try ag
 ### Handling 409 (Number Already Verified)
 
 If a phone number is already associated with another account:
+
 ```json
 {
   "error": "Phone number already associated with another account"

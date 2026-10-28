@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { formatUsdc } from "@/lib/utils";
+import { formatUsdc } from "@/lib/format";
 import { generateColoredBlurPlaceholder } from "@/lib/blur-placeholder";
 import type { Challenge } from "@/lib/api";
 
@@ -61,7 +61,9 @@ export default function ChallengesDiscoveryPage() {
     api
       .get("/challenges/tags")
       .then((res) => setTags((res.data.tags as ChallengeTag[]) ?? []))
-      .catch(() => {/* tags are non-critical */});
+      .catch(() => {
+        /* tags are non-critical */
+      });
   }, []);
 
   const buildParams = useCallback(
@@ -127,7 +129,8 @@ export default function ChallengesDiscoveryPage() {
     setActiveTag(null);
   }
 
-  const hasFilters = statusFilter !== "all" || minPool !== "" || endBefore !== "" || activeTag !== null;
+  const hasFilters =
+    statusFilter !== "all" || minPool !== "" || endBefore !== "" || activeTag !== null;
 
   return (
     <main className="mx-auto max-w-5xl px-6 py-12">
@@ -217,7 +220,7 @@ export default function ChallengesDiscoveryPage() {
           {Array.from({ length: 6 }).map((_, i) => (
             <Card key={i} className="animate-pulse">
               <CardHeader>
-                <div className="h-12 w-32 rounded bg-[var(--muted)] mb-2" />
+                <div className="mb-2 h-12 w-32 rounded bg-[var(--muted)]" />
                 <div className="h-5 w-40 rounded bg-[var(--muted)]" />
               </CardHeader>
               <CardContent>
@@ -227,15 +230,23 @@ export default function ChallengesDiscoveryPage() {
           ))}
         </div>
       ) : failed && challenges.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="mb-4 text-[var(--muted-foreground)]">Couldn&apos;t load challenges. Refresh and try again.</p>
-          <Button variant="outline" onClick={loadInitial}>Retry</Button>
+        <div className="py-16 text-center">
+          <p className="mb-4 text-[var(--muted-foreground)]">
+            Couldn&apos;t load challenges. Refresh and try again.
+          </p>
+          <Button variant="outline" onClick={loadInitial}>
+            Retry
+          </Button>
         </div>
       ) : challenges.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="mb-4 text-[var(--muted-foreground)]">No challenges match the active filters.</p>
+        <div className="py-16 text-center">
+          <p className="mb-4 text-[var(--muted-foreground)]">
+            No challenges match the active filters.
+          </p>
           {hasFilters && (
-            <Button variant="outline" onClick={clearFilters}>Clear filters</Button>
+            <Button variant="outline" onClick={clearFilters}>
+              Clear filters
+            </Button>
           )}
         </div>
       ) : (
@@ -266,16 +277,12 @@ export default function ChallengesDiscoveryPage() {
                           style={{ backgroundColor: c.primary_color ?? "var(--primary)" }}
                         />
                       )}
-                      <Badge variant={statusBadgeVariant(c.status)}>
-                        {statusLabel(c.status)}
-                      </Badge>
+                      <Badge variant={statusBadgeVariant(c.status)}>{statusLabel(c.status)}</Badge>
                     </div>
                     <CardTitle>{c.brand_name ?? "Untitled brand"}</CardTitle>
                     <CardDescription>
                       Prize pool: {formatUsdc(c.pool_amount_usdc)} USDC
-                      {c.participant_count !== undefined && (
-                        <> · {c.participant_count} players</>
-                      )}
+                      {c.participant_count !== undefined && <> · {c.participant_count} players</>}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>

@@ -1,10 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import jwt from "jsonwebtoken";
-import {
-  authenticate,
-  authenticateOptional,
-  tokenRevocationKey,
-} from "./authenticate";
+import { authenticate, authenticateOptional, tokenRevocationKey } from "./authenticate";
 
 const SECRET = "test_secret_test_secret_test_secret_123";
 
@@ -43,11 +39,7 @@ function mockRes() {
 const next = vi.fn();
 
 function signToken(payload: any, options = {}) {
-  return jwt.sign(
-    { iss: "brandblitz-api", aud: "brandblitz-client", ...payload },
-    SECRET,
-    options
-  );
+  return jwt.sign({ iss: "brandblitz-api", aud: "brandblitz-client", ...payload }, SECRET, options);
 }
 
 describe("authenticate middleware", () => {
@@ -129,11 +121,9 @@ describe("authenticate middleware", () => {
   });
 
   it("rejects a token with missing iss and aud claims", async () => {
-    const token = jwt.sign(
-      { sub: "user1", email: "user@example.com" },
-      SECRET,
-      { expiresIn: "1h" }
-    );
+    const token = jwt.sign({ sub: "user1", email: "user@example.com" }, SECRET, {
+      expiresIn: "1h",
+    });
     const req = mockReq(token);
     const res = mockRes();
 
@@ -312,10 +302,7 @@ describe("authenticate middleware - additional edge cases", () => {
   });
 
   it("sets req.user.id from sub claim for valid token", async () => {
-    const token = signToken(
-      { sub: "user-id-123", email: "user@example.com" },
-      { expiresIn: "1h" }
-    );
+    const token = signToken({ sub: "user-id-123", email: "user@example.com" }, { expiresIn: "1h" });
     const req = mockReq(token);
     const res = mockRes();
 

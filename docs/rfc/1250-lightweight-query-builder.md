@@ -17,10 +17,10 @@ clause assembly.
 examples from `brands.ts` alone (5 occurrences in one file):
 
 ```typescript
-"SELECT * FROM brands WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC"
-"SELECT * FROM brands WHERE id = $1 AND deleted_at IS NULL"
-`UPDATE brands SET ${setClause} WHERE id = $1 AND owner_user_id = $2 AND deleted_at IS NULL RETURNING *`
+"SELECT * FROM brands WHERE owner_user_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC";
+"SELECT * FROM brands WHERE id = $1 AND deleted_at IS NULL"`UPDATE brands SET ${setClause} WHERE id = $1 AND owner_user_id = $2 AND deleted_at IS NULL RETURNING *`;
 ```
+
 Each file re-derives `AND deleted_at IS NULL` by hand; nothing enforces it's present on
 every non-admin read, and one query in the same file (line 127) deliberately omits it
 with an inline `/* include_deleted */` comment — a convention that only works if every
@@ -41,12 +41,12 @@ This is proof the team is willing to build shared query infrastructure when the
 duplication is painful enough — soft-delete filtering and dynamic `SET` clauses are the
 same shape of problem, just not yet generalized.
 
-### Prior art: ADR 003 rejected ORM *migrations*, not query building
+### Prior art: ADR 003 rejected ORM _migrations_, not query building
 
 `docs/adr/003-migrations-framework.md` chose a hand-rolled SQL migration runner over
 Drizzle/Kysely/Prisma **auto-migrations** — i.e. generating schema DDL from TypeScript
 models. That's a different concern from this RFC: Kysely-as-query-builder only touches
-how `SELECT`/`INSERT`/`UPDATE` statements against an *already-migrated* schema get
+how `SELECT`/`INSERT`/`UPDATE` statements against an _already-migrated_ schema get
 built and typed; it has no opinion on how the schema itself evolves, and doesn't
 require adopting Kysely's own migration tooling. Kysely can point at the existing
 hand-rolled-migrated schema via its `kysely-codegen` types generator without touching
@@ -145,7 +145,7 @@ await notDeleted(db.selectFrom("brands").selectAll().where("owner_user_id", "=",
 1. Add `kysely` + `kysely-codegen` as dependencies; wire a `db:codegen` script that
    regenerates `kysely-types.ts` from the dev database, run in CI to catch drift.
 2. Add `apps/api/src/db/kysely.ts` and `notDeleted()` alongside the existing `db/
-   index.ts` — no existing call sites change yet.
+index.ts` — no existing call sites change yet.
 3. New queries (new files, or new functions in existing files) use Kysely going
    forward; this is a lint-guideline, not an enforced rule, for the initial rollout.
 4. Opportunistically migrate existing non-financial query files when touched for other

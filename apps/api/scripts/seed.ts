@@ -13,7 +13,8 @@ import path from "path";
 // DB connection
 
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/brandblitz",
+  connectionString:
+    process.env.DATABASE_URL ?? "postgres://postgres:postgres@localhost:5432/brandblitz",
   max: 5,
 });
 
@@ -73,7 +74,14 @@ const BRANDS = [
   },
 ];
 
-const CHALLENGE_STATUSES = ["active", "active", "completed", "completed", "draft", "active"] as const;
+const CHALLENGE_STATUSES = [
+  "active",
+  "active",
+  "completed",
+  "completed",
+  "draft",
+  "active",
+] as const;
 
 const QUESTION_TYPES = ["tagline", "usp", "product"] as const;
 
@@ -115,14 +123,24 @@ function progressEnd(): void {
 async function resetFixtures(): Promise<void> {
   console.log("  Resetting seed fixtures…");
   // Delete in dependency order
-  await sql(`DELETE FROM fraud_flags      WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
+  await sql(
+    `DELETE FROM fraud_flags      WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
   await sql(`DELETE FROM session_round_scores WHERE session_id IN (
                SELECT id FROM game_sessions WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')
              )`);
-  await sql(`DELETE FROM game_sessions    WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
-  await sql(`DELETE FROM payouts          WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
-  await sql(`DELETE FROM challenges       WHERE brand_id IN (SELECT id FROM brands WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%'))`);
-  await sql(`DELETE FROM brands           WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`);
+  await sql(
+    `DELETE FROM game_sessions    WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
+  await sql(
+    `DELETE FROM payouts          WHERE user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
+  await sql(
+    `DELETE FROM challenges       WHERE brand_id IN (SELECT id FROM brands WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%'))`
+  );
+  await sql(
+    `DELETE FROM brands           WHERE owner_user_id IN (SELECT id FROM users WHERE email LIKE 'seed-%')`
+  );
   await sql(`DELETE FROM users            WHERE email LIKE 'seed-%'`);
   console.log("  Reset complete.");
 }
@@ -220,11 +238,12 @@ async function seedChallenges(brandIds: Record<string, string>): Promise<string[
     const poolUsdc = rngChoice([50, 100, 200, 500]);
     const poolStroops = BigInt(poolUsdc) * BigInt(10_000_000);
     const startsAt = i < 4 ? pastDate(rngInt(3, 30)) : futureDate(rngInt(1, 14));
-    const endsAt = i < 2
-      ? futureDate(rngInt(7, 21))    // active: ends in future
-      : i < 4
-      ? pastDate(rngInt(1, 7))       // completed: ended recently
-      : futureDate(rngInt(30, 60));  // draft: far future
+    const endsAt =
+      i < 2
+        ? futureDate(rngInt(7, 21)) // active: ends in future
+        : i < 4
+          ? pastDate(rngInt(1, 7)) // completed: ended recently
+          : futureDate(rngInt(30, 60)); // draft: far future
 
     const [row] = await sql<{ id: string }>(
       `INSERT INTO challenges

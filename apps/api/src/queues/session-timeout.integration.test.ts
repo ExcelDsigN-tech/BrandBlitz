@@ -101,10 +101,18 @@ describeIntegration("session-timeout queue integration", () => {
       $$ LANGUAGE plpgsql
     `);
 
-    await query(`CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
-    await query(`CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`);
+    await query(
+      `CREATE TRIGGER users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER brands_updated_at BEFORE UPDATE ON brands FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER challenges_updated_at BEFORE UPDATE ON challenges FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
+    await query(
+      `CREATE TRIGGER game_sessions_updated_at BEFORE UPDATE ON game_sessions FOR EACH ROW EXECUTE FUNCTION set_updated_at()`
+    );
   });
 
   afterAll(async () => {
@@ -151,10 +159,7 @@ describeIntegration("session-timeout queue integration", () => {
     const sessionId = sessionResult.rows[0].id;
 
     // Verify session is in warmup state
-    const beforeUpdate = await query(
-      `SELECT status FROM game_sessions WHERE id = $1`,
-      [sessionId]
-    );
+    const beforeUpdate = await query(`SELECT status FROM game_sessions WHERE id = $1`, [sessionId]);
     expect(beforeUpdate.rows[0].status).toBe("warmup");
 
     // Simulate session timeout by updating the session
@@ -219,10 +224,7 @@ describeIntegration("session-timeout queue integration", () => {
     );
 
     // Verify session is still in warmup state
-    const result = await query(
-      `SELECT status FROM game_sessions WHERE id = $1`,
-      [sessionId]
-    );
+    const result = await query(`SELECT status FROM game_sessions WHERE id = $1`, [sessionId]);
     expect(result.rows[0].status).toBe("warmup");
   });
 
@@ -269,10 +271,9 @@ describeIntegration("session-timeout queue integration", () => {
     );
 
     // Verify no round scores exist
-    const roundScores = await query(
-      `SELECT * FROM session_round_scores WHERE session_id = $1`,
-      [sessionId]
-    );
+    const roundScores = await query(`SELECT * FROM session_round_scores WHERE session_id = $1`, [
+      sessionId,
+    ]);
     expect(roundScores.rows).toHaveLength(0);
   });
 });

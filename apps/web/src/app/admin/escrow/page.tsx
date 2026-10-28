@@ -55,9 +55,7 @@ type StatusFilter = "all" | "pending" | "submitted" | "failed" | "expired";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function statusVariant(
-  status: string
-): "default" | "secondary" | "destructive" | "outline" {
+function statusVariant(status: string): "default" | "secondary" | "destructive" | "outline" {
   if (status === "pending") return "secondary";
   if (status === "submitted") return "default";
   if (status === "failed") return "destructive";
@@ -122,12 +120,14 @@ export default function AdminEscrowPage() {
 
         const res = await api.get("/admin/escrow/operations", { params });
         setOperations(res.data.operations);
-        setPagination(res.data.pagination || {
-          page,
-          pageSize: 20,
-          total: res.data.operations.length,
-          totalPages: Math.ceil(res.data.operations.length / 20),
-        });
+        setPagination(
+          res.data.pagination || {
+            page,
+            pageSize: 20,
+            total: res.data.operations.length,
+            totalPages: Math.ceil(res.data.operations.length / 20),
+          }
+        );
       } catch {
         setOperations([]);
       } finally {
@@ -190,20 +190,18 @@ export default function AdminEscrowPage() {
         <CardContent className="pt-4">
           <div className="flex flex-wrap items-center gap-3">
             <Label className="text-sm font-medium">Status:</Label>
-            {(["all", "pending", "submitted", "failed", "expired"] as StatusFilter[]).map(
-              (s) => (
-                <Button
-                  key={s}
-                  variant={statusFilter === s ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    setStatusFilter(s);
-                  }}
-                >
-                  {s.charAt(0).toUpperCase() + s.slice(1)}
-                </Button>
-              )
-            )}
+            {(["all", "pending", "submitted", "failed", "expired"] as StatusFilter[]).map((s) => (
+              <Button
+                key={s}
+                variant={statusFilter === s ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  setStatusFilter(s);
+                }}
+              >
+                {s.charAt(0).toUpperCase() + s.slice(1)}
+              </Button>
+            ))}
           </div>
         </CardContent>
       </Card>
@@ -217,9 +215,7 @@ export default function AdminEscrowPage() {
           {loading ? (
             <div className="py-12 text-center text-sm text-gray-500">Loading…</div>
           ) : operations.length === 0 ? (
-            <div className="py-12 text-center text-sm text-gray-500">
-              No operations found.
-            </div>
+            <div className="py-12 text-center text-sm text-gray-500">No operations found.</div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -236,16 +232,9 @@ export default function AdminEscrowPage() {
                 </thead>
                 <tbody>
                   {operations.map((op) => (
-                    <tr
-                      key={op.id}
-                      className="border-b hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-3 font-mono text-xs">
-                        {op.escrowId.slice(0, 8)}…
-                      </td>
-                      <td className="px-4 py-3 font-medium">
-                        {op.operationType}
-                      </td>
+                    <tr key={op.id} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-3 font-mono text-xs">{op.escrowId.slice(0, 8)}…</td>
+                      <td className="px-4 py-3 font-medium">{op.operationType}</td>
                       <td className="px-4 py-3">
                         <Badge
                           variant={statusVariant(op.status)}
@@ -268,7 +257,7 @@ export default function AdminEscrowPage() {
                       <td className="px-4 py-3 text-xs text-gray-500">
                         {formatDate(op.expiresAt)}
                       </td>
-                      <td className="px-4 py-3 space-y-1">
+                      <td className="space-y-1 px-4 py-3">
                         <Button
                           size="sm"
                           variant="outline"
@@ -357,9 +346,7 @@ export default function AdminEscrowPage() {
                 </div>
                 <div>
                   <Label className="text-xs font-medium text-gray-500">XDR Hash</Label>
-                  <p className="font-mono text-xs">
-                    {detailOperation.xdrHash.slice(0, 16)}…
-                  </p>
+                  <p className="font-mono text-xs">{detailOperation.xdrHash.slice(0, 16)}…</p>
                 </div>
               </div>
 
@@ -368,10 +355,7 @@ export default function AdminEscrowPage() {
                   <Label className="text-xs font-medium text-gray-500">Signatures</Label>
                   <div className="mt-2 space-y-2">
                     {detailOperation.signatures.map((sig) => (
-                      <div
-                        key={sig.id}
-                        className="rounded border border-gray-200 bg-gray-50 p-2"
-                      >
+                      <div key={sig.id} className="rounded border border-gray-200 bg-gray-50 p-2">
                         <div className="flex items-center justify-between">
                           <div>
                             <p className="text-xs font-medium">{sig.cosignerName}</p>
@@ -392,19 +376,14 @@ export default function AdminEscrowPage() {
 
               {detailOperation.stellarTxHash && (
                 <div>
-                  <Label className="text-xs font-medium text-gray-500">
-                    Stellar TX Hash
-                  </Label>
+                  <Label className="text-xs font-medium text-gray-500">Stellar TX Hash</Label>
                   <p className="font-mono text-xs">{detailOperation.stellarTxHash}</p>
                 </div>
               )}
             </div>
           )}
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDetailDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setDetailDialogOpen(false)}>
               Close
             </Button>
           </DialogFooter>
@@ -419,23 +398,14 @@ export default function AdminEscrowPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             <p className="text-sm text-gray-600">
-              Export this unsigned transaction for offline co-signing on hardware wallet
-              devices.
+              Export this unsigned transaction for offline co-signing on hardware wallet devices.
             </p>
             <div>
-              <Label className="text-xs font-medium text-gray-500">
-                Operation ID
-              </Label>
-              <Input
-                readOnly
-                value={exportOperationId || ""}
-                className="font-mono text-xs"
-              />
+              <Label className="text-xs font-medium text-gray-500">Operation ID</Label>
+              <Input readOnly value={exportOperationId || ""} className="font-mono text-xs" />
             </div>
             <div>
-              <Label className="text-xs font-medium text-gray-500">
-                Instructions
-              </Label>
+              <Label className="text-xs font-medium text-gray-500">Instructions</Label>
               <ol className="list-inside list-decimal space-y-1 text-sm text-gray-600">
                 <li>Download the XDR file</li>
                 <li>Transfer to hardware wallet for co-signing</li>
@@ -445,10 +415,7 @@ export default function AdminEscrowPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setExportDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setExportDialogOpen(false)}>
               Cancel
             </Button>
             <Button

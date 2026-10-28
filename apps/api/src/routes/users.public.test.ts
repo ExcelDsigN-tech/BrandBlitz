@@ -49,14 +49,62 @@ vi.mock("../services/streaks", () => ({
 vi.mock("../services/badges", () => ({
   getBadgesForUser: vi.fn(),
   BADGE_DEFINITIONS: [
-    { slug: "first_win",     name: "First Win",      description: "First challenge completed.", criteria: "…", iconUrl: "/badges/first-win.svg" },
-    { slug: "perfect_score", name: "Perfect Score",  description: "Score 450.",                 criteria: "…", iconUrl: "/badges/perfect-score.svg" },
-    { slug: "streak_3",      name: "On a Roll",      description: "3-day streak.",              criteria: "…", iconUrl: "/badges/streak-3.svg" },
-    { slug: "streak_7",      name: "Week Warrior",   description: "7-day streak.",              criteria: "…", iconUrl: "/badges/streak-7.svg" },
-    { slug: "wins_10",       name: "Veteran",        description: "10 challenges.",             criteria: "…", iconUrl: "/badges/wins-10.svg" },
-    { slug: "league_silver", name: "Silver Climber", description: "Promoted to Silver.",        criteria: "…", iconUrl: "/badges/league-silver.svg" },
-    { slug: "league_gold",   name: "Gold Contender", description: "Promoted to Gold.",          criteria: "…", iconUrl: "/badges/league-gold.svg" },
-    { slug: "league_diamond",name: "Diamond Elite",  description: "Top 3 Gold.",                criteria: "…", iconUrl: "/badges/league-diamond.svg" },
+    {
+      slug: "first_win",
+      name: "First Win",
+      description: "First challenge completed.",
+      criteria: "…",
+      iconUrl: "/badges/first-win.svg",
+    },
+    {
+      slug: "perfect_score",
+      name: "Perfect Score",
+      description: "Score 450.",
+      criteria: "…",
+      iconUrl: "/badges/perfect-score.svg",
+    },
+    {
+      slug: "streak_3",
+      name: "On a Roll",
+      description: "3-day streak.",
+      criteria: "…",
+      iconUrl: "/badges/streak-3.svg",
+    },
+    {
+      slug: "streak_7",
+      name: "Week Warrior",
+      description: "7-day streak.",
+      criteria: "…",
+      iconUrl: "/badges/streak-7.svg",
+    },
+    {
+      slug: "wins_10",
+      name: "Veteran",
+      description: "10 challenges.",
+      criteria: "…",
+      iconUrl: "/badges/wins-10.svg",
+    },
+    {
+      slug: "league_silver",
+      name: "Silver Climber",
+      description: "Promoted to Silver.",
+      criteria: "…",
+      iconUrl: "/badges/league-silver.svg",
+    },
+    {
+      slug: "league_gold",
+      name: "Gold Contender",
+      description: "Promoted to Gold.",
+      criteria: "…",
+      iconUrl: "/badges/league-gold.svg",
+    },
+    {
+      slug: "league_diamond",
+      name: "Diamond Elite",
+      description: "Top 3 Gold.",
+      criteria: "…",
+      iconUrl: "/badges/league-diamond.svg",
+    },
   ],
 }));
 
@@ -142,8 +190,14 @@ const LEAGUE_ROW = {
 /** Builds n badge rows ordered by most recent first */
 function makeBadgeRows(count: number) {
   const slugs = [
-    "league_diamond", "league_gold", "league_silver",
-    "wins_10", "streak_7", "streak_3", "perfect_score", "first_win",
+    "league_diamond",
+    "league_gold",
+    "league_silver",
+    "wins_10",
+    "streak_7",
+    "streak_3",
+    "perfect_score",
+    "first_win",
   ];
   return slugs.slice(0, count).map((slug, i) => ({
     badge_slug: slug,
@@ -190,9 +244,7 @@ describe("GET /users/:username/public", () => {
   it("returns 200 with the expected public shape for an active user", async () => {
     setupHappyPath(3);
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(200);
+    const res = await request(app).get("/users/player1/public").expect(200);
 
     expect(res.body).toMatchObject({
       username: "player1",
@@ -217,14 +269,14 @@ describe("GET /users/:username/public", () => {
     mocks.dbQuery
       .mockResolvedValueOnce({ rows: [ACTIVE_USER_ROW] })
       .mockResolvedValueOnce({
-        rows: [{ win_count: "0", total_sessions_played: "0", correct_rounds: "0", total_rounds: "0" }],
+        rows: [
+          { win_count: "0", total_sessions_played: "0", correct_rounds: "0", total_rounds: "0" },
+        ],
       })
-      .mockResolvedValueOnce({ rows: [] })  // no league assignment
+      .mockResolvedValueOnce({ rows: [] }) // no league assignment
       .mockResolvedValueOnce({ rows: [] }); // no badges
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(200);
+    const res = await request(app).get("/users/player1/public").expect(200);
 
     expect(res.body.accuracyPct).toBe(0);
     expect(res.body.league).toBeNull();
@@ -236,9 +288,7 @@ describe("GET /users/:username/public", () => {
   it("does NOT include email, phone_hash, stellar_address, or kyc_status", async () => {
     setupHappyPath();
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(200);
+    const res = await request(app).get("/users/player1/public").expect(200);
 
     // All private fields must be absent
     expect(res.body.email).toBeUndefined();
@@ -257,9 +307,7 @@ describe("GET /users/:username/public", () => {
   it("does NOT expose the user's internal database id", async () => {
     setupHappyPath();
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(200);
+    const res = await request(app).get("/users/player1/public").expect(200);
 
     expect(res.body.id).toBeUndefined();
     expect(res.body.userId).toBeUndefined();
@@ -272,9 +320,7 @@ describe("GET /users/:username/public", () => {
       rows: [{ ...ACTIVE_USER_ROW, deleted_at: "2026-05-01T00:00:00.000Z" }],
     });
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(404);
+    const res = await request(app).get("/users/player1/public").expect(404);
 
     // Must be 404, never 403, to avoid user enumeration
     expect(res.status).toBe(404);
@@ -286,9 +332,7 @@ describe("GET /users/:username/public", () => {
       rows: [{ ...ACTIVE_USER_ROW, status: "suspended" }],
     });
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(404);
+    const res = await request(app).get("/users/player1/public").expect(404);
 
     expect(res.status).toBe(404);
   });
@@ -296,9 +340,7 @@ describe("GET /users/:username/public", () => {
   it("returns 404 for an unknown username", async () => {
     mocks.dbQuery.mockResolvedValueOnce({ rows: [] });
 
-    const res = await request(app)
-      .get("/users/nonexistent/public")
-      .expect(404);
+    const res = await request(app).get("/users/nonexistent/public").expect(404);
 
     expect(res.status).toBe(404);
   });
@@ -313,9 +355,7 @@ describe("GET /users/:username/public", () => {
       // DB query has LIMIT 6; return the max of 6
       .mockResolvedValueOnce({ rows: makeBadgeRows(6) });
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(200);
+    const res = await request(app).get("/users/player1/public").expect(200);
 
     expect(res.body.badges.length).toBeLessThanOrEqual(6);
     expect(res.body.badges.length).toBe(6);
@@ -324,9 +364,7 @@ describe("GET /users/:username/public", () => {
   it("badges include all required fields: slug, name, description, iconUrl, awardedAt", async () => {
     setupHappyPath(2);
 
-    const res = await request(app)
-      .get("/users/player1/public")
-      .expect(200);
+    const res = await request(app).get("/users/player1/public").expect(200);
 
     expect(res.body.badges.length).toBe(2);
     for (const badge of res.body.badges) {
@@ -344,8 +382,7 @@ describe("GET /users/:username/public", () => {
     setupHappyPath();
 
     // Deliberately omit Authorization header
-    const res = await request(app)
-      .get("/users/player1/public");
+    const res = await request(app).get("/users/player1/public");
 
     expect(res.status).toBe(200);
   });

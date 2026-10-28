@@ -40,10 +40,8 @@ export function DigestSettings({ brandId }: { brandId: string }) {
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">
-        Email Performance Digest
-      </h3>
-      <p className="text-sm text-gray-600 mb-6">
+      <h3 className="mb-4 text-lg font-semibold text-gray-900">Email Performance Digest</h3>
+      <p className="mb-6 text-sm text-gray-600">
         Receive a periodic summary of your challenge performance, completion rates, and spend.
       </p>
 
@@ -53,15 +51,10 @@ export function DigestSettings({ brandId }: { brandId: string }) {
             type="checkbox"
             id="digest-enabled"
             checked={preferences.enabled}
-            onChange={(e) =>
-              setPreferences({ ...preferences, enabled: e.target.checked })
-            }
+            onChange={(e) => setPreferences({ ...preferences, enabled: e.target.checked })}
             className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <label
-            htmlFor="digest-enabled"
-            className="ml-2 text-sm font-medium text-gray-700"
-          >
+          <label htmlFor="digest-enabled" className="ml-2 text-sm font-medium text-gray-700">
             Enable email digest
           </label>
         </div>
@@ -70,7 +63,7 @@ export function DigestSettings({ brandId }: { brandId: string }) {
           <div>
             <label
               htmlFor="digest-frequency"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="mb-2 block text-sm font-medium text-gray-700"
             >
               Frequency
             </label>
@@ -95,15 +88,13 @@ export function DigestSettings({ brandId }: { brandId: string }) {
         <button
           onClick={handleSave}
           disabled={loading}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center rounded-md border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? "Saving..." : "Save Preferences"}
         </button>
 
         {saved && (
-          <p className="text-sm text-green-600 font-medium">
-            ✓ Preferences saved successfully
-          </p>
+          <p className="text-sm font-medium text-green-600">✓ Preferences saved successfully</p>
         )}
       </div>
     </div>

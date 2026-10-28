@@ -4,7 +4,10 @@ import pg from "pg";
 
 const API_BASE_URL = process.env.E2E_API_BASE_URL ?? "http://localhost/api";
 
-test("completed game session triggers payout creation after settlement", async ({ page, request }) => {
+test("completed game session triggers payout creation after settlement", async ({
+  page,
+  request,
+}) => {
   // ── 1. Seed a challenge and log in as a player ─────────────────────────────
   const seeded = await seedActiveChallenge(request, {
     email: "payout-brand@example.com",
@@ -26,7 +29,9 @@ test("completed game session triggers payout creation after settlement", async (
     await page.waitForTimeout(250);
     await page.getByRole("button", { name: /^A/ }).click();
   }
-  await expect(page.getByRole("heading", { name: "Challenge Complete!" })).toBeVisible({ timeout: 10_000 });
+  await expect(page.getByRole("heading", { name: "Challenge Complete!" })).toBeVisible({
+    timeout: 10_000,
+  });
 
   // ── 4. Get the player's session ID and user ID via API ────────────────────
   const sessionResponse = await page.request.get(`/api/sessions/${seeded.challengeId}`);
@@ -39,7 +44,8 @@ test("completed game session triggers payout creation after settlement", async (
 
   // ── 5. Promote the player to admin so we can call the test endpoint ───────
   //     (In e2e the settlement endpoint requires admin auth.)
-  const dbUrl = process.env.DATABASE_URL ?? "postgresql://brandblitz:brandblitz_dev@localhost:5432/brandblitz";
+  const dbUrl =
+    process.env.DATABASE_URL ?? "postgresql://brandblitz:brandblitz_dev@localhost:5432/brandblitz";
   const pool = new pg.Pool({ connectionString: dbUrl });
 
   await pool.query("UPDATE users SET role = 'admin' WHERE id = $1", [userId]);

@@ -4,44 +4,46 @@
 
 `apps/api/src/lib/config.ts` (backed by `config-schema.ts`) and `apps/deposit-monitor/
 src/config.ts` each parse environment variables with independent Zod schemas. Both
-implement the same *pattern* — parse `process.env`, redact secrets before logging,
+implement the same _pattern_ — parse `process.env`, redact secrets before logging,
 `process.exit(1)` with a formatted error list on validation failure — but as two
-separate hand-written copies of that pattern, and their *variable sets* genuinely
+separate hand-written copies of that pattern, and their _variable sets_ genuinely
 overlap in places.
 
 ## Current State
 
 ### Actual overlap (verified against both schemas, not assumed)
 
-| Env var | `apps/api` (`config-schema.ts`) | `apps/deposit-monitor` (`config.ts`) |
-| --- | --- | --- |
-| `REDIS_URL` | ✅ required | ✅ required |
-| `STELLAR_NETWORK` | ✅ `testnet\|public`, default `testnet` | ✅ same enum + default |
-| `HOT_WALLET_PUBLIC_KEY` | ✅ required | ✅ required |
-| `WEBHOOK_SECRET` | ✅ required | ✅ required |
-| `DATABASE_URL` | ✅ required | ❌ **not present** |
-| `HOT_WALLET_SECRET` | ✅ required (api signs) | ❌ **not present** (monitor only reads chain state + signs webhooks, never a Stellar tx) |
-| `STELLAR_RPC_URL` | not found in api's schema | optional, in monitor's |
+| Env var                 | `apps/api` (`config-schema.ts`)         | `apps/deposit-monitor` (`config.ts`)                                                     |
+| ----------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `REDIS_URL`             | ✅ required                             | ✅ required                                                                              |
+| `STELLAR_NETWORK`       | ✅ `testnet\|public`, default `testnet` | ✅ same enum + default                                                                   |
+| `HOT_WALLET_PUBLIC_KEY` | ✅ required                             | ✅ required                                                                              |
+| `WEBHOOK_SECRET`        | ✅ required                             | ✅ required                                                                              |
+| `DATABASE_URL`          | ✅ required                             | ❌ **not present**                                                                       |
+| `HOT_WALLET_SECRET`     | ✅ required (api signs)                 | ❌ **not present** (monitor only reads chain state + signs webhooks, never a Stellar tx) |
+| `STELLAR_RPC_URL`       | not found in api's schema               | optional, in monitor's                                                                   |
 
-**Correcting the issue's premise**: `DATABASE_URL` and `HOT_WALLET_SECRET` are *not*
+**Correcting the issue's premise**: `DATABASE_URL` and `HOT_WALLET_SECRET` are _not_
 actually shared today — `deposit-monitor`'s `index.ts` never touches Postgres directly
 and never signs a Stellar transaction; it only polls Horizon for deposits and forwards
 a signed HMAC webhook to the API (`apps/deposit-monitor/src/index.ts`'s
 `signWebhookPayload`, using `WEBHOOK_SECRET` — a different secret from the wallet key).
 The real shared subset is narrower and lower-risk than the issue describes: `REDIS_URL`,
-`STELLAR_NETWORK`, `HOT_WALLET_PUBLIC_KEY` (the *public* key only — reading it doesn't
+`STELLAR_NETWORK`, `HOT_WALLET_PUBLIC_KEY` (the _public_ key only — reading it doesn't
 require the ability to sign), and `WEBHOOK_SECRET`.
 
 ### The aliasing already drifting inside `apps/api` alone
 
 `apps/api/src/lib/config.ts`'s `loadConfig()` already juggles legacy env-var aliases
 before validation:
+
 ```typescript
 HOT_WALLET_SECRET: process.env.HOT_WALLET_SECRET ?? process.env.STELLAR_HOT_WALLET_SECRET,
 S3_ACCESS_KEY_ID: process.env.S3_ACCESS_KEY_ID ?? process.env.S3_ACCESS_KEY,
 S3_SECRET_ACCESS_KEY: process.env.S3_SECRET_ACCESS_KEY ?? process.env.S3_SECRET_KEY,
 TWILIO_SERVICE_SID: process.env.TWILIO_SERVICE_SID ?? process.env.TWILIO_VERIFY_SERVICE_SID,
 ```
+
 This is exactly the kind of drift a second, independently-written schema
 (`deposit-monitor`'s) is at risk of reproducing for the variables the two apps share —
 today `deposit-monitor` names its Redis/webhook/network vars identically to `api`'s,
@@ -61,7 +63,7 @@ schemas.
 
 Rather than one shared `Config` type both apps import wholesale (which would force
 `deposit-monitor` to either provide dummy values for api-only vars like `DATABASE_URL`
-or vice versa), export a composable Zod schema *fragment* covering only the verified
+or vice versa), export a composable Zod schema _fragment_ covering only the verified
 overlap:
 
 ```typescript
@@ -80,7 +82,7 @@ export type SharedEnv = z.infer<typeof sharedEnvSchema>;
 // Shared secret-redaction helper, currently reimplemented in both apps' config.ts.
 export function redactSecrets<T extends Record<string, unknown>>(
   parsed: T,
-  secretKeys: ReadonlySet<keyof T>,
+  secretKeys: ReadonlySet<keyof T>
 ): Record<string, unknown> {
   const redacted: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(parsed)) {
@@ -97,24 +99,30 @@ Zod's `.merge()`:
 // apps/deposit-monitor/src/config.ts
 import { sharedEnvSchema, redactSecrets } from "@brandblitz/config";
 
-const configSchema = sharedEnvSchema.merge(z.object({
-  NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
-  STELLAR_RPC_URL: z.string().url().optional(),
-  API_URL: z.string().url(),
-  DEPOSIT_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
-  LOG_LEVEL: z.enum(["error", "warn", "info", "http", "verbose", "debug", "silly"]).default("info"),
-}));
+const configSchema = sharedEnvSchema.merge(
+  z.object({
+    NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
+    STELLAR_RPC_URL: z.string().url().optional(),
+    API_URL: z.string().url(),
+    DEPOSIT_POLL_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
+    LOG_LEVEL: z
+      .enum(["error", "warn", "info", "http", "verbose", "debug", "silly"])
+      .default("info"),
+  })
+);
 ```
 
 ```typescript
 // apps/api/src/lib/config-schema.ts
 import { sharedEnvSchema } from "@brandblitz/config";
 
-export const configSchema = sharedEnvSchema.merge(z.object({
-  DATABASE_URL: z.string().url(),
-  HOT_WALLET_SECRET: z.string().min(1),
-  // ...every other api-only var, unchanged
-}));
+export const configSchema = sharedEnvSchema.merge(
+  z.object({
+    DATABASE_URL: z.string().url(),
+    HOT_WALLET_SECRET: z.string().min(1),
+    // ...every other api-only var, unchanged
+  })
+);
 ```
 
 Both apps validate `REDIS_URL`/`STELLAR_NETWORK`/`HOT_WALLET_PUBLIC_KEY`/
@@ -153,7 +161,7 @@ the same variable names both apps already read.
 
 ## Open Questions
 
-1. Should `HOT_WALLET_SECRET` (the *private* signing key, api-only today) join the
+1. Should `HOT_WALLET_SECRET` (the _private_ signing key, api-only today) join the
    shared fragment pre-emptively for #1249's proposed payout-worker, or wait until
    that RFC is actually adopted and a second consumer of the private key exists? This
    RFC defaults to waiting — adding it speculatively risks the shared fragment

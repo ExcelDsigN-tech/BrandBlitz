@@ -9,11 +9,9 @@ const TEST_USER_ID = "00000000-0000-0000-0000-000000000002";
 const TEST_EMAIL = "tos-test@example.com";
 
 function token(): string {
-  return jwt.sign(
-    { sub: TEST_USER_ID, email: TEST_EMAIL, role: "player" },
-    JWT_SECRET,
-    { expiresIn: "15m" }
-  );
+  return jwt.sign({ sub: TEST_USER_ID, email: TEST_EMAIL, role: "player" }, JWT_SECRET, {
+    expiresIn: "15m",
+  });
 }
 
 describe("requireCurrentTosAccepted", () => {

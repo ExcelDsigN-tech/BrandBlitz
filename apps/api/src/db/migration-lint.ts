@@ -48,49 +48,25 @@ export const GRANDFATHERED_API_DUPLICATES: ReadonlyMap<number, readonly string[]
       "0027-drop-correct-answer.sql",
     ],
   ],
+  [28, ["0028-challenge-gallery.sql", "0028-notification-preferences.sql"]],
   [
     30,
     [
       "00030-fraud-score-override.sql",
+      "0030-accessibility-timezone-refund-policy.sql",
       "0030-brand-digest-preferences.sql",
       "0030-challenge-ratings.sql",
     ],
   ],
+  [31, ["00031-brand-members.sql", "00031-web-push-subscriptions.sql"]],
 ]);
 
 /**
- * Duplicate prefixes in the frozen root `migrations/` directory. See
- * migrations/README.md: that directory takes no new files, and this list
- * stops anyone widening an existing collision.
+ * Duplicate prefixes in the frozen root `migrations/` directory. #918 gave
+ * every root file its own prefix, so none are allowed; the check stays so a
+ * collision can't come back.
  */
-export const GRANDFATHERED_ROOT_DUPLICATES: ReadonlyMap<number, readonly string[]> = new Map([
-  [7, ["007_audit_log.sql", "007_fraud_flags_unique_constraint.sql"]],
-  [
-    11,
-    [
-      "011_game_sessions_user_completed_at_index.sql",
-      "011_payouts_error_message_not_null.sql",
-      "011_pool_amount_stroops.sql",
-      "011_product_image_keys.sql",
-      "011_question_types.sql",
-      "011_round_scores_normalize.sql",
-      "011_username_unique_partial.sql",
-      "011_users_muxed_id_partial_unique.sql",
-    ],
-  ],
-  [12, ["012_drop_correct_answer.sql", "012_fk_on_delete.sql"]],
-  [14, ["014_gdpr_erasure.sql", "014_users_username_and_session_abandoned.sql"]],
-  [15, ["015_fraud_flags_review_fields.sql", "015_referral_codes_and_payouts.sql"]],
-  [
-    18,
-    [
-      "018_challenge_pool_minimum.sql",
-      "018_league_recalculation_procedure.sql",
-      "018_payout_fraud_block_trigger.sql",
-    ],
-  ],
-  [19, ["019_brand_challenge_stats_view.sql", "019_users_last_login.sql"]],
-]);
+export const GRANDFATHERED_ROOT_DUPLICATES: ReadonlyMap<number, readonly string[]> = new Map();
 
 /**
  * Returns one human-readable error per duplicate prefix that isn't an exact

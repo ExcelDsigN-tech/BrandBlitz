@@ -9,10 +9,7 @@ import {
   findPendingSelfErasureRequest,
   cancelErasureRequest,
 } from "../../db/queries/gdpr";
-import {
-  enqueueGdprErasure,
-  cancelGdprErasure,
-} from "../../queues/gdpr-erasure.queue";
+import { enqueueGdprErasure, cancelGdprErasure } from "../../queues/gdpr-erasure.queue";
 
 const router = Router();
 
@@ -39,7 +36,8 @@ router.post("/", authenticate, async (req, res) => {
   await enqueueGdprErasure({ userId: user.id, requestId: erasureRequest.id });
 
   res.status(202).json({
-    message: "Your account deletion request has been received. Your data will be anonymised after a 30-day grace period.",
+    message:
+      "Your account deletion request has been received. Your data will be anonymised after a 30-day grace period.",
     executeAt: erasureRequest.execute_at,
   });
 });

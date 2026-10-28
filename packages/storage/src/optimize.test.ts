@@ -81,14 +81,13 @@ describe("optimizeImage", () => {
       .mockResolvedValueOnce({
         Body: { transformToByteArray: async () => buffer2 },
       });
-    vi.mocked(sharp)
-      .mockReturnValueOnce({
-        metadata: vi.fn().mockResolvedValue({ format: "png" }),
-        resize: vi.fn().mockReturnThis(),
-        webp: vi.fn().mockReturnThis(),
-        avif: vi.fn().mockReturnThis(),
-        toBuffer: vi.fn().mockResolvedValue(Buffer.from("optimized")),
-      } as any);
+    vi.mocked(sharp).mockReturnValueOnce({
+      metadata: vi.fn().mockResolvedValue({ format: "png" }),
+      resize: vi.fn().mockReturnThis(),
+      webp: vi.fn().mockReturnThis(),
+      avif: vi.fn().mockReturnThis(),
+      toBuffer: vi.fn().mockResolvedValue(Buffer.from("optimized")),
+    } as any);
 
     const first = await optimizeImage("logos/logo.png", "brand-logo");
     const second = await optimizeImage("logos/logo.png", "brand-logo");
@@ -103,8 +102,7 @@ describe("optimizeImage", () => {
       Body: undefined,
     });
 
-    await expect(optimizeImage("missing-image.png", "brand-logo"))
-      .rejects.toThrow(StorageError);
+    await expect(optimizeImage("missing-image.png", "brand-logo")).rejects.toThrow(StorageError);
   });
 
   it("should skip optimization and return original key for unsupported formats", async () => {
@@ -126,7 +124,7 @@ describe("optimizeImage", () => {
     expect(resultKey).toBe("test-image.gif");
     expect(s3.send).toHaveBeenCalledTimes(1); // Only GetObjectCommand
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Unsupported image format: gif"));
-    
+
     warnSpy.mockRestore();
   });
 
@@ -148,7 +146,9 @@ describe("optimizeImage", () => {
 
     expect(resultKey).toBe("corrupt.png");
     expect(s3.send).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Failed to process image metadata"));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Failed to process image metadata")
+    );
 
     warnSpy.mockRestore();
   });
@@ -169,7 +169,9 @@ describe("optimizeImage", () => {
     const resultKey = await optimizeImage("no-format.png", "brand-logo");
 
     expect(resultKey).toBe("no-format.png");
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("Unsupported image format: undefined"));
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining("Unsupported image format: undefined")
+    );
 
     warnSpy.mockRestore();
   });
@@ -217,6 +219,8 @@ describe("assertImageMatchesDeclaredType (issue #505)", () => {
   });
 
   it("throws for an unsupported declared MIME type", async () => {
-    await expect(assertImageMatchesDeclaredType(buf, "application/pdf")).rejects.toThrow(StorageError);
+    await expect(assertImageMatchesDeclaredType(buf, "application/pdf")).rejects.toThrow(
+      StorageError
+    );
   });
 });

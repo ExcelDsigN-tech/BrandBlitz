@@ -82,7 +82,7 @@ export function BrandKitPreview({
       role="region"
       aria-label="Brand introduction"
     >
-      <div className="flex flex-col items-center gap-6 px-6 max-w-md w-full">
+      <div className="flex w-full max-w-md flex-col items-center gap-6 px-6">
         {/* Logo */}
         <div
           className="flex items-center justify-center rounded-2xl"
@@ -98,12 +98,12 @@ export function BrandKitPreview({
               alt={`${brandName} logo`}
               width={120}
               height={120}
-              className="object-contain rounded-2xl"
+              className="rounded-2xl object-contain"
               onError={() => setLogoError(true)}
             />
           ) : (
             <span
-              className="text-5xl font-bold select-none"
+              className="select-none text-5xl font-bold"
               style={{ color: textColor }}
               aria-hidden="true"
             >
@@ -113,25 +113,22 @@ export function BrandKitPreview({
         </div>
 
         {/* Brand name */}
-        <h1
-          className="text-3xl font-bold text-center"
-          style={{ color: textColor }}
-        >
+        <h1 className="text-center text-3xl font-bold" style={{ color: textColor }}>
           {brandName}
         </h1>
 
         {/* Tagline */}
         {tagline && (
-          <p
-            className="text-lg text-center opacity-90"
-            style={{ color: textColor }}
-          >
+          <p className="text-center text-lg opacity-90" style={{ color: textColor }}>
             {tagline}
           </p>
         )}
 
         {/* Progress bar */}
-        <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: `${textColor}33` }}>
+        <div
+          className="h-2 w-full overflow-hidden rounded-full"
+          style={{ backgroundColor: `${textColor}33` }}
+        >
           <div
             className="h-full rounded-full transition-all duration-1000 ease-linear"
             style={{
@@ -142,10 +139,10 @@ export function BrandKitPreview({
         </div>
 
         {/* Start / Skip buttons */}
-        <div className="flex gap-4 mt-4">
+        <div className="mt-4 flex gap-4">
           <button
             onClick={handleSkip}
-            className="px-8 py-3 rounded-xl text-base font-semibold transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            className="rounded-xl px-8 py-3 text-base font-semibold transition-all hover:scale-105 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
             style={{
               backgroundColor: textColor,
               color: bgColor,
@@ -157,10 +154,7 @@ export function BrandKitPreview({
           </button>
         </div>
 
-        <p
-          className="text-sm opacity-70"
-          style={{ color: textColor }}
-        >
+        <p className="text-sm opacity-70" style={{ color: textColor }}>
           or press Space to skip
         </p>
       </div>

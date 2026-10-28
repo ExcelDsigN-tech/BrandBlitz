@@ -157,7 +157,13 @@ describe("config schema validation (Issue #410)", () => {
     });
 
     it("does not throw when optional Twilio vars are absent", () => {
-      const { TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_SERVICE_SID, TWILIO_VERIFY_SERVICE_SID, ...envWithoutTwilio } = VALID_ENV;
+      const {
+        TWILIO_ACCOUNT_SID,
+        TWILIO_AUTH_TOKEN,
+        TWILIO_SERVICE_SID,
+        TWILIO_VERIFY_SERVICE_SID,
+        ...envWithoutTwilio
+      } = VALID_ENV;
       const result = configSchema.safeParse(envWithoutTwilio);
       expect(result.success).toBe(true);
     });

@@ -84,7 +84,7 @@ export default function NewBrandPage() {
               ✏️
             </span>
             <span>
-              <span className="block font-semibold text-lg">Start from scratch</span>
+              <span className="block text-lg font-semibold">Start from scratch</span>
               <span className="mt-1 block text-sm text-[var(--muted-foreground)]">
                 Upload your brand assets and configure a new challenge.
               </span>
@@ -104,7 +104,7 @@ export default function NewBrandPage() {
               🏆
             </span>
             <span>
-              <span className="block font-semibold text-lg">Start from gallery template</span>
+              <span className="block text-lg font-semibold">Start from gallery template</span>
               <span className="mt-1 block text-sm text-[var(--muted-foreground)]">
                 Clone a top-performing challenge format proven to drive high completion rates.
               </span>
@@ -122,7 +122,7 @@ export default function NewBrandPage() {
     // string OR fall back to a "create brand first" message.
     const brandId =
       typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("brandId") ?? ""
+        ? (new URLSearchParams(window.location.search).get("brandId") ?? "")
         : "";
 
     return (
@@ -146,7 +146,11 @@ export default function NewBrandPage() {
         </p>
 
         {loadingTemplates && (
-          <div className="grid gap-4 sm:grid-cols-2" aria-busy="true" aria-label="Loading templates">
+          <div
+            className="grid gap-4 sm:grid-cols-2"
+            aria-busy="true"
+            aria-label="Loading templates"
+          >
             {Array.from({ length: 4 }).map((_, i) => (
               <div
                 key={i}

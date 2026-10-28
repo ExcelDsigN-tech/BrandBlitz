@@ -10,6 +10,7 @@
 import { query } from "../db";
 import { logger } from "../lib/logger";
 import { redis } from "../lib/redis";
+import { dispatchNotification } from "./notifications";
 
 /** Throttle window: max one rank_overtaken notification per user per challenge. */
 const THROTTLE_SECONDS = 180; // 3 minutes
@@ -79,24 +80,20 @@ export async function notifyOvertakenParticipants(
       // Approximate new rank (position in leaderboard after this submission)
       const newRankForUser = leaderCount + 1;
 
-      try {
-        await query(
-          `INSERT INTO notifications (user_id, type, payload)
-           VALUES ($1, 'rank_overtaken', $2::jsonb)`,
-          [
-            userId,
-            JSON.stringify({
-              challenge_id: challengeId,
-              challenge_name: challengeName,
-              new_rank: newRankForUser,
-            }),
-          ]
-        );
+      const notificationId = await dispatchNotification({
+        userId,
+        type: "rank_overtaken",
+        payload: {
+          challenge_id: challengeId,
+          challenge_name: challengeName,
+          new_rank: newRankForUser,
+        },
+      });
 
-        // Set throttle flag — expires after window
+      // Set throttle flag — expires after window. Only throttle successful
+      // inserts so a transient DB failure can still retry next session.
+      if (notificationId) {
         await redis.set(key, "1", "EX", THROTTLE_SECONDS);
-      } catch (insertErr) {
-        logger.warn("Failed to insert rank_overtaken notification", { userId, insertErr });
       }
     }
   } catch (err) {

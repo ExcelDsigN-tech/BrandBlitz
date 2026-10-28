@@ -1,6 +1,13 @@
 import { rpc as SorobanRpc } from "@stellar/stellar-sdk";
 import { randomBytes } from "node:crypto";
-import { getRpcServer, getUsdcAsset, getNetworkConfig, withRetry, type NetworkName, type RetryOptions } from "./client";
+import {
+  getRpcServer,
+  getUsdcAsset,
+  getNetworkConfig,
+  withRetry,
+  type NetworkName,
+  type RetryOptions,
+} from "./client";
 import { DEPOSIT_POLL_INTERVAL_MS } from "./constants";
 
 export interface DepositEvent {
@@ -30,10 +37,7 @@ export function generateDepositMemo(): string {
 
 export function validateDepositMemo(memo: string | null): DepositMemoValidation {
   if (!memo?.trim()) return { valid: false, reason: "missing" };
-  if (
-    Buffer.byteLength(memo, "utf8") > 28 ||
-    /[\u0000-\u001f\u007f]/.test(memo)
-  ) {
+  if (Buffer.byteLength(memo, "utf8") > 28 || /[\u0000-\u001f\u007f]/.test(memo)) {
     return { valid: false, reason: "invalid_format" };
   }
   return { valid: true, memo };
@@ -64,9 +68,7 @@ export async function fetchDepositEvents(
             type: "contract",
             // SAC (Stellar Asset Contract) transfer events for USDC
             contractIds: [usdc.contractId(networkPassphrase)],
-            topics: [
-              ["transfer", "*", hotWalletAddress],
-            ],
+            topics: [["transfer", "*", hotWalletAddress]],
           },
         ],
         limit: 200,
@@ -78,12 +80,15 @@ export async function fetchDepositEvents(
 
   for (const event of response.events) {
     try {
-      const txMeta = await withRetry(
-        () => rpc.getTransaction(event.txHash),
-        { maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 5_000 }
-      );
+      const txMeta = await withRetry(() => rpc.getTransaction(event.txHash), {
+        maxAttempts: 3,
+        baseDelayMs: 100,
+        maxDelayMs: 5_000,
+      });
       if (txMeta.status !== SorobanRpc.Api.GetTransactionStatus.SUCCESS) {
-        console.warn(`Skipping unsuccessful transaction: ${event.txHash}`, { status: txMeta.status });
+        console.warn(`Skipping unsuccessful transaction: ${event.txHash}`, {
+          status: txMeta.status,
+        });
         continue;
       }
 
@@ -149,20 +154,22 @@ export async function getDepositConfirmationCount(
   const rpc = getRpcServer(network);
 
   try {
-    const txMeta = await withRetry(
-      () => rpc.getTransaction(txHash),
-      { maxAttempts: 3, baseDelayMs: 100, maxDelayMs: 5_000 }
-    );
+    const txMeta = await withRetry(() => rpc.getTransaction(txHash), {
+      maxAttempts: 3,
+      baseDelayMs: 100,
+      maxDelayMs: 5_000,
+    });
 
     if (txMeta.status !== SorobanRpc.Api.GetTransactionStatus.SUCCESS) {
       return 0;
     }
 
     // Get current ledger
-    const health = await withRetry(
-      () => rpc.getHealth(),
-      { maxAttempts: 2, baseDelayMs: 100, maxDelayMs: 2_000 }
-    );
+    const health = await withRetry(() => rpc.getHealth(), {
+      maxAttempts: 2,
+      baseDelayMs: 100,
+      maxDelayMs: 2_000,
+    });
 
     const currentLedger = health.ledger.sequence;
     const confirmations = Math.max(0, currentLedger - txLedger);

@@ -76,14 +76,15 @@ Return the authenticated user's current session progress for recovery UI.
 }
 ```
 
-| `status` value | Meaning |
-|---|---|
-| `warmup` | Warmup started, challenge not yet begun |
-| `in_progress` | Challenge active, timer running |
-| `completed` | All 3 rounds answered |
-| `expired` | Session was abandoned |
+| `status` value | Meaning                                 |
+| -------------- | --------------------------------------- |
+| `warmup`       | Warmup started, challenge not yet begun |
+| `in_progress`  | Challenge active, timer running         |
+| `completed`    | All 3 rounds answered                   |
+| `expired`      | Session was abandoned                   |
 
 **Errors:**
+
 - `404` — challenge or session not found
 - `403` — session belongs to another user
 
@@ -96,6 +97,7 @@ Explicitly quit an active or warmup session. The row is soft-abandoned (not dele
 **Response `204`:** No body.
 
 **Errors:**
+
 - `404` — no open session to forfeit
 
 ---
@@ -118,6 +120,7 @@ Begin the warmup phase. Records start time server-side. Uses a DB `UNIQUE` const
 The `unlockAt` timestamp (ms since epoch) tells the client when the "Start Challenge" button unlocks. The server enforces this minimum — attempting to complete warmup before `unlockAt` is rejected.
 
 **Errors:**
+
 - `404` — challenge not available (not found or not active)
 
 ---
@@ -139,6 +142,7 @@ Complete warmup and receive a short-lived `challengeToken`. Server enforces that
 The `challengeToken` is valid for 10 minutes and must be passed to `POST /start`.
 
 **Errors:**
+
 - `400` `WARMUP_TOO_FAST` — warmup minimum not yet elapsed
 
 ```json
@@ -179,6 +183,7 @@ Start the 45-second challenge timer. Validates the `challengeToken` from `warmup
 ```
 
 **Errors:**
+
 - `401` — invalid or expired challenge token
 - `403` — session mismatch (token belongs to different session)
 - `429` — too many start attempts
@@ -200,10 +205,10 @@ Submit an answer for a round (1, 2, or 3). Server validates and scores. Round 3 
 }
 ```
 
-| Field | Required | Validation |
-|---|---|---|
-| `selectedOption` | yes | `"A"`, `"B"`, `"C"`, `"D"`, or `null` (timeout) |
-| `reactionTimeMs` | yes | Non-negative integer (ms) |
+| Field            | Required | Validation                                      |
+| ---------------- | -------- | ----------------------------------------------- |
+| `selectedOption` | yes      | `"A"`, `"B"`, `"C"`, `"D"`, or `null` (timeout) |
+| `reactionTimeMs` | yes      | Non-negative integer (ms)                       |
 
 **Response `200`:**
 
@@ -230,6 +235,7 @@ On round 3, the response additionally includes:
 After round 3 completes, the session token is revoked and the session is finalized. Streak and badges are updated.
 
 **Errors:**
+
 - `400` — invalid round number, round already answered
 - `403` — session flagged for review
 - `409` — session already completed (for rounds 1–2); answer conflict (round 3 replay with different answer)
@@ -245,13 +251,13 @@ The `detectClockSkew` middleware (applied to `warmup-complete`) checks that the 
 
 ## Error Responses
 
-| Status | Code | Meaning |
-|---|---|---|
-| `400` | `WARMUP_TOO_FAST` | Warmup minimum not elapsed; `remainingMs` included |
-| `400` | — | Invalid round, round already answered |
-| `401` | — | Invalid or expired challenge token |
-| `403` | — | Session belongs to another user / flagged for review |
-| `404` | — | Challenge or session not found |
-| `409` | — | Session already completed / answer conflict |
-| `422` | — | Score validation failed |
-| `429` | — | Rate limit exceeded (start attempts) |
+| Status | Code              | Meaning                                              |
+| ------ | ----------------- | ---------------------------------------------------- |
+| `400`  | `WARMUP_TOO_FAST` | Warmup minimum not elapsed; `remainingMs` included   |
+| `400`  | —                 | Invalid round, round already answered                |
+| `401`  | —                 | Invalid or expired challenge token                   |
+| `403`  | —                 | Session belongs to another user / flagged for review |
+| `404`  | —                 | Challenge or session not found                       |
+| `409`  | —                 | Session already completed / answer conflict          |
+| `422`  | —                 | Score validation failed                              |
+| `429`  | —                 | Rate limit exceeded (start attempts)                 |
