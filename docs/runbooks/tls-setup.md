@@ -28,7 +28,7 @@ curl -sI https://brandblitz.app | grep -i set-cookie
 
 Expected output should include a line like:
 
-```
+```text
 set-cookie: ref=...; Path=/; Expires=...; HttpOnly; Secure; SameSite=Strict
 ```
 
